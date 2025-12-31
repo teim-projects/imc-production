@@ -1,0 +1,527 @@
+/* ======================================================
+   IMC — NEO GLASS DASHBOARD (ADVANCED • Board + Panels)
+   Tailwind-safe full CSS (animated borders + modal + full UI)
+   — COLOR THEME: Navy sidebar + warm coral hero + cream background + gold accents
+   (Full file — replace your Dashboard.css with this)
+====================================================== */
+
+/* ================= THEME TOKENS ================= */
+:root{
+  /* Core colors (updated to match screenshot) */
+  --ink: #0b1730;           /* darker text for light cards */
+  --muted: #9aa8b7;         /* muted text */
+  --gold: #ffd23f;          /* bright gold/yellow accent */
+  --warm: #f07b3f;          /* warm coral/orange accent (hero) */
+  --accent: #4ecdc4;        /* small aqua/teal accents */
+
+  /* Glass & layout */
+  --panel: rgba(255,255,255,.96);    /* mostly opaque white cards */
+  --panel2: rgba(255,255,255,.98);
+  --edge: rgba(10,30,50,.06);
+  --edge2: rgba(10,30,50,.09);
+
+  --sidebar-desktop: 260px;
+  --mobile-header-h: 64px;
+  --board-pad: 28px;
+
+  --blur: 14px;
+  --r: 18px;
+
+  /* shadows */
+  --shadow-outer: 0 18px 46px rgba(8,12,20,.10);
+  --shadow-card: 0 16px 30px rgba(8,12,20,.12), inset 0 1px 0 rgba(255,255,255,.6);
+  --shadow-soft: 0 10px 26px rgba(8,12,20,.08);
+  --shadow-deep: 0 28px 64px rgba(8,12,20,.12);
+
+  --glass-border: rgba(10,20,30,.06);
+  --glass-sheen: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+  --accent-glow: rgba(240,123,63,.12);
+
+  --ease: cubic-bezier(.2,.9,.35,1);
+  --fast: .16s;
+  --med: .36s;
+  --slow: .9s;
+}
+
+/* reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  :root { --slow: 0.01s; --med: 0.01s; --fast: 0.01s; }
+}
+
+/* ================= RESET / BASE ================= */
+* { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: var(--ink);
+  /* cream background with subtle warm radial highlights like screenshot */
+  background:
+    radial-gradient(800px 420px at 95% 0%, rgba(240,123,63,.08), transparent 30%),
+    radial-gradient(700px 380px at 6% 40%, rgba(255,210,110,.04), transparent 30%),
+    linear-gradient(180deg,#fff6ec,#fff2e6 40%, #fff7ee 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* subtle custom scrollbar similar to screenshot */
+body::-webkit-scrollbar { width: 10px; height: 10px; }
+body::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(10,20,40,.12), rgba(10,20,40,.06)); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+body::-webkit-scrollbar-track { background: transparent; }
+
+/* ================= LAYOUT ================= */
+.dashboard-container {
+  display:flex;
+  min-height:100vh;
+  width:100%;
+  align-items:flex-start;
+  justify-content:center;
+  padding: 28px;
+}
+
+/* main content wrapper — used by Dashboard.jsx */
+.dashboard-content {
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  min-height:100vh;
+  width:100%;
+  max-width: 1320px;
+  padding:24px;
+  overflow-y:auto;
+  transition: margin-left .35s var(--ease), width .35s var(--ease), padding-top .25s var(--ease);
+}
+
+/* sidebar offset for desktop (space reserved) */
+@media(min-width: 1200px){
+  .dashboard-content { margin-left: var(--sidebar-desktop); width: calc(100% - var(--sidebar-desktop)); }
+}
+
+/* mobile header preservation */
+@media(max-width:1199px){
+  .dashboard-content { margin-left: 0 !important; width: 100% !important; padding-top: var(--mobile-header-h); }
+}
+
+/* ================= NEO BOARD (MAIN WRAPPER) ================= */
+.neo-board {
+  position: relative;
+  border-radius: 24px;
+  padding: var(--board-pad);
+  background: transparent; /* main board uses inner card backgrounds */
+  border: 1px solid rgba(10,20,30,.03);
+  box-shadow: 0 8px 36px rgba(10,20,30,.06);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  overflow: visible;
+  isolation: isolate;
+}
+
+/* ambient warm / navy corner gradients behind board to match screenshot header + side */
+.neo-board::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(520px 260px at 96% 6%, rgba(240,123,63,.28), transparent 40%),
+    linear-gradient(90deg, rgba(10,28,56,.12), rgba(10,28,56,0) 30%);
+  mix-blend-mode: multiply;
+  opacity: 1;
+}
+
+/* inner glass card that holds content */
+.neo-board .inner {
+  position: relative;
+  border-radius: 20px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.96));
+  box-shadow: 0 10px 30px rgba(10,20,30,.06);
+}
+
+/* content-wide (forms area) */
+.content-wide {
+  padding: 12px 8px 2px;
+}
+
+/* ================= HERO (orange rounded bar) ================= */
+.neo-hero {
+  border-radius: 18px;
+  padding: 26px;
+  margin-bottom: 12px;
+  /* warm coral/orange hero like screenshot */
+  background: linear-gradient(90deg, rgba(240,123,63,1), rgba(255,171,80,1));
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 18px 46px rgba(10,20,30,.06);
+  color: white;
+  display:flex;
+  gap: 16px;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+
+/* hero row content */
+.hero-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.neo-hero h2 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 900;
+  color: #fffefc;
+  letter-spacing: -0.3px;
+  text-shadow: 0 6px 18px rgba(0,0,0,.12);
+}
+
+.neo-hero .sub {
+  margin-top: 6px;
+  color: rgba(255,255,255,.88);
+  font-weight: 600;
+}
+
+/* CTA button (dark navy with shadow) */
+.neo-cta {
+  background: linear-gradient(180deg,#0a1430,#09203a);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 18px 42px rgba(10,20,40,.18);
+  font-weight: 900;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+.neo-cta::after {
+  content:"";
+  position:absolute; left:-120%; top:-20%; width:60%; height:140%;
+  background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.06) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-18deg);
+  transition: left .9s var(--ease);
+  pointer-events:none;
+}
+.neo-cta:hover { transform: translateY(-3px); box-shadow: 0 26px 60px rgba(10,20,40,.25); }
+.neo-cta:hover::after { left:160%; }
+
+/* ================= KPI CARDS (white rounded cards) ================= */
+.neo-kpis {
+  margin-top: 12px;
+  display:grid;
+  gap:18px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+/* single KPI card */
+.neo-card {
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--glass-border);
+  transition: transform .28s var(--ease), box-shadow .28s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+.neo-card:hover { transform: translateY(-6px); box-shadow: 0 30px 80px rgba(10,20,30,.09); }
+
+/* KPI content */
+.kpi-top { display:flex; gap:10px; align-items:center; color:var(--muted); font-weight:700; }
+.kpi-icon { font-size:20px; color:var(--accent); display:inline-flex; align-items:center; justify-content:center; }
+.kpi-value { margin-top:8px; font-size:28px; font-weight:900; color:var(--ink); }
+
+/* small percentage pill */
+.kpi-pill {
+  position:absolute;
+  top:14px;
+  right:14px;
+  background: #091a34;
+  color: #fff;
+  padding:6px 10px;
+  border-radius:14px;
+  font-weight:800;
+  box-shadow: 0 8px 20px rgba(10,20,30,.14);
+}
+
+/* ================= MAIN PANEL + CHART (dark chart canvas) ================= */
+.neo-panel {
+  margin-top:18px;
+  border-radius:18px;
+  padding:18px 20px;
+  background: var(--panel);
+  border:1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+/* panel head (title + pills) */
+.panel-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:12px;
+  gap:12px;
+}
+.panel-head .title { display:flex; gap:10px; align-items:center; font-weight:900; color: var(--ink); }
+
+/* grow pill (gold) */
+.neo-pill {
+  background: linear-gradient(180deg, var(--gold), #ffb34d);
+  color:#231f12;
+  padding:8px 12px;
+  border-radius:14px;
+  font-weight:900;
+  box-shadow: 0 8px 20px rgba(240,123,63,.12);
+}
+
+/* charts wrapper — deep navy chart background like screenshot */
+.charts-wrap {
+  margin-top:12px;
+  padding:14px;
+  border-radius:12px;
+  background: linear-gradient(180deg,#071428,#071a2a);
+  border:1px solid rgba(255,255,255,.02);
+  box-shadow: 0 18px 40px rgba(8,12,20,.06);
+  position: relative;
+  overflow: hidden;
+}
+.charts-wrap canvas { width:100% !important; height:360px !important; display:block; border-radius:10px; }
+
+/* inner glow to hint warm corner */
+.charts-wrap .inner-glow {
+  position:absolute; left:6%; right:6%; top:-20%; height:160%;
+  background: radial-gradient(400px 200px at 50% 0%, rgba(78,205,196,.06), transparent 40%),
+              radial-gradient(360px 160px at 100% 10%, rgba(240,123,63,.04), transparent 40%);
+  mix-blend-mode: screen; pointer-events:none;
+}
+
+/* ================= RECENT ACTIVITY (timeline-style list) ================= */
+.recent-activity {
+  margin-top: 18px;
+  border-radius: 18px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.96));
+  border: 1px solid rgba(10,20,30,.04);
+  box-shadow: 0 14px 40px rgba(10,20,30,.06);
+  position: relative;
+  overflow: hidden;
+}
+
+/* title row */
+.recent-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+.recent-head h3 {
+  margin:0;
+  font-size:20px;
+  font-weight:900;
+  color: var(--ink);
+}
+
+/* list container with subtle left timeline */
+.recent-list {
+  position: relative;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding-left:20px;
+  max-height: 360px;
+  overflow:auto;
+}
+.recent-list::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(10,50,80,.12), rgba(240,123,63,.08));
+  pointer-events: none;
+}
+
+/* each activity entry as a card */
+.recent-list .activity-item {
+  margin:0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background: #fff;
+  border: 1px solid rgba(10,20,30,.04);
+  box-shadow: 0 8px 26px rgba(10,20,30,.04);
+  position: relative;
+  min-height:72px;
+}
+
+/* timeline dot left */
+.recent-list .activity-item::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--gold), var(--warm));
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
+  border: 2px solid rgba(255,255,255,.9);
+}
+
+/* left block: avatar + meta */
+.activity-left {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.activity-avatar {
+  width:56px;
+  height:56px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:16px;
+  color: var(--ink);
+  background: linear-gradient(135deg, rgba(10,28,56,.06), rgba(240,123,63,.06));
+  border: 1px solid rgba(10,20,30,.04);
+  flex-shrink:0;
+}
+.activity-meta { min-width:0; }
+.activity-meta .name { font-weight:900; color:var(--ink); font-size:16px; }
+.activity-meta .sub { margin-top:6px; color:var(--muted); font-weight:700; font-size:13px; }
+
+/* right: action icons / price */
+.activity-right { display:flex; gap:12px; align-items:center; justify-content:flex-end; min-width:80px; }
+.activity-action {
+  width:34px; height:34px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center;
+  background: linear-gradient(180deg,#f7f7f7,#ffffff); border:1px solid rgba(10,20,30,.03); color:var(--muted); font-weight:800;
+}
+.activity-price { font-weight:900; color:var(--gold); font-size:15px; }
+
+/* small dividing line on right */
+.activity-item::after {
+  content:"";
+  position:absolute; right:12px; top:14px; bottom:14px; width:1px; background: linear-gradient(180deg, rgba(10,20,30,.02), rgba(10,20,30,.01)); opacity:.5;
+}
+
+/* responsive tweaks */
+@media (max-width:1000px) {
+  .neo-kpis { grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:14px; }
+  .charts-wrap canvas { height:300px !important; }
+  .recent-list { max-height: 420px; }
+}
+@media (max-width:700px) {
+  .neo-hero { padding:16px; border-radius:12px; }
+  .neo-kpis { grid-template-columns: 1fr; gap:12px; }
+  .charts-wrap canvas { height:220px !important; }
+}
+
+/* ================= MODAL (css-only toggle via body.modal-open) ================= */
+.modal {
+  position: fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:1200; pointer-events:none; opacity:0; transition: opacity .22s var(--ease);
+}
+.modal .modal-backdrop { position:absolute; inset:0; background: rgba(6,12,20,.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.modal .modal-panel {
+  position:relative; z-index:2; width:920px; max-width:95%; border-radius:12px; padding:18px;
+  background: linear-gradient(180deg,#ffffff,#fff8f2); border:1px solid rgba(10,20,30,.04); box-shadow: 0 30px 80px rgba(10,20,30,.12);
+  transform: translateY(16px) scale(.99); transition: transform .28s var(--ease), opacity .28s var(--ease); max-height:88vh; overflow:auto;
+}
+body.modal-open .modal { opacity:1; pointer-events:auto; }
+body.modal-open .modal .modal-panel { transform: translateY(0) scale(1); }
+
+/* focus ring for accessibility */
+:focus { outline:none; box-shadow: 0 0 0 4px rgba(240,123,63,.08); border-radius:8px; }
+
+/* utilities */
+.row{ display:flex; gap:12px; align-items:center; }
+.col{ display:flex; flex-direction:column; gap:8px; }
+.hidden{ display:none!important; }
+.muted{ color:var(--muted); }
+.center{ text-align:center; }
+.small{ font-size:13px; }
+
+/* ================= LIGHT THEME HOOK (optional) ================= */
+/* add .theme-light to top wrapper to invert to light variant if needed */
+.theme-light .neo-board .inner { background: linear-gradient(180deg,#ffffff,#fffaf5); color: var(--ink); }
+.theme-light .neo-hero { filter: brightness(.98); }
+.theme-light .neo-card { background: #fff; }
+
+/* ================= END OF FILE ================= */
+/* ============= NEW STYLES FOR ENHANCED DASHBOARD ============= */
+
+/* Today's Summary Card */
+.today-summary-card {
+  background: var(--panel);
+  border-radius: 18px;
+  padding: 20px;
+  margin: 18px 0;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--glass-border);
+}
+.today-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.today-header h3 { margin: 0; font-size: 20px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+.today-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  font-size: 15px;
+}
+.today-grid div { text-align: center; }
+.today-grid span { display: block; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+.today-grid strong { font-size: 24px; font-weight: 900; }
+.success { color: #22c55e; }
+.warning { color: #f59e0b; }
+
+/* Quick Actions */
+.quick-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.quick-btn {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  color: white;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+  transition: all .2s var(--ease);
+}
+
+/* Upcoming Today */
+.upcoming-today {
+  margin: 20px 0;
+  padding: 16px;
+  background: rgba(255,255,255,.6);
+  border-radius: 12px;
+}
+.upcoming-today h4 { margin: 0 0 12px; font-size: 17px; font-weight: 900; }
+.upcoming-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(10,20,30,.06);
+}
+.time-left { font-weight: 900; color: #f07b3f; }
