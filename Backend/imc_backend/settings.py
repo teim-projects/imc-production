@@ -37,6 +37,10 @@ DEBUG = True
 # Add allowed hosts
 ALLOWED_HOSTS = ['*','imcpune.in', 'api.imcpune.in', 'localhost', '127.0.0.1']
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://imcpune.in",
+    "https://www.imcpune.in",
+]
 
 
 # Application definition
