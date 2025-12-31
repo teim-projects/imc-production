@@ -11,6 +11,8 @@ const PHOTO_FIELD_NAME = "photo"; // 🔁 must match your Django field (e.g., "p
 const Register = () => {
   const navigate = useNavigate();
   const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/auth/dj-rest-auth/registration/`;
+  console.log("url:",REGISTER_URL)
+  console.log("base:",import.meta.env.VITE_BASE_API_URL)
 
   const [form, setForm] = useState({ email: "", mobile_no: "", password1: "", password2: "" });
   const [touched, setTouched] = useState({});
