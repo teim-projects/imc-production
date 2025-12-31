@@ -36,6 +36,9 @@ services:
     build:
       context: ../Frontend/imc
       dockerfile: Dockerfile
+
+    env_file:
+      - ../Frontend/imc/.env
     volumes:
       - frontend_build:/frontend/dist
 
