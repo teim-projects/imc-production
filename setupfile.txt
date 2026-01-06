@@ -1,0 +1,6 @@
+# need to install docker-desktop 
+# clone repo
+# run
+cd Docker 
+docker compose -f docker-compose.dev.yml up -d --build
+docker exec -it docker-backend-1 python manage.py createsuperuser
