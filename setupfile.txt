@@ -4,4 +4,6 @@
 cd Docker 
 docker compose -f docker-compose.dev.yml up -d 
 docker compose down 
+docker exec -it docker-backend-1 python manage.py makemigrations
+docker exec -it docker-backend-1 python manage.py migrate
 docker exec -it docker-backend-1 python manage.py createsuperuser

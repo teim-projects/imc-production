@@ -22,5 +22,6 @@ jobs:
           script: |
             cd /root/imc-production/Docker
             git pull origin main
-            docker-compose down
+            docker-compose down 
             docker-compose up -d --build
+            docker-compose restart nginx

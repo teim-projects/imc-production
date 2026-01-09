@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 
 const CLASS_API = `${BASE}/auth/classes/`;
 const TEACHER_API = `${BASE}/auth/teachers/`;
