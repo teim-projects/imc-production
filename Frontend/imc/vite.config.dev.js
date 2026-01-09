@@ -1,12 +1,8 @@
-
-
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
-import { Server } from 'http'
-import { watch } from 'fs'
+
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -18,12 +14,13 @@ export default defineConfig({
     },
   },
 
-  Server:{
-    host: true,
+  server:{
+    host: '0.0.0.0',
+    strictPort: true,
     port:5173,
     watch:{
       usePolling:true,
+      
     },
   },
 })
-

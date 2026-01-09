@@ -137,7 +137,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} style={styles.form}>
           {/* Email or Mobile */}
           <label style={styles.label} htmlFor="email_or_mobile">
-            Email or Mobile
+            Email or Mobile No
           </label>
           <div style={styles.inputWrap}>
             <input
