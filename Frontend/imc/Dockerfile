@@ -17,7 +17,7 @@
   RUN rm /etc/nginx/conf.d/default.conf
   
   # Copy your nginx config
-  COPY ../Docker/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+  COPY nginx.conf /etc/nginx/conf.d/default.conf
   
   # Copy built frontend files
   COPY --from=build /app/dist /usr/share/nginx/html
