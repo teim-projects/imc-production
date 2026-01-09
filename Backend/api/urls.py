@@ -68,7 +68,7 @@ router.register(r"auth/sound", SoundViewSet, basename="auth-sound")  # alias
 
 
 
-router.register(r"singers", SingerViewSet, basename="singer")
+router.register(r"singer", SingerViewSet, basename="singer")
 
 
 
