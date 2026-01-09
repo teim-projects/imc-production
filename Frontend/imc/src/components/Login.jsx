@@ -179,7 +179,8 @@ export default function Login() {
 
           <div className="divider">OR</div>
 
-          <GoogleAuthButton endpoint="/auth/auth/google/" />
+          <GoogleAuthButton endpoint="/auth/auth/google/" 
+                               onSuccessNavigate="/dashboard"/>
 
           {message && <div className="msg">{message}</div>}
 
