@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "./Forms.css";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 const API_URL = `${BASE.replace(/\/$/, "")}/auth/singing-classes/`;
 const BATCH_API = `${BASE.replace(/\/$/, "")}/auth/batches/`;
 const PAGE_SIZE = 10;

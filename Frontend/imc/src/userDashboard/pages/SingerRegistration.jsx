@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singerbag.jpg";
+import SingerBackground from "../../assets/singerbag.png";
 import {
   Loader2,
   Mic,
@@ -116,9 +116,7 @@ export default function SingerRegistration() {
           <h2 className="text-4xl font-extrabold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-4">
             Registration Successful!
           </h2>
-          <p className="text-gray-600 text-lg mb-10">
-            Congratulations! Our team will review your profile and contact you soon.
-          </p>
+          
           <button
             onClick={resetForm}
             className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
@@ -155,14 +153,7 @@ export default function SingerRegistration() {
             </p>
           </motion.div>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-base md:text-lg text-gray-700 mt-4 max-w-2xl"
-          >
-            Join India's premier music community and unlock paid gigs, studio access, and official certification.
-          </motion.p>
+         
         </div>
       </section>
 

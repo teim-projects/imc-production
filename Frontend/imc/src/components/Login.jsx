@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import GoogleAuthButton from "./GoogleAuthButton";
 import singerBg from "../assets/newback.jpg";
+import { ArrowLeft } from "lucide-react";
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -128,6 +130,17 @@ export default function Login() {
       {/* RIGHT FORM */}
       <div className="login-form-area">
         <form onSubmit={handleSubmit} className="login-card">
+
+
+<button
+  type="button"
+  className="back-btn"
+  onClick={() => navigate("/user/dashboard")}
+>
+  <ArrowLeft size={20} />
+</button>
+
+
           <h2>Sign In</h2>
           <p className="subtitle">Enter your credentials to continue</p>
 
@@ -179,6 +192,27 @@ export default function Login() {
       {/* ================= STYLES ================= */}
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
+.back-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  color: #374151;
+}
+
+.back-btn:hover {
+  background: #e5e7eb;
+}
 
         html, body {
           width: 100%;
@@ -229,14 +263,16 @@ export default function Login() {
           background: #f9fafb;
         }
 
-        .login-card {
-          background: white;
-          max-width: 420px;
-          width: 100%;
-          padding: 3rem;
-          border-radius: 16px;
-          box-shadow: 0 30px 60px rgba(0,0,0,0.12);
-        }
+.login-card {
+  position: relative;
+  background: white;
+  max-width: 420px;
+  width: 100%;
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+}
+
 
         .subtitle {
           color: #6b7280;
