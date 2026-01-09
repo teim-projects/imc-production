@@ -1,12 +1,18 @@
 import React from "react";
+import axios from "axios";
 import { X } from "lucide-react";
+
+
+// API Configuration - As per your request
+const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const TEACHER_API = `${BASE.replace(/\/$/, "")}/auth/teachers/`;
 
 export default function TeacherFormModal({
   isOpen,
   onClose,
   form,
   setForm,
-  onSave,
+  onSave,   // optional external hook
   saving,
   isEdit,
 }) {
@@ -15,6 +21,35 @@ export default function TeacherFormModal({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  /* ================= API CALL ================= */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const token = localStorage.getItem("access");
+
+      const config = {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      };
+
+      if (isEdit && form.id) {
+        // ✅ UPDATE
+        await axios.put(`${API_URL}${form.id}/`, form, config);
+      } else {
+        // ✅ CREATE
+        await axios.post(API_URL, form, config);
+      }
+
+      onClose();
+      if (onSave) onSave(); // refresh list
+    } catch (error) {
+      console.error("Teacher save error:", error.response?.data || error);
+      alert("Failed to save teacher");
+    }
   };
 
   return (
@@ -27,7 +62,7 @@ export default function TeacherFormModal({
           </button>
         </div>
 
-        <form onSubmit={onSave}>
+        <form onSubmit={handleSubmit}>
           <label>
             Teacher Name *
             <input

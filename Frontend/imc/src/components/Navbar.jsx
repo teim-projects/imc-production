@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,7 +14,7 @@ import {
   faUser,
   faGear,
   faRightFromBracket,
-  faTicketAlt, // ← New icon for My Bookings
+  faTicketAlt, // For My Bookings
 } from "@fortawesome/free-solid-svg-icons";
 import logo from "../assets/logo.png";
 
@@ -30,6 +31,7 @@ const Navbar = () => {
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
 
   const menuRef = useRef(null);
   const btnRef = useRef(null);
@@ -54,6 +56,17 @@ const Navbar = () => {
 
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
+
+  /* ---------------- RESPONSIVE WIDTH ---------------- */
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 900);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   /* ---------------- LOGOUT ---------------- */
   const handleLogout = useCallback(() => {
@@ -133,25 +146,33 @@ const Navbar = () => {
 
   return (
     <>
+      {/* Global keyframes */}
+      <style jsx global>{`
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       {/* ================= NAVBAR ================= */}
       <nav style={styles.navbar}>
         {/* LOGO */}
         <div style={styles.logo}>
-          <Link to="/user-dashboard" style={styles.logoLink}>
+          <Link to="/" style={styles.logoLink}>
             <img src={logo} alt="IMC Logo" style={styles.logoImg} />
             <span style={styles.logoText}>IMC</span>
           </Link>
         </div>
 
-        {/* DESKTOP CENTER NAV (ONLY FOR NON-ADMIN USERS) */}
-        {!isAdmin && isAuthenticated && window.innerWidth >= 900 && (
+        {/* DESKTOP CENTER NAV - ONLY FOR LOGGED-IN NON-ADMIN USERS */}
+        {isAuthenticated && !isAdmin && isDesktop && (
           <div style={styles.centerLinks}>
             {[
-              ["Home", "/user-dashboard"],
+              ["Home", "/"],
               ["Services", "/services"],
               ["Events", "/events-booking"],
               ["Studio", "/studio-booking"],
-              ["Classes", "/singing-classes"],
+              ["Classes", "/classes"],
               ["Singer", "/singer"],
               ["Contact", "/contact"],
             ].map(([label, path]) => (
@@ -174,7 +195,7 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               {/* MOBILE HAMBURGER */}
-              {window.innerWidth < 900 && (
+              {!isDesktop && (
                 <button
                   onClick={() => setSidebarOpen(true)}
                   style={styles.mobileMenuBtn}
@@ -184,7 +205,7 @@ const Navbar = () => {
               )}
 
               {/* DESKTOP AVATAR DROPDOWN */}
-              {window.innerWidth >= 900 && (
+              {isDesktop && (
                 <div style={{ position: "relative" }}>
                   <button
                     ref={btnRef}
@@ -204,10 +225,11 @@ const Navbar = () => {
                     <span style={styles.statusDot} />
                   </button>
 
+                  {/* DROPDOWN MENU */}
                   {menuOpen && (
                     <div ref={menuRef} style={styles.menu}>
                       <div style={styles.menuHeader}>
-                        <strong>{user.full_name}</strong>
+                        <strong>{user.full_name || "User"}</strong>
                         <span style={{ fontSize: 12 }}>{user.email}</span>
                       </div>
 
@@ -215,16 +237,21 @@ const Navbar = () => {
 
                       <Link
                         to="/profile"
-                        style={styles.menuItem}
+                        style={{
+                          ...styles.menuItem,
+                          ...(isActive("/profile") ? styles.menuActive : {}),
+                        }}
                         onClick={() => setMenuOpen(false)}
                       >
                         <FontAwesomeIcon icon={faUser} /> Profile
                       </Link>
 
-                      {/* NEW: My Bookings in Desktop Dropdown */}
                       <Link
                         to="/my-bookings"
-                        style={styles.menuItem}
+                        style={{
+                          ...styles.menuItem,
+                          ...(isActive("/my-bookings") ? styles.menuActive : {}),
+                        }}
                         onClick={() => setMenuOpen(false)}
                       >
                         <FontAwesomeIcon icon={faTicketAlt} /> My Bookings
@@ -233,7 +260,10 @@ const Navbar = () => {
                       {!isAdmin && (
                         <Link
                           to="/settings"
-                          style={styles.menuItem}
+                          style={{
+                            ...styles.menuItem,
+                            ...(isActive("/settings") ? styles.menuActive : {}),
+                          }}
                           onClick={() => setMenuOpen(false)}
                         >
                           <FontAwesomeIcon icon={faGear} /> Settings
@@ -269,13 +299,9 @@ const Navbar = () => {
       {/* ================= MOBILE SIDEBAR ================= */}
       {sidebarOpen && (
         <>
-          <div
-            style={styles.overlay}
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div style={styles.overlay} onClick={() => setSidebarOpen(false)} />
 
           <aside style={styles.sidebar}>
-            {/* SIDEBAR HEADER - PROFILE */}
             <div style={styles.sidebarHeader}>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -295,21 +321,24 @@ const Navbar = () => {
                   )}
                 </div>
                 <div>
-                  <p style={styles.sidebarName}>{user.full_name || "Guest"}</p>
-                  <p style={styles.sidebarEmail}>{user.email || "Not logged in"}</p>
+                  <p style={styles.sidebarName}>
+                    {isAuthenticated ? user.full_name : "Guest"}
+                  </p>
+                  <p style={styles.sidebarEmail}>
+                    {isAuthenticated ? user.email : "Not logged in"}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* SCROLLABLE NAV LINKS */}
             <div style={styles.sidebarLinksContainer}>
               <div style={styles.sidebarLinks}>
                 {[
-                  [faHome, "Home", "/user-dashboard"],
+                  [faHome, "Home", "/"],
                   [faMusic, "Services", "/services"],
                   [faCalendar, "Events", "/events-booking"],
                   [faMicrophone, "Studio", "/studio-booking"],
-                  [faUsers, "Classes", "/singing-classes"],
+                  [faUsers, "Classes", "/classes"],
                   [faUsers, "Singer", "/singer"],
                   [faPhone, "Contact", "/contact"],
                 ].map(([icon, label, path]) => (
@@ -329,38 +358,50 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* SIDEBAR FOOTER - Now includes My Bookings */}
+            {/* FOOTER LINKS - INCLUDING MY BOOKINGS */}
             <div style={styles.sidebarFooter}>
-              <Link
-                to="/profile"
-                style={styles.sidebarFooterLink}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <FontAwesomeIcon icon={faUser} /> Profile
-              </Link>
+              {isAuthenticated && (
+                <>
+                  <Link
+                    to="/profile"
+                    style={{
+                      ...styles.sidebarFooterLink,
+                      ...(isActive("/profile") ? styles.sidebarActive : {}),
+                    }}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <FontAwesomeIcon icon={faUser} /> Profile
+                  </Link>
 
-              {/* NEW: My Bookings in Mobile Sidebar */}
-              <Link
-                to="/my-bookings"
-                style={styles.sidebarFooterLink}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <FontAwesomeIcon icon={faTicketAlt} /> My Bookings
-              </Link>
+                  <Link
+                    to="/my-bookings"
+                    style={{
+                      ...styles.sidebarFooterLink,
+                      ...(isActive("/my-bookings") ? styles.sidebarActive : {}),
+                    }}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <FontAwesomeIcon icon={faTicketAlt} /> My Bookings
+                  </Link>
 
-              {!isAdmin && (
-                <Link
-                  to="/settings"
-                  style={styles.sidebarFooterLink}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <FontAwesomeIcon icon={faGear} /> Settings
-                </Link>
+                  {!isAdmin && (
+                    <Link
+                      to="/settings"
+                      style={{
+                        ...styles.sidebarFooterLink,
+                        ...(isActive("/settings") ? styles.sidebarActive : {}),
+                      }}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <FontAwesomeIcon icon={faGear} /> Settings
+                    </Link>
+                  )}
+
+                  <button onClick={handleLogout} style={styles.sidebarLogout}>
+                    <FontAwesomeIcon icon={faRightFromBracket} /> Logout
+                  </button>
+                </>
               )}
-
-              <button onClick={handleLogout} style={styles.sidebarLogout}>
-                <FontAwesomeIcon icon={faRightFromBracket} /> Logout
-              </button>
             </div>
           </aside>
         </>
@@ -369,7 +410,7 @@ const Navbar = () => {
   );
 };
 
-/* ================= STYLES (unchanged except minor tweaks) ================= */
+/* ================= STYLES ================= */
 const styles = {
   navbar: {
     display: "flex",
@@ -382,14 +423,8 @@ const styles = {
     zIndex: 1000,
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
   },
-
   logo: { display: "flex", alignItems: "center" },
-  logoLink: {
-    display: "flex",
-    alignItems: "center",
-    textDecoration: "none",
-    color: "#fff",
-  },
+  logoLink: { display: "flex", alignItems: "center", textDecoration: "none", color: "#fff" },
   logoImg: { height: 40, marginRight: 12 },
   logoText: { fontSize: "1.6em", fontWeight: 800, letterSpacing: "1px" },
 
@@ -410,21 +445,10 @@ const styles = {
     fontSize: "15px",
     transition: "all 0.3s",
   },
-  activeNav: {
-    background: "#fff",
-    color: "#5B21B6",
-    fontWeight: 700,
-  },
+  activeNav: { background: "#fff", color: "#5B21B6", fontWeight: 700 },
 
   right: { display: "flex", gap: 16, alignItems: "center" },
-
-  mobileMenuBtn: {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: "24px",
-    cursor: "pointer",
-  },
+  mobileMenuBtn: { background: "none", border: "none", color: "#fff", fontSize: "24px", cursor: "pointer" },
 
   link: {
     color: "#fff",
@@ -445,15 +469,7 @@ const styles = {
     transition: "all 0.3s",
   },
 
-  avatarButton: {
-    position: "relative",
-    height: 48,
-    width: 48,
-    borderRadius: "50%",
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-  },
+  avatarButton: { position: "relative", height: 48, width: 48, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer" },
   halo: {
     position: "absolute",
     inset: -6,
@@ -477,16 +493,7 @@ const styles = {
   },
   avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
   avatarInitials: { color: "#fff", fontWeight: 800 },
-  statusDot: {
-    position: "absolute",
-    right: 2,
-    bottom: 2,
-    height: 12,
-    width: 12,
-    borderRadius: "50%",
-    background: "#2ecc71",
-    border: "2px solid #fff",
-  },
+  statusDot: { position: "absolute", right: 2, bottom: 2, height: 12, width: 12, borderRadius: "50%", background: "#2ecc71", border: "2px solid #fff" },
 
   menu: {
     position: "absolute",
@@ -499,13 +506,7 @@ const styles = {
     boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
     zIndex: 100,
   },
-  menuHeader: {
-    display: "flex",
-    flexDirection: "column",
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottom: "1px solid #eee",
-  },
+  menuHeader: { display: "flex", flexDirection: "column", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #eee" },
   menuItem: {
     display: "flex",
     gap: 12,
@@ -520,16 +521,11 @@ const styles = {
     width: "100%",
     textAlign: "left",
   },
+  menuActive: { background: "#FFF3E0", color: "#FF6F3C" }, // Highlight active
   menuDivider: { height: 1, background: "#eee", margin: "8px 0" },
   menuDanger: { color: "#b42318" },
 
-  /* ================= MOBILE SIDEBAR ================= */
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.5)",
-    zIndex: 1100,
-  },
+  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100 },
   sidebar: {
     position: "fixed",
     top: 0,
@@ -542,16 +538,7 @@ const styles = {
     flexDirection: "column",
     boxShadow: "10px 0 30px rgba(0,0,0,0.2)",
   },
-  sidebarClose: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: "24px",
-    cursor: "pointer",
-  },
+  sidebarClose: { position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "#fff", fontSize: "24px", cursor: "pointer" },
   sidebarHeader: {
     background: "linear-gradient(135deg, #5b21b6, #9333ea)",
     padding: "30px 24px",
@@ -559,11 +546,7 @@ const styles = {
     position: "relative",
     minHeight: "140px",
   },
-  sidebarProfile: {
-    display: "flex",
-    alignItems: "center",
-    gap: 16,
-  },
+  sidebarProfile: { display: "flex", alignItems: "center", gap: 16 },
   sidebarAvatar: {
     width: 64,
     height: 64,
@@ -581,17 +564,8 @@ const styles = {
   sidebarName: { fontSize: "20px", fontWeight: "700" },
   sidebarEmail: { fontSize: "14px", opacity: 0.9 },
 
-  sidebarLinksContainer: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "0 24px",
-  },
-  sidebarLinks: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    padding: "20px 0",
-  },
+  sidebarLinksContainer: { flex: 1, overflowY: "auto", padding: "0 24px" },
+  sidebarLinks: { display: "flex", flexDirection: "column", gap: 8, padding: "20px 0" },
   sidebarLink: {
     display: "flex",
     alignItems: "center",
@@ -604,19 +578,9 @@ const styles = {
     fontSize: "16px",
     transition: "all 0.3s",
   },
-  sidebarActive: {
-    background: "linear-gradient(135deg, #FFD23F, #FF8A3C)",
-    color: "#0A2C56",
-    fontWeight: "700",
-  },
+  sidebarActive: { background: "linear-gradient(135deg, #FFD23F, #FF8A3C)", color: "#0A2C56", fontWeight: "700" },
 
-  sidebarFooter: {
-    padding: "20px 24px",
-    borderTop: "1px solid #eee",
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  },
+  sidebarFooter: { padding: "20px 24px", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", gap: 12 },
   sidebarFooterLink: {
     display: "flex",
     alignItems: "center",

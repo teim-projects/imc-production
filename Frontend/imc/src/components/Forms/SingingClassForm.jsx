@@ -7,7 +7,7 @@ import BatchFormModal from "../Forms/BatchFormModal";
 import TeacherFormModal from "../Forms/TeacherFormModal";
 import ClassFormModal from "../Forms/ClassFormModal";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 
 const CLASS_API = `${BASE.replace(/\/$/, "")}/auth/classes/`;
 const TEACHER_API = `${BASE.replace(/\/$/, "")}/auth/teachers/`;
@@ -302,24 +302,7 @@ export default function SingingClassManagement() {
           )}
         </div>
 
-        {(activeTab === "class" || activeTab === "batch") && (
-          <div className="search-wrapper">
-            <input
-              type="text"
-              placeholder={`Search by ${activeTab === "class" ? "name, trainer, fee" : "day, time, teacher"}...`}
-              className="search-input"
-              value={activeTab === "class" ? classSearch : batchSearch}
-              onChange={(e) => activeTab === "class" ? setClassSearch(e.target.value) : setBatchSearch(e.target.value)}
-            />
-            <button
-              className="refresh-btn"
-              onClick={activeTab === "class" ? fetchClasses : fetchBatches}
-              disabled={activeTab === "class" ? classLoading : batchLoading}
-            >
-              {activeTab === "class" ? (classLoading ? "Loading..." : "Refresh") : (batchLoading ? "Loading..." : "Refresh")}
-            </button>
-          </div>
-        )}
+        
 
         <div className="content-area">
           {/* CLASS TAB */}
