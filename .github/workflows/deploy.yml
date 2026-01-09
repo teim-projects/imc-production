@@ -22,7 +22,5 @@ jobs:
           script: |
             cd /root/imc-production/Docker
             git pull origin main
-            docker-compose down -v
-            docker volume rm docker_frontend_build
-            docker system prune -af
+            docker-compose down 
             docker-compose up -d --build
