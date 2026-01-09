@@ -29,7 +29,7 @@ import SingerRegistration from "./userDashboard/pages/SingerRegistration";
 /* ================= BOOKING PAGES ================= */
 import PrivateBooking from "./userDashboard/pages/PrivateBooking";
 import PhotographyBooking from "./userDashboard/pages/PhotographyBooking";
-import VideographyPage from "./userDashboard/pages/VideographyPage";
+import VideographyPage from "./userDashboard/pages/Videographypage";
 import SoundBooking from "./userDashboard/pages/SoundBooking";
 
 /* ================= HOME PAGES ================= */
