@@ -179,7 +179,7 @@ export default function Login() {
 
           <div className="divider">OR</div>
 
-          <GoogleAuthButton endpoint="/auth/google/" />
+          <GoogleAuthButton endpoint="/auth/auth/google/" />
 
           {message && <div className="msg">{message}</div>}
 
