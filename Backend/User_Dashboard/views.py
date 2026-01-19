@@ -77,21 +77,6 @@ class UserStudioBookingViewSet(viewsets.ModelViewSet):
 
 
 
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated
-from api.models import PhotographyBooking
-from .serializers import UserPhotographyBookingSerializer
-
-
-class UserPhotographyBookingViewSet(ModelViewSet):
-    serializer_class = UserPhotographyBookingSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return PhotographyBooking.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 # User_Dashboard/views.py
@@ -318,3 +303,84 @@ def singer_list(request):
     serializer = StudioPublicSerializer(singers, many=True)
     return Response(serializer.data)
 
+
+
+
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from api.models import PhotographyBooking
+from .serializers import UserPhotographyBookingSerializer
+
+
+class UserPhotographyBookingViewSet(ModelViewSet):
+    """
+    USER DASHBOARD – PHOTOGRAPHY BOOKINGS
+    SAME AS SingerViewSet / UserEventBookingViewSet
+    """
+
+    serializer_class = UserPhotographyBookingSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "delete"]
+
+    def get_queryset(self):
+        return PhotographyBooking.objects.filter(
+            user=self.request.user
+        ).order_by("-created_at")
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
+
+
+
+
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import AllowAny
+from rest_framework.authentication import BaseAuthentication
+
+from api.models import Videography
+from .serializers import VideographySerializer
+
+
+class NoAuthentication(BaseAuthentication):
+    """
+    Completely disables authentication.
+    REQUIRED when DEFAULT_PERMISSION_CLASSES = IsAuthenticated
+    """
+    def authenticate(self, request):
+        return None
+
+
+class VideographyViewSet(ModelViewSet):
+    """
+    PUBLIC VIDEOGRAPHY BOOKING
+    URL: /api/auth/videography/
+    """
+
+    serializer_class = VideographySerializer
+
+    # 🔥 OVERRIDE GLOBAL SETTINGS
+    permission_classes = [AllowAny]
+    authentication_classes = [NoAuthentication]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # Admin can see all
+        if user and user.is_staff:
+            return Videography.objects.all().order_by("-shoot_date", "-created_at")
+
+        # Logged-in user sees own
+        if user and user.is_authenticated:
+            return Videography.objects.filter(user=user).order_by(
+                "-shoot_date", "-created_at"
+            )
+
+        # Anonymous users: no listing
+        return Videography.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)

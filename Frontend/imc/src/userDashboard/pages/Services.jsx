@@ -27,7 +27,7 @@ const services = [
       "VIP lounge access",
     ],
     color: "from-violet-500 to-purple-600",
-    price: "From ₹1999/month",
+   
     link: "/singer", // SingerRegistration
     image:
       "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80",
@@ -45,7 +45,7 @@ const services = [
       "Flexible time slots",
     ],
     color: "from-fuchsia-500 to-pink-600",
-    price: "From ₹1500/hour",
+   
     link: "/studio-booking",
     image:
       "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80",
@@ -63,7 +63,7 @@ const services = [
       "Live performances",
     ],
     color: "from-blue-500 to-cyan-600",
-    price: "From ₹2500/month",
+    
     link: "/classes",
     image:
       "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=800&q=80",
@@ -81,7 +81,7 @@ const services = [
       "Music festivals",
     ],
     color: "from-orange-500 to-red-600",
-    price: "Tickets from ₹499",
+    
     link: "/events",
     image:
       "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80",
@@ -117,7 +117,7 @@ const services = [
       "Behind-the-scenes",
     ],
     color: "from-pink-500 to-rose-600",
-    price: "From ₹3000/session",
+    
     link: "/photography-booking",
     image:
       "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=800&q=80",
@@ -135,7 +135,7 @@ const services = [
       "Behind-the-scenes",
     ],
     color: "from-indigo-500 to-purple-600",
-    price: "From ₹5000/session",
+    
     link: "/videography",
     image:
       "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&q=80",
@@ -153,7 +153,7 @@ const services = [
       "Live mixing",
     ],
     color: "from-amber-500 to-yellow-600",
-    price: "From ₹4000/event",
+    
     link: "/sound-booking",
     image:
       "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80",

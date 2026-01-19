@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singerbag.jpg";
+import SingerBackground from "../../assets/videography banner desktop.png";
 import {
   Loader2,
   CheckCircle,
   Calendar,
   Clock,
   MapPin,
-  Users, // ← Fixed: Added missing import
+  Users,
   Phone,
   Mail,
   User,
@@ -27,21 +27,25 @@ import {
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const VIDEOGRAPHY_API = `${API_BASE.replace(/\/$/, "")}/auth/videography-bookings/`;
+const VIDEOGRAPHY_API = `${API_BASE.replace(/\/$/, "")}/auth/videography/`;
 
 const PACKAGE_TYPES = [
-  "Basic Highlight Reel",
-  "Premium Cinematic Film",
-  "Wedding Full Package",
-  "Music Video Pro",
-  "Corporate Branding",
-  "Drone + Ground Combo",
-  "Custom Package",
+  "Standard",
+  "Premium",
+  "Custom",
+];
+
+const eventTypes = [
+  "theatre music events",
+  "private music events",
+  "Birthday",
+  "Other",
 ];
 
 export default function VideographyForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(""); // ← shows exact backend errors
 
   const [form, setForm] = useState({
     client_name: "",
@@ -63,8 +67,11 @@ export default function VideographyForm() {
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const setPaymentMethod = (method) => {
@@ -78,10 +85,13 @@ export default function VideographyForm() {
     if (!form.project.trim()) return "Project / Event Name is required";
     if (!form.editor.trim()) return "Editor is required";
     if (!form.shoot_date) return "Shoot date is required";
-    if (!form.duration_hours) return "Duration is required";
+    if (!form.duration_hours || Number(form.duration_hours) < 1) return "Duration must be at least 1 hour";
     if (!form.location.trim()) return "Location is required";
     if (!form.package_type) return "Package type is required";
     if (!form.payment_method) return "Payment method is required";
+    if (form.event_type === "Other" && !form.other_event_name.trim()) {
+      return "Please specify the other event name";
+    }
     if (!form.agreed_terms) return "You must agree to terms and conditions";
     return null;
   };
@@ -89,35 +99,49 @@ export default function VideographyForm() {
   const submit = async () => {
     const error = validateForm();
     if (error) {
-      alert(error);
+      setErrorMsg(error);
       return;
     }
 
     const payload = {
-      client_name: form.client_name.trim(),
-      email: form.email.trim(),
-      mobile_no: form.mobile_no.trim(),
+      client_name: form.client_name.trim() || "",
+      email: form.email.trim() || "",
+      mobile_no: form.mobile_no.trim() || "",
       project: form.project.trim(),
       editor: form.editor.trim(),
       shoot_date: form.shoot_date,
       start_time: form.start_time || null,
       duration_hours: Number(form.duration_hours),
-      location: form.location.trim(),
+      location: form.location.trim() || "",
       package_type: form.package_type,
       package_price: form.package_price ? Number(form.package_price) : null,
       event_type: form.event_type || null,
-      other_event_name: form.other_event_name.trim() || null,
-      payment_method: form.payment_method,
-      notes: form.notes.trim() || null,
+      // Fixed: never null
+      other_event_name: form.other_event_name?.trim() || "",
+      // Fixed: always proper case
+      payment_method: form.payment_method
+        ? form.payment_method.charAt(0).toUpperCase() + form.payment_method.slice(1).toLowerCase()
+        : "Cash",
+      // Fixed: never null
+      notes: form.notes?.trim() || "",
     };
 
     try {
       setLoading(true);
+      setErrorMsg("");
       await axios.post(VIDEOGRAPHY_API, payload);
       setSuccess(true);
     } catch (err) {
       console.error("Submission failed:", err.response?.data || err);
-      alert("Submission failed. Please try again.");
+      let msg = "Submission failed. Please try again.";
+      if (err.response?.data) {
+        const errors = err.response.data;
+        if (typeof errors === "object") {
+          const firstError = Object.values(errors)[0];
+          msg = Array.isArray(firstError) ? firstError[0] : firstError || msg;
+        }
+      }
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -125,6 +149,7 @@ export default function VideographyForm() {
 
   const resetForm = () => {
     setSuccess(false);
+    setErrorMsg("");
     setForm({
       client_name: "",
       email: "",
@@ -220,6 +245,12 @@ export default function VideographyForm() {
                   Book Your Videography Project
                 </h2>
 
+                {errorMsg && (
+                  <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-center">
+                    {errorMsg}
+                  </div>
+                )}
+
                 {/* Client Info */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
@@ -294,16 +325,40 @@ export default function VideographyForm() {
                     <label className="block text-gray-700 font-medium mb-3">
                       Event Type
                     </label>
+                    <div className="relative">
+                      <select
+                        name="event_type"
+                        value={form.event_type}
+                        onChange={handleChange}
+                        className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition"
+                      >
+                        <option value="">Select Event Type</option>
+                        {eventTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {form.event_type === "Other" && (
+                  <div className="mt-8">
+                    <label className="block text-gray-700 font-medium mb-3">
+                      Other Event Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
-                      name="event_type"
-                      value={form.event_type}
+                      name="other_event_name"
+                      value={form.other_event_name}
                       onChange={handleChange}
-                      placeholder="e.g. Wedding, Corporate"
+                      placeholder="e.g. Corporate launch, TV promo..."
                       className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                     />
                   </div>
-                </div>
+                )}
 
                 {/* Package & Price */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
@@ -417,9 +472,9 @@ export default function VideographyForm() {
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                      { key: "cash", label: "Cash", icon: IndianRupee },
-                      { key: "card", label: "Card", icon: CreditCard },
-                      { key: "upi", label: "UPI", icon: Wallet },
+                      { key: "Cash", label: "Cash", icon: IndianRupee },
+                      { key: "Card", label: "Card", icon: CreditCard },
+                      { key: "UPI", label: "UPI", icon: Wallet },
                     ].map((option) => {
                       const Icon = option.icon;
                       const isSelected = form.payment_method === option.key;

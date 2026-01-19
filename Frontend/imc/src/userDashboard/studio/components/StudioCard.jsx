@@ -1,93 +1,109 @@
 import React from "react";
-import { Star, MapPin, Zap, Users, Mic2, Headphones, Clock } from "lucide-react";
+import { Star, MapPin, Users, Mic2, Headphones, Clock, Zap } from "lucide-react";
 
 export default function StudioCard({ studio }) {
   return (
-    <div className="bg-white rounded-[32px] shadow-2xl overflow-hidden hover:shadow-3xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
+    <div
+      className={`
+        group relative bg-white rounded-3xl overflow-hidden
+        border border-gray-100 shadow-xl hover:shadow-2xl
+        transition-all duration-500 ease-out
+        hover:-translate-y-3 hover:border-orange-200/70
+      `}
+    >
+      <div className="flex flex-col lg:flex-row h-full min-h-[480px] lg:min-h-[420px]">
 
-      {/* Main Container */}
-      <div className="flex flex-col lg:flex-row">
-
-        {/* LEFT: Image */}
-        <div className="relative w-full lg:w-[400px] flex-shrink-0">
+        {/* ===== LEFT: Image Section ===== */}
+        <div className="relative w-full lg:w-5/12 flex-shrink-0 overflow-hidden">
           <img
             src={studio.image}
             alt={studio.name}
-            className="w-full h-[280px] lg:h-full object-cover transition-transform duration-700 hover:scale-105"
+            className="w-full h-80 lg:h-full object-cover transition-transform duration-700 
+                       group-hover:scale-105 group-hover:rotate-[0.8deg]"
           />
 
-          {/* Rating Badge */}
-          <div className="absolute top-6 right-6 bg-gradient-to-r from-orange-500 to-red-500 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-2xl">
-            <Star size={16} fill="white" className="text-white" />
-            {studio.rating || "4.9"}
-          </div>
+          {/* Badges */}
+          <div className="absolute top-5 left-5 right-5 flex justify-between items-start gap-3">
+            {studio.instant && (
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white 
+                              px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-lg">
+                <Zap size={15} className="fill-white/80" />
+                Instant
+              </div>
+            )}
 
-          {/* Instant Booking Tag */}
-          {studio.instant && (
-            <div className="absolute top-6 left-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
-              <Zap size={14} />
-              Instant Booking
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white 
+                            px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl ml-auto">
+              <Star size={16} fill="white" className="text-white" />
+              {studio.rating || "4.9"}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* CENTER: Info */}
-        <div className="flex-1 p-8 lg:p-10 flex flex-col justify-between">
-          <div>
-            {/* Title & Location */}
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-3">
+        {/* ===== MIDDLE: Main Content ===== */}
+        <div className="flex-1 p-7 lg:p-9 flex flex-col">
+          {/* Title & Location */}
+          <div className="mb-6">
+            <h2 className="text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight mb-2.5">
               {studio.name}
             </h2>
-
-            <p className="flex items-center gap-2 text-gray-600 text-lg mb-6">
-              <MapPin size={18} className="text-red-500" />
-              <span>{studio.location}</span>
+            <p className="flex items-center gap-2 text-gray-600 text-base lg:text-lg">
+              <MapPin size={18} className="text-red-500 flex-shrink-0" />
+              {studio.location}
             </p>
+          </div>
 
-            {/* Capacity & Tags */}
-            <div className="flex flex-wrap gap-4 mb-8">
-              <span className="px-5 py-2 rounded-full bg-purple-50 text-purple-700 font-semibold text-sm flex items-center gap-2 shadow-sm">
-                <Users size={16} />
-                Up to {studio.capacity} people
-              </span>
-
-              {studio.type && (
-                <span className="px-5 py-2 rounded-full bg-blue-50 text-blue-700 font-semibold text-sm flex items-center gap-2 shadow-sm">
-                  {studio.type === "vocal" ? <Headphones size={16} /> : <Mic2 size={16} />}
-                  {studio.type === "vocal" ? "Vocal Booth" : "Full Band Setup"}
-                </span>
-              )}
+          {/* Tags */}
+          <div className="flex flex-wrap gap-3 mb-7">
+            <div className="px-4 py-1.5 rounded-full bg-violet-50 text-violet-700 text-sm font-semibold flex items-center gap-2 shadow-sm">
+              <Users size={15} />
+              Up to {studio.capacity}
             </div>
 
-            {/* Features List */}
-            <ul className="space-y-3 text-gray-700">
-              <li className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                Professional sound-treated acoustics
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                Premium microphones & preamps
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                High-end monitoring & mixing console
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <Clock size={16} className="text-orange-600" /> Flexible hourly slots
-              </li>
-            </ul>
+            {studio.type && (
+              <div className="px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-sm font-semibold flex items-center gap-2 shadow-sm">
+                {studio.type === "vocal" ? (
+                  <Headphones size={15} />
+                ) : (
+                  <Mic2 size={15} />
+                )}
+                {studio.type === "vocal" ? "Vocal Booth" : "Band Room"}
+              </div>
+            )}
           </div>
+
+          {/* Features */}
+          <ul className="space-y-2.5 text-gray-700 text-[15px] lg:text-base mb-auto">
+            <li className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex-shrink-0" />
+              Professional acoustic treatment
+            </li>
+            <li className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex-shrink-0" />
+              Premium mics & preamps
+            </li>
+            <li className="flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 flex-shrink-0" />
+              High-end monitors & console
+            </li>
+            <li className="flex items-center gap-3">
+              <Clock size={15} className="text-orange-600 flex-shrink-0" />
+              Flexible hourly bookings
+            </li>
+          </ul>
         </div>
 
-        {/* RIGHT: Price & CTA */}
-        <div className="p-8 lg:p-10 flex flex-col justify-between items-end bg-gradient-to-b from-gray-50 to-white lg:border-l border-gray-200">
-          <div className="text-right mb-8">
-            <div className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-orange-600">
-              ₹{studio.price.toLocaleString()}
+        {/* ===== RIGHT: Pricing & CTA ===== */}
+        <div
+          className="p-7 lg:p-9 lg:w-80 xl:w-96 flex flex-col justify-between items-center lg:items-end
+                     bg-gradient-to-b from-gray-50/80 to-white border-t lg:border-t-0 lg:border-l border-gray-100"
+        >
+          <div className="text-center lg:text-right w-full">
+            <div className="text-4xl lg:text-5xl font-black bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+              ₹{studio.price?.toLocaleString() || "2,499"}
             </div>
-            <div className="text-gray-500 text-sm mt-1">per hour</div>
+            <div className="text-gray-500 text-sm mt-1 font-medium">per hour</div>
+
             {studio.originalPrice && (
               <div className="text-gray-400 text-sm line-through mt-1">
                 ₹{studio.originalPrice.toLocaleString()}
@@ -95,9 +111,24 @@ export default function StudioCard({ studio }) {
             )}
           </div>
 
-          <button className="px-10 py-4 rounded-full bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 flex items-center gap-3">
+          <button
+            className="mt-8 lg:mt-0 w-full lg:w-auto px-10 py-4 rounded-2xl
+                       bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-600 hover:to-orange-700
+                       text-white font-bold text-lg shadow-xl hover:shadow-2xl
+                       transform transition-all duration-300 hover:scale-[1.04] active:scale-[0.98]
+                       flex items-center justify-center gap-3"
+          >
             Book Now
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>

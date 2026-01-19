@@ -8,7 +8,8 @@ from .views import (
     UserPhotographyBookingViewSet,
     PublicEventViewSet,
     UserEventBookingViewSet,
-    SingerViewSet,   # ⬅️ NEW
+    SingerViewSet,
+    VideographyViewSet,   # ⬅️ NEW
 )
 
 router = DefaultRouter()
@@ -23,6 +24,12 @@ router.register(
     r"photography-bookings",
     UserPhotographyBookingViewSet,
     basename="photography-bookings"
+)
+
+router.register(
+    r"auth/videography",
+    VideographyViewSet,
+    basename="auth-videography",
 )
 
 router.register(r"events", PublicEventViewSet, basename="user-events")

@@ -2,28 +2,32 @@ import React from "react";
 import axios from "axios";
 import { X } from "lucide-react";
 
+/* ================= API CONFIG ================= */
+// ✅ Vite-safe API URL
+const API_URL =
+  import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 
-// API Configuration - As per your request
-const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
-const TEACHER_API = `${BASE.replace(/\/$/, "")}/auth/teachers/`;
+// ✅ Teacher base endpoint
+const TEACHER_API = `${API_URL}/auth/teachers/`;
 
 export default function TeacherFormModal({
   isOpen,
   onClose,
   form,
   setForm,
-  onSave,   // optional external hook
+  onSave,
   saving,
   isEdit,
 }) {
   if (!isOpen) return null;
 
+  /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ================= API CALL ================= */
+  /* ================= SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -32,26 +36,28 @@ export default function TeacherFormModal({
 
       const config = {
         headers: {
-          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
       };
 
       if (isEdit && form.id) {
-        // ✅ UPDATE
-        await axios.put(`${API_URL}${form.id}/`, form, config);
+        // ✅ UPDATE teacher
+        await axios.put(`${TEACHER_API}${form.id}/`, form, config);
       } else {
-        // ✅ CREATE
-        await axios.post(API_URL, form, config);
+        // ✅ CREATE teacher
+        await axios.post(TEACHER_API, form, config);
       }
 
+      if (onSave) onSave(); // refresh teacher list
       onClose();
-      if (onSave) onSave(); // refresh list
     } catch (error) {
       console.error("Teacher save error:", error.response?.data || error);
-      alert("Failed to save teacher");
+      alert("Failed to save teacher. Please check form data.");
     }
   };
 
+  /* ================= UI ================= */
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
@@ -132,6 +138,7 @@ export default function TeacherFormModal({
           </div>
         </form>
 
+        {/* ================= STYLES ================= */}
         <style jsx>{`
           .modal-overlay {
             position: fixed;
