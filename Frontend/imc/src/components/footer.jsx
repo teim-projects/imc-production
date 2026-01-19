@@ -18,7 +18,10 @@ export default function Footer() {
         <div className="footer-col">
           <h4>Contact Us</h4>
           <p>
-            <FaMapMarkerAlt /> S-19, Ground floor, Greens Center,
+            <FaMapMarkerAlt /> 
+           Indian Musical Hub
+            <br />
+             S-19, Ground floor, Greens Center,
             <br />
             Opposite Pudumjee Paper Mill,
             <br />

@@ -7,7 +7,7 @@ import "./Forms.css";
 const AnnualFeePage = lazy(() => import("../../userDashboard/pages/AnnualFeePage"));
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
-const API_URL = `${BASE.replace(/\/$/, "")}/auth/singers/`;
+const API_URL = `${BASE.replace(/\/$/, "")}/auth/singer/`;
 const FEE_API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
 
 // Axios instance

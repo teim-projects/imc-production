@@ -414,11 +414,6 @@ class EventViewSet(viewsets.ModelViewSet):
     ordering = ["-date", "time_slot"]
 
 
-
-
-# ====================================================================
-# Photography (OLD NAMES)
-# ====================================================================
 from django.utils.timezone import now
 from rest_framework import viewsets, permissions, parsers, filters
 from rest_framework.decorators import action
@@ -429,16 +424,20 @@ from .serializers import PhotographyBookingSerializer
 
 
 class PhotographyBookingViewSet(viewsets.ModelViewSet):
+    """
+    PUBLIC Photography Booking
+    SAME AS SINGER STYLE
+    """
+
     queryset = PhotographyBooking.objects.all().order_by("-date", "-created_at")
     serializer_class = PhotographyBookingSerializer
 
-    # Anyone can GET, only authenticated can POST/PUT/DELETE
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    # 🔥 PUBLIC (no login required)
+    permission_classes = [permissions.AllowAny]
 
-    # We only accept JSON / form data (no file uploads here)
-    parser_classes = [parsers.JSONParser, parsers.FormParser]
+    # 🔥 JSON ONLY (this fixes 415 error)
+    parser_classes = [parsers.JSONParser]
 
-    # Search + ordering
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
         "client",
@@ -449,7 +448,6 @@ class PhotographyBookingViewSet(viewsets.ModelViewSet):
         "location",
         "notes",
     ]
-    # NOTE: match fields from the model
     ordering_fields = [
         "date",
         "created_at",
@@ -459,22 +457,12 @@ class PhotographyBookingViewSet(viewsets.ModelViewSet):
     ordering = ["-date", "-created_at"]
 
     def perform_create(self, serializer):
-        """Attach logged-in user if available."""
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(user=user)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], permission_classes=[permissions.AllowAny])
     def today(self, request):
-        """
-        GET /api/auth/photography/today/
-        Returns bookings for current date.
-        """
         qs = self.get_queryset().filter(date=now().date())
-        page = self.paginate_queryset(qs)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
@@ -516,7 +504,8 @@ class VideographyViewSet(viewsets.ModelViewSet):
     serializer_class = VideographySerializer
 
     # Anyone can GET; auth required for POST/PUT/PATCH/DELETE
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
+    
 
     # JSON + form data
     parser_classes = [parsers.JSONParser, parsers.FormParser]
@@ -559,7 +548,6 @@ class VideographyViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
-
 
 # ====================================================================
 # Sound System (Service)

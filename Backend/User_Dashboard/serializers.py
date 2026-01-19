@@ -148,15 +148,45 @@ class UserStudioBookingSerializer(serializers.ModelSerializer):
             instance.payment_methods = payment_methods
             instance.save(update_fields=["payment_methods_csv"])
         return instance
+
+
+
+
 from rest_framework import serializers
 from api.models import PhotographyBooking
 
 
 class UserPhotographyBookingSerializer(serializers.ModelSerializer):
+    """
+    SAME PATTERN AS Singer / Event booking serializer
+    User sees only his own photography bookings
+    """
+
     class Meta:
         model = PhotographyBooking
-        fields = "__all__"
-        read_only_fields = ["id", "user", "created_at"]
+        fields = [
+            "id",
+            "client",
+            "email",
+            "contact_number",
+            "event_type",
+            "event_type_other",
+            "package_type",
+            "package_price",
+            "addon_name",
+            "addon_price",
+            "date",
+            "start_time",
+            "duration_hours",
+            "location",
+            "photographers_count",
+            "drone_needed",
+            "equipment_needed",
+            "notes",
+            "payment_methods_list",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -505,3 +535,26 @@ class UserSingerSerializer(serializers.ModelSerializer):
         model = Singer
         fields = "__all__"
 
+
+
+from rest_framework import serializers
+from api.models import Videography
+
+
+class VideographySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Videography
+        fields = "__all__"
+        read_only_fields = ["id", "user", "created_at", "updated_at"]
+
+    def validate_duration_hours(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Duration must be greater than 0.")
+        return value
+
+    def validate(self, attrs):
+        if attrs.get("event_type") == "Other" and not attrs.get("other_event_name"):
+            raise serializers.ValidationError(
+                {"other_event_name": "Required when event type is Other."}
+            )
+        return attrs
