@@ -315,18 +315,34 @@ export default function SingerFormPage({ initialMode = "list" }) {
   };
 
   const handleDelete = async (id) => {
+    if (!id) {
+      console.error("Invalid singer id:", id);
+      alert("Invalid singer id");
+      return;
+    }
+
     if (!confirm("Are you sure you want to delete this singer?")) return;
+
     try {
-      const encodedId = encodeURIComponent(id);
-      await api.delete(`${encodedId}/`);
-      await fetchSingers();
+      console.log("Deleting singer:", id); // must be IMC-SM-xxx
+
+      // ❌ NO encodeURIComponent
+      await api.delete(`${id}/`);
+
+      await fetchSingers(); // refresh list
     } catch (err) {
-      console.error("handleDelete:", err);
-      if (err?.response?.status === 401)
+      console.error("handleDelete:", err.response || err);
+
+      if (err?.response?.status === 401 || err?.response?.status === 403) {
         setError("Unauthorized — please login.");
-      else alert("Delete failed.");
+      } else if (err?.response?.status === 404) {
+        alert("Singer not found (check ID format).");
+      } else {
+        alert("Delete failed.");
+      }
     }
   };
+
 
   if (!accessToken) {
     return (

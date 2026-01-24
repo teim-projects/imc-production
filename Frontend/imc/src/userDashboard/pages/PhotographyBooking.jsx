@@ -1,5 +1,5 @@
 // PhotographyBooking.jsx
-// Updated version — fixed serializer validation issues (client, date, duration_hours)
+// Updated — Added colored buttons for Preferred Payment Methods
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -9,7 +9,7 @@ import SingerBackground from "../../assets/singerbag.jpg";
 import {
   Loader2, CheckCircle, Calendar, Clock, MapPin, Users,
   Phone, Mail, User, Camera, ChevronDown, Sparkles,
-  Star, Award, FileText, DollarSign, Drone,
+  Star, Award, DollarSign, Drone,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────
@@ -40,7 +40,7 @@ const DURATION_OPTIONS = [
   { value: 4,  label: "4 Hours" },
   { value: 6,  label: "Half Day (6 Hours)" },
   { value: 8,  label: "Full Day (8-10 Hours)" },
-  { value: 24, label: "Multi-Day / Overnight" },   // example — adjust as needed
+  { value: 24, label: "Multi-Day / Overnight" },
 ];
 
 const PAYMENT_METHODS = ["Cash", "UPI", "Card", "Bank Transfer", "Google Pay", "PhonePe"];
@@ -60,14 +60,12 @@ export default function PhotographyBooking() {
     package_price: "",
     addon_name: "",
     addon_price: "",
-    date: "",                   // shoot date — matches backend
+    date: "",
     start_time: "",
-    duration_hours: "",         // will become number on submit
+    duration_hours: "",
     location: "",
     photographers_count: "1",
     drone_needed: false,
-    equipment_needed: "",
-    notes: "",
     payment_methods_list: [],
     agreed_terms: false,
   });
@@ -89,8 +87,6 @@ export default function PhotographyBooking() {
           payment_methods_list: prev.payment_methods_list.filter((m) => m !== method),
         };
       }
-      // You can decide: single select or multi
-      // For single → return { ...prev, payment_methods_list: [method] };
       return { ...prev, payment_methods_list: [...prev.payment_methods_list, method] };
     });
   };
@@ -133,14 +129,12 @@ export default function PhotographyBooking() {
       package_price:        form.package_price ? Number(form.package_price) : null,
       addon_name:           form.addon_name || "",
       addon_price:          form.addon_price  ? Number(form.addon_price)  : null,
-      date:                 form.date,                        // YYYY-MM-DD string
+      date:                 form.date,
       start_time:           form.start_time || null,
-      duration_hours:       Number(form.duration_hours),      // ← integer!
+      duration_hours:       Number(form.duration_hours),
       location:             form.location.trim(),
       photographers_count:  Number(form.photographers_count),
       drone_needed:         Boolean(form.drone_needed),
-      equipment_needed:     form.equipment_needed.trim() || "",
-      notes:                form.notes.trim() || "",
       payment_methods_list: form.payment_methods_list,
     };
 
@@ -191,8 +185,6 @@ export default function PhotographyBooking() {
       location: "",
       photographers_count: "1",
       drone_needed: false,
-      equipment_needed: "",
-      notes: "",
       payment_methods_list: [],
       agreed_terms: false,
     });
@@ -528,57 +520,26 @@ export default function PhotographyBooking() {
                   </div>
                 </div>
 
-                {/* Additional Info */}
-                <div className="mt-12 space-y-8">
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      Equipment / Style Preferences
-                    </label>
-                    <textarea
-                      name="equipment_needed"
-                      value={form.equipment_needed}
-                      onChange={handleChange}
-                      rows="3"
-                      placeholder="e.g. full-frame camera, 85mm lens, candid style, black & white edits..."
-                      className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      Preferred Payment Methods
-                    </label>
-                    <div className="flex flex-wrap gap-3">
-                      {PAYMENT_METHODS.map((method) => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => togglePayment(method)}
-                          className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                            form.payment_methods_list.includes(method)
-                              ? "bg-amber-600 text-white shadow-md"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      <FileText className="inline w-6 h-6 mr-2" />
-                      Any Special Requests / Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={form.notes}
-                      onChange={handleChange}
-                      rows="5"
-                      placeholder="e.g. sunset photos, traditional attire, specific family poses..."
-                      className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
-                    />
+                {/* Preferred Payment Methods - With Colored Buttons */}
+                <div className="mt-12">
+                  <label className="block text-lg font-bold text-gray-800 mb-3">
+                    Preferred Payment Methods
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {PAYMENT_METHODS.map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => togglePayment(method)}
+                        className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 shadow-sm transform hover:scale-105 ${
+                          form.payment_methods_list.includes(method)
+                            ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {method}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -602,11 +563,11 @@ export default function PhotographyBooking() {
                 <button
                   onClick={submitBooking}
                   disabled={loading}
-                  className="w-full max-w-md mx-auto mt-12 py-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-6 h-6" />
+                      <Loader2 className="animate-spin w-4 h-4" />
                       Submitting...
                     </>
                   ) : (

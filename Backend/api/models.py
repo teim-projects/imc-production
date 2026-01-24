@@ -787,10 +787,10 @@ SoundSetup = Sound
 
 
 
-
 # ===============================================
 # ============  Singer (SERVICE)  =========
 # ===============================================
+
 import os
 import uuid
 import re
@@ -800,7 +800,7 @@ from django.db.models import Q
 
 
 # --------------------------------------------------
-# IMAGE UPLOAD HELPERS (DO NOT DELETE)
+# IMAGE UPLOAD HELPERS
 # --------------------------------------------------
 def singer_photo_upload_to(instance, filename):
     ext = filename.split('.')[-1] if '.' in filename else 'jpg'
@@ -808,16 +808,13 @@ def singer_photo_upload_to(instance, filename):
     return os.path.join("singers", filename)
 
 
-def singer_upload_to(instance, filename):
-    return singer_photo_upload_to(instance, filename)
-
-
 # --------------------------------------------------
 # SINGER MODEL
 # --------------------------------------------------
 class Singer(models.Model):
 
-    # ✅ STRING PRIMARY KEY
+    # ✅ URL-SAFE STRING PRIMARY KEY
+    # Example: IMC-SM-001
     id = models.CharField(
         max_length=20,
         primary_key=True,
@@ -843,7 +840,11 @@ class Singer(models.Model):
 
     gender = models.CharField(
         max_length=10,
-        choices=[('male', 'Male'), ('female', 'Female'), ('other', 'Other')],
+        choices=[
+            ('male', 'Male'),
+            ('female', 'Female'),
+            ('other', 'Other')
+        ],
         blank=True,
         default=""
     )
@@ -851,7 +852,7 @@ class Singer(models.Model):
     active = models.BooleanField(default=True)
     photo = models.ImageField(upload_to=singer_photo_upload_to, null=True, blank=True)
 
-    # ✅ DATE ONLY (AUTO HANDLED)
+    # ✅ AUTO DATE FIELDS
     created_at = models.DateField(editable=False)
     updated_at = models.DateField(editable=False)
 
@@ -861,30 +862,30 @@ class Singer(models.Model):
         verbose_name_plural = "Singers"
 
     # --------------------------------------------------
-    # SAFE AUTO-ID + DATE LOGIC (NO DUPLICATES EVER)
+    # AUTO ID + DATE LOGIC (SAFE & CONCURRENT)
     # --------------------------------------------------
     def save(self, *args, **kwargs):
 
-        # 🔐 AUTO ID ONLY FOR NEW RECORD
+        # 🔐 Generate ID only for NEW records
         if not self.id:
             with transaction.atomic():
                 ids = (
                     Singer.objects
                     .select_for_update()
-                    .filter(id__startswith="IMC/SM-")
+                    .filter(id__startswith="IMC-SM-")
                     .exclude(Q(id="") | Q(id__isnull=True))
                     .values_list("id", flat=True)
                 )
 
                 max_num = 0
                 for i in ids:
-                    match = re.search(r"IMC/SM-(\d+)$", i)
+                    match = re.search(r"IMC-SM-(\d+)$", i)
                     if match:
                         max_num = max(max_num, int(match.group(1)))
 
-                self.id = f"IMC/SM-{max_num + 1:03d}"
+                self.id = f"IMC-SM-{max_num + 1:03d}"
 
-        # 📅 DATE ONLY AUTO
+        # 📅 Auto dates
         if not self.created_at:
             self.created_at = date.today()
 

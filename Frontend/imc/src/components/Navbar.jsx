@@ -170,10 +170,12 @@ const Navbar = () => {
             {[
               ["Home", "/"],
               ["Services", "/services"],
-              ["Events", "/events-booking"],
+              
               ["Studio", "/studio-booking"],
-              ["Classes", "/classes"],
               ["Singer", "/singer"],
+              ["Classes", "/classes"],
+              ["Events", "/events-booking"],
+             
               ["Contact", "/contact"],
             ].map(([label, path]) => (
               <Link

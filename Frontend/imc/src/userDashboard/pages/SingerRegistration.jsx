@@ -18,7 +18,7 @@ import {
 
 // API Configuration - As per your request
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const SINGER_API = `${API_BASE}/auth/singers/`; // Only for POST (registration)
+const SINGER_API = `${API_BASE}/auth/singer/`; // Only for POST (registration)
 
 export default function SingerRegistration() {
   const [loading, setLoading] = useState(false);
@@ -421,11 +421,11 @@ export default function SingerRegistration() {
                 <button
                   onClick={submit}
                   disabled={loading}
-                  className="w-full max-w-md mx-auto mt-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition flex items-center justify-center gap-4 disabled:opacity-70"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-6 h-6" />
+                      <Loader2 className="animate-spin w-4 h-4" />
                       Submitting...
                     </>
                   ) : (
