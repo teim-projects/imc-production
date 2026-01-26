@@ -16,9 +16,9 @@ import {
   Award,
 } from "lucide-react";
 
-// API Configuration - As per your request
+// API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const SINGER_API = `${API_BASE}/auth/singer/`; // Only for POST (registration)
+const SINGER_API = `${API_BASE}/auth/singer/`;
 
 export default function SingerRegistration() {
   const [loading, setLoading] = useState(false);
@@ -53,8 +53,8 @@ export default function SingerRegistration() {
 
     const data = new FormData();
     Object.entries(form).forEach(([key, value]) => {
-      if (key === "agreed_terms") return; // Skip frontend-only field
-      if (value === "" || value === null) return; // Skip empty/null
+      if (key === "agreed_terms") return;
+      if (value === "" || value === null) return;
       data.append(key, value);
     });
 
@@ -130,7 +130,7 @@ export default function SingerRegistration() {
 
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION */}
+      {/* HERO SECTION - white text only (no colored bars) */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -145,19 +145,32 @@ export default function SingerRegistration() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 leading-tight">
-              Singer Registration
+            <h1
+              className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight tracking-wide drop-shadow-2xl mb-3"
+              style={{
+                fontFamily: '"Algerian", "Castellar", Georgia, "Times New Roman", serif',
+                color: "#ffffff",
+                textShadow: "4px 4px 16px rgba(0,0,0,0.8)",
+              }}
+            >
+              SINGER REGISTRATION
             </h1>
-            <p className="text-3xl md:text-4xl font-bold text-amber-600 mt-2">
-              IMC Artist Program
+
+            <p
+              className="text-3xl md:text-4xl lg:text-5xl font-bold drop-shadow-lg"
+              style={{
+                fontFamily: '"Algerian", "Castellar", Georgia, "Times New Roman", serif',
+                color: "#ffffff",
+                textShadow: "3px 3px 14px rgba(0,0,0,0.7)",
+              }}
+            >
+              IMC ARTIST PROGRAM
             </p>
           </motion.div>
-
-         
         </div>
       </section>
 
-      {/* MAIN CONTENT - FORM + BENEFITS */}
+      {/* MAIN CONTENT - FORM + BENEFITS (unchanged) */}
       <section className="relative px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* LEFT: REGISTRATION FORM */}

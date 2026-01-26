@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-/* ---------------- SERVICES DATA ---------------- */
 const services = [
   {
     icon: Music,
@@ -27,12 +26,10 @@ const services = [
       "VIP lounge access",
     ],
     color: "from-violet-500 to-purple-600",
-   
-    link: "/singer", // SingerRegistration
+    link: "/singer",
     image:
       "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&q=80",
   },
-
   {
     icon: Mic2,
     title: "Studio Booking",
@@ -45,12 +42,10 @@ const services = [
       "Flexible time slots",
     ],
     color: "from-fuchsia-500 to-pink-600",
-   
     link: "/studio-booking",
     image:
       "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80",
   },
-
   {
     icon: Users,
     title: "Singing Classes",
@@ -63,12 +58,10 @@ const services = [
       "Live performances",
     ],
     color: "from-blue-500 to-cyan-600",
-    
     link: "/classes",
     image:
       "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=800&q=80",
   },
-
   {
     icon: Calendar,
     title: "Live Events & Shows",
@@ -81,12 +74,10 @@ const services = [
       "Music festivals",
     ],
     color: "from-orange-500 to-red-600",
-    
     link: "/events",
     image:
       "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800&q=80",
   },
-
   {
     icon: Star,
     title: "Private Events",
@@ -104,12 +95,10 @@ const services = [
     image:
       "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&q=80",
   },
-
   {
     icon: Camera,
     title: "Photography",
-    description:
-      "Professional photography services for all kinds of events.",
+    description: "Professional photography services for all kinds of events.",
     features: [
       "Event photography",
       "Music videos",
@@ -117,17 +106,14 @@ const services = [
       "Behind-the-scenes",
     ],
     color: "from-pink-500 to-rose-600",
-    
     link: "/photography-booking",
     image:
       "https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=800&q=80",
   },
-
   {
     icon: Camera,
     title: "Videography",
-    description:
-      "Professional videography services for all kinds of events.",
+    description: "Professional videography services for all kinds of events.",
     features: [
       "Event videography",
       "Music videos",
@@ -135,17 +121,14 @@ const services = [
       "Behind-the-scenes",
     ],
     color: "from-indigo-500 to-purple-600",
-    
     link: "/videography",
     image:
       "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&q=80",
   },
-
   {
     icon: Speaker,
     title: "Sound System Services",
-    description:
-      "High-quality PA systems and live sound engineering services.",
+    description: "High-quality PA systems and live sound engineering services.",
     features: [
       "PA systems",
       "DJ setup",
@@ -153,7 +136,6 @@ const services = [
       "Live mixing",
     ],
     color: "from-amber-500 to-yellow-600",
-    
     link: "/sound-booking",
     image:
       "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80",
@@ -163,8 +145,6 @@ const services = [
 export default function Services() {
   return (
     <div className="min-h-screen bg-[#FFF6E5] pt-8">
-
-      {/* SERVICES LIST - Starts directly */}
       <section className="py-16 px-6 max-w-7xl mx-auto space-y-24">
         {services.map((service, index) => (
           <motion.div
@@ -213,22 +193,34 @@ export default function Services() {
               </ul>
 
               <div className="flex flex-wrap items-center gap-8 pt-6">
-                <span className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
-                  {service.price}
-                </span>
+                {service.price && (
+                  <span className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
+                    {service.price}
+                  </span>
+                )}
 
                 <Link
                   to={service.link}
-                  className={`inline-flex items-center gap-4 px-8 py-4 rounded-xl font-bold text-white text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all bg-gradient-to-r ${service.color}`}
+                  className={`
+                    inline-flex items-center gap-3
+                    px-7 py-3.5
+                    rounded-xl font-bold text-base
+                    text-white shadow-lg hover:shadow-xl
+                    transform hover:scale-105 transition-all duration-300
+                    bg-gradient-to-r ${service.color}
+                    no-underline hover:no-underline focus:no-underline active:no-underline
+                    !decoration-none hover:!decoration-none focus:!decoration-none
+                    underline-none decoration-0
+                  `}
                 >
                   Get Started
-                  <ArrowRight size={22} />
+                  <ArrowRight size={20} />
                 </Link>
               </div>
             </div>
           </motion.div>
         ))}
-      </section>            
+      </section>
     </div>
   );
 }
