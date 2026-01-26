@@ -581,47 +581,80 @@ class SoundViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(qs, many=True).data)
 
-
-
-
-
-
 # ====================================================================
 # Singer Master (Service)
 # ====================================================================
-from rest_framework import viewsets, permissions, filters
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+from rest_framework import viewsets, permissions, filters, status
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
+
 from .models import Singer
 from .serializers import SingerSerializer
 
 
+# -----------------------------
+# Permission
+# -----------------------------
 class SingerPermission(permissions.BasePermission):
+    """
+    GET, POST  → Public
+    PUT, PATCH, DELETE → Staff only
+    """
     def has_permission(self, request, view):
         if request.method in ["GET", "POST"]:
             return True
-        return request.user and request.user.is_staff
+        return bool(request.user and request.user.is_staff)
 
 
+# -----------------------------
+# ViewSet
+# -----------------------------
 class SingerViewSet(viewsets.ModelViewSet):
+    """
+    BASE URL:
+    /api/auth/singer/
+    """
+
     queryset = Singer.objects.all().order_by("-created_at")
     serializer_class = SingerSerializer
     permission_classes = [SingerPermission]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    # 🔥 Required for image upload
+    parser_classes = (MultiPartParser, FormParser)
+
+    # 🔍 Search support
     filter_backends = [filters.SearchFilter]
     search_fields = ["id", "name", "city", "genre", "mobile"]
 
+    # -----------------------------
+    # CREATE
+    # -----------------------------
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if not serializer.is_valid():
-            print("❌ SERIALIZER ERRORS:", serializer.errors)
-            return Response(serializer.errors, status=400)
+        return Response(
+            {"success": True, "data": serializer.data},
+            status=status.HTTP_201_CREATED,
+        )
 
-        self.perform_create(serializer)
-        return Response(serializer.data, status=201)
+    # -----------------------------
+    # DELETE (STANDARD DRF)
+    # -----------------------------
+    def destroy(self, request, *args, **kwargs):
+        try:
+            singer = self.get_object()
+        except Exception:
+            raise NotFound("Singer not found")
 
-
+        singer.delete()
+        return Response(
+            {"success": True, "message": "Singer deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
 
 # api/views.py (replace or add)

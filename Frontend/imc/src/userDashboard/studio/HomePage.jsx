@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { Users, Award, Calendar, Star, Mic, Sparkles, Phone, ChevronRight, Trophy, Headphones, Music, Zap, Volume2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Import reusable components
 import StudioList from "./components/StudioList";
 import UserStudioRentalForm from "../Forms/UserStudioRentalForm";
-import Footer from "../../components/footer";  // ← Added reusable Footer
+import Footer from "../../components/footer";
 
 import studioBanner from "@/assets/studio banner desktop.png";
 
@@ -20,6 +20,11 @@ export default function HomePage() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedStudio, setSelectedStudio] = useState(null);
 
+  // Filter states – category removed
+  const [searchTerm, setSearchTerm] = useState("");
+  const [priceRange, setPriceRange] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+
   const openBooking = (studio) => {
     setSelectedStudio(studio || null);
     setShowBookingModal(true);
@@ -31,7 +36,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white">
       {/* ================= HERO SECTION WITH BANNER ================= */}
       <section
         className="relative min-h-[65vh] flex items-center justify-center"
@@ -41,12 +46,17 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/50 to-black/70" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
           <motion.h1
             {...fadeIn}
-            className="text-4xl md:text-6xl font-extrabold text-white leading-tight"
+            className="text-4xl md:text-6xl font-extrabold text-white leading-tight tracking-tight drop-shadow-2xl"
+            style={{
+              fontFamily: '"Castellar", "Cinzel", Georgia, "Times New Roman", serif',
+              fontWeight: 900,
+              letterSpacing: '0.05em',
+            }}
           >
             Professional Music Studios
           </motion.h1>
@@ -77,38 +87,121 @@ export default function HomePage() {
       </div>
 
       {/* ================= MAIN CONTENT ================= */}
-      <div className="homepage-content flex-1">
-        <main className="homepage-main">
-          <StudioList onBook={openBooking} />
+      <div className="homepage-content flex-1 relative z-10">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          
+          {/* ================= MODERN & ATTRACTIVE FILTER BAR ================= */}
+          <div className="mb-12 bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl border border-gray-100/70 overflow-hidden">
+            <div className="px-6 pt-6 pb-3">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                Find Your Perfect Studio
+              </h2>
+              <p className="text-gray-600 mt-1.5 text-base">
+                Search by name, location or your budget
+              </p>
+            </div>
+
+            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              {/* Search */}
+              <div className="relative group">
+                <label htmlFor="search" className="block text-sm font-semibold text-gray-700 mb-2.5">
+                  Keywords / Studio Name
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-orange-600 transition-colors" />
+                  <input
+                    id="search"
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="e.g. n9 studio, vocal booth, pune..."
+                    className="w-full pl-12 pr-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 placeholder-gray-500 shadow-sm hover:shadow-md"
+                  />
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label htmlFor="location" className="block text-sm font-semibold text-gray-700 mb-2.5">
+                  Location
+                </label>
+                <input
+                  id="location"
+                  type="text"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  placeholder="Pune, Mumbai, Baner, Wakad, Hinjewadi..."
+                  className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 placeholder-gray-500 shadow-sm hover:shadow-md"
+                />
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-2.5">
+                  Hourly Rate
+                </label>
+                <select
+                  id="price"
+                  value={priceRange}
+                  onChange={(e) => setPriceRange(e.target.value)}
+                  className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 shadow-sm hover:shadow-md appearance-none cursor-pointer"
+                >
+                  <option value="">All Prices</option>
+                  <option value="0-500">Up to ₹500</option>
+                  <option value="500-1000">₹500 – ₹1,000</option>
+                  <option value="1000-2000">₹1,000 – ₹2,000</option>
+                  <option value="2000+">₹2,000 and above</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* ================= STUDIO LIST ================= */}
+          <StudioList 
+            onBook={openBooking}
+            searchTerm={searchTerm}
+            priceRange={priceRange}
+            locationFilter={locationFilter}
+          />
+
         </main>
       </div>
 
       {/* ================= BOOKING MODAL ================= */}
       {showBookingModal && (
-        <div className="booking-modal-backdrop" onClick={closeBooking}>
-          <div className="booking-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="booking-modal-header">
+        <div 
+          className="booking-modal-backdrop fixed inset-0 bg-black/65 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={closeBooking}
+        >
+          <div 
+            className="booking-modal relative w-full max-w-4xl max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b px-6 py-5 flex items-center justify-between">
               <div>
-                <h2>Studio Rental</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Book Studio</h2>
                 {selectedStudio && (
-                  <span className="booking-modal-sub">
-                    For: <strong>{selectedStudio.name}</strong>
-                  </span>
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-medium">For:</span> {selectedStudio.name}
+                  </p>
                 )}
               </div>
               <button
                 type="button"
-                className="booking-modal-close"
+                className="text-gray-500 hover:text-gray-900 text-3xl font-bold w-12 h-12 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
                 onClick={closeBooking}
+                aria-label="Close"
               >
                 ×
               </button>
             </div>
 
-            <UserStudioRentalForm
-              initialStudio={selectedStudio}
-              onClose={closeBooking}
-            />
+            <div className="px-6 sm:px-8 md:px-10 pb-10 pt-6">
+              <UserStudioRentalForm
+                initialStudio={selectedStudio}
+                onClose={closeBooking}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -116,14 +209,8 @@ export default function HomePage() {
       {/* ================= REUSABLE FOOTER ================= */}
       <Footer />
 
-      {/* ================= CUSTOM STYLES (unchanged) ================= */}
+      {/* ================= CUSTOM STYLES ================= */}
       <style>{`
-        .homepage-root { 
-          position: relative; 
-          overflow: hidden; 
-          background: #ffffff; 
-        }
-
         .homepage-ambient { 
           position: fixed; 
           inset: 0; 
@@ -205,181 +292,20 @@ export default function HomePage() {
           z-index: 10; 
         }
 
-        .homepage-main { 
-          max-width: 1200px; 
-          margin: 40px auto 60px; 
-          padding: 0 16px; 
-          width: 100%; 
+        /* Improved scrollbar for modal */
+        .booking-modal::-webkit-scrollbar {
+          width: 8px;
         }
-
-        /* Studio Card Styles */
-        .studio-card {
-          display: grid;
-          grid-template-columns: 320px 1fr;
-          gap: 20px;
-          background: #ffffff;
-          border-radius: 26px;
-          box-shadow: 0 18px 40px rgba(15,23,42,0.12);
-          padding: 18px 22px;
-          align-items: center;
+        .booking-modal::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
         }
-        .studio-card-img-wrap { 
-          position: relative; 
-          border-radius: 22px; 
-          overflow: hidden; 
-          background: #f3f4f6; 
+        .booking-modal::-webkit-scrollbar-thumb {
+          background: #9ca3af;
+          border-radius: 10px;
         }
-        .studio-card-img { 
-          width: 100%; 
-          height: 220px; 
-          object-fit: cover; 
-        }
-        .studio-card-rating { 
-          position: absolute; 
-          top: 10px; 
-          right: 10px; 
-          background: #f97316; 
-          color: #fff; 
-          font-size: 0.8rem; 
-          font-weight: 600; 
-          border-radius: 999px; 
-          padding: 4px 10px; 
-          box-shadow: 0 8px 20px rgba(0,0,0,0.18); 
-        }
-        .studio-card-body { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: stretch; 
-          gap: 16px; 
-        }
-        .studio-card-main { 
-          display: flex; 
-          flex-direction: column; 
-          gap: 10px; 
-        }
-        .studio-card-title { 
-          font-size: 1.25rem; 
-          font-weight: 700; 
-          color: #111827; 
-        }
-        .studio-card-location { 
-          font-size: 0.95rem; 
-          color: #6b7280; 
-        }
-        .studio-card-tags { 
-          display: flex; 
-          gap: 8px; 
-          flex-wrap: wrap; 
-        }
-        .tag { 
-          font-size: 0.8rem; 
-          font-weight: 600; 
-          border-radius: 999px; 
-          padding: 4px 10px; 
-        }
-        .tag.capacity { 
-          background: #fee2e2; 
-          color: #b91c1c; 
-        }
-        .tag.instant { 
-          background: #dbeafe; 
-          color: #1d4ed8; 
-        }
-        .studio-card-footer { 
-          display: flex; 
-          flex-direction: column; 
-          align-items: flex-end; 
-          justify-content: space-between; 
-          gap: 10px; 
-        }
-        .studio-card-price .price { 
-          font-size: 1.4rem; 
-          font-weight: 800; 
-          color: #dc2626; 
-        }
-        .studio-card-price .per { 
-          font-size: 0.85rem; 
-          color: #6b7280; 
-        }
-        .studio-card-btn { 
-          padding: 10px 20px; 
-          border-radius: 999px; 
-          background: #ef4444; 
-          color: #fff; 
-          font-weight: 600; 
-          cursor: pointer; 
-          box-shadow: 0 12px 25px rgba(248,113,113,0.45); 
-          display: inline-flex; 
-          align-items: center; 
-          gap: 6px; 
-        }
-        .studio-card-btn:hover { 
-          transform: translateY(-1px); 
-        }
-
-        @media (max-width: 900px) {
-          .studio-card { 
-            grid-template-columns: 1fr; 
-          }
-          .studio-card-img { 
-            height: 200px; 
-          }
-          .studio-card-body { 
-            flex-direction: column; 
-          }
-          .studio-card-footer { 
-            flex-direction: row; 
-            align-items: center; 
-            justify-content: space-between; 
-          }
-        }
-
-        /* Modal Styles */
-        .booking-modal-backdrop { 
-          position: fixed; 
-          inset: 0; 
-          background: rgba(15,23,42,0.55); 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          z-index: 50; 
-        }
-        .booking-modal { 
-          width: min(1000px, 96vw); 
-          max-height: 90vh; 
-          overflow-y: auto; 
-          border-radius: 24px; 
-          background: #f9fafb; 
-          box-shadow: 0 24px 80px rgba(15,23,42,0.4); 
-          padding: 18px 20px 22px; 
-        }
-        .booking-modal-header { 
-          display: flex; 
-          align-items: center; 
-          justify-content: space-between; 
-          gap: 8px; 
-          margin-bottom: 10px; 
-        }
-        .booking-modal-header h2 { 
-          font-size: 1.15rem; 
-          font-weight: 700; 
-          color: #111827; 
-        }
-        .booking-modal-sub { 
-          font-size: 0.85rem; 
-          color: #6b7280; 
-          margin-left: 8px; 
-        }
-        .booking-modal-close { 
-          border: none; 
-          background: #111827; 
-          color: #fff; 
-          width: 28px; 
-          height: 28px; 
-          border-radius: 999px; 
-          font-size: 18px; 
-          line-height: 1; 
-          cursor: pointer; 
+        .booking-modal::-webkit-scrollbar-thumb:hover {
+          background: #6b7280;
         }
       `}</style>
     </div>

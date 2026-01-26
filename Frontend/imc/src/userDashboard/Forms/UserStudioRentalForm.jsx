@@ -1,14 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import axios from "axios";
 import "../../components/Forms/Forms.css"; // adjust path if needed
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const BOOKINGS_URL = `${BASE}/auth/studios/`;          // same as admin form
-const MASTERS_URL = `${BASE}/auth/studio-master/`;     // to fetch studio info
+const BOOKINGS_URL = `${BASE}/auth/studios/`;
+const MASTERS_URL = `${BASE}/auth/studio-master/`;
 
-// axios client with JWT
 const api = axios.create();
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
@@ -18,7 +16,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/* ------ helpers (same as admin form) ------ */
+/* Helpers ──────────────────────────────────────────────── */
 
 const makeSlots = (start = "08:00", end = "22:00", stepMin = 60) => {
   stepMin = Number(stepMin) || 60;
@@ -77,21 +75,23 @@ const humanizeErr = (err) => {
   return err?.message || "Unknown error";
 };
 
-/* ===================================================================
-   USER STUDIO RENTAL FORM
-   - props.initialStudio: studio object from card (id, name, hourly_rate, etc.)
-   - props.onClose: close modal
-=================================================================== */
+/* ───────────────────────────────────────────────────────────── */
 
 const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
-  const navigate = useNavigate();   // ✅ ADD THIS LINE
+  const navigate = useNavigate();
+
   const [masters, setMasters] = useState([]);
   const [bookings, setBookings] = useState([]);
-
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
+
+  // ── Filters & Search ───────────────────────────────────────
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
 
   const emptyForm = {
     full_name: "",
@@ -108,8 +108,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   const [formData, setFormData] = useState(emptyForm);
   const [selectedRange, setSelectedRange] = useState([]);
 
-  /* -------- fetch studio masters & existing bookings ---------- */
-
+  /* Fetch data */
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -119,15 +118,11 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
         api.get(BOOKINGS_URL),
       ]);
 
-      const mRows = Array.isArray(mRes.data)
-        ? mRes.data
-        : mRes.data?.results ?? mRes.data ?? [];
-      const bRows = Array.isArray(bRes.data)
-        ? bRes.data
-        : bRes.data?.results ?? bRes.data ?? [];
+      const mRows = Array.isArray(mRes.data) ? mRes.data : mRes.data?.results ?? [];
+      const bRows = Array.isArray(bRes.data) ? bRes.data : bRes.data?.results ?? [];
 
-      setMasters((mRows || []).filter((s) => s.is_active !== false));
-      setBookings(Array.isArray(bRows) ? bRows : []);
+      setMasters(mRows.filter((s) => s.is_active !== false));
+      setBookings(bRows);
     } catch (e) {
       setError(humanizeErr(e));
     } finally {
@@ -137,71 +132,90 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // when masters + initialStudio available, preselect studio
+  // Pre-select studio if passed from card
   useEffect(() => {
     if (!initialStudio || !masters.length) return;
-    setFormData((prev) => {
-      if (prev.studio_id) return prev;
-      const byId = masters.find(
-        (m) => String(m.id) === String(initialStudio.id)
-      );
-      const byName =
-        byId ||
-        masters.find(
-          (m) =>
-            (m.name || "").toLowerCase() ===
-            (initialStudio.name || "").toLowerCase()
-        );
-      if (!byName) return prev;
-      return {
-        ...prev,
-        studio_id: String(byName.id),
-        studio_name: byName.name || "",
-      };
-    });
-  }, [initialStudio, masters]);
+    if (formData.studio_id) return;
 
-  /* --------- derived selected studio + price ---------- */
+    const found = masters.find(
+      (m) => String(m.id) === String(initialStudio.id)
+    ) || masters.find(
+      (m) => (m.name || "").toLowerCase() === (initialStudio.name || "").toLowerCase()
+    );
+
+    if (found) {
+      setFormData((prev) => ({
+        ...prev,
+        studio_id: String(found.id),
+        studio_name: found.name || "",
+      }));
+    }
+  }, [initialStudio, masters]);
 
   const selectedStudio = useMemo(
     () => masters.find((m) => String(m.id) === String(formData.studio_id)),
     [masters, formData.studio_id]
   );
+
   const pricePerHour = selectedStudio?.hourly_rate ?? null;
 
-  /* --------- slots + availability ---------- */
+  /* ── Frontend Filtering ────────────────────────────────────── */
+
+  const filteredStudios = useMemo(() => {
+    let list = [...masters];
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      list = list.filter((s) =>
+        (s.name || "").toLowerCase().includes(term) ||
+        (s.location || "").toLowerCase().includes(term) ||
+        (s.full_location || "").toLowerCase().includes(term)
+      );
+    }
+
+    if (selectedCategory) {
+      list = list.filter((s) => (s.category || "").toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    if (maxPrice && !isNaN(Number(maxPrice))) {
+      const mp = Number(maxPrice);
+      list = list.filter((s) => Number(s.hourly_rate || 0) <= mp);
+    }
+
+    if (selectedLocation) {
+      const loc = selectedLocation.toLowerCase().trim();
+      list = list.filter((s) =>
+        (s.location || "").toLowerCase().includes(loc) ||
+        (s.full_location || "").toLowerCase().includes(loc)
+      );
+    }
+
+    return list;
+  }, [masters, searchTerm, selectedCategory, maxPrice, selectedLocation]);
+
+  /* ── Time Slots Logic (unchanged core) ─────────────────────── */
 
   const SLOT_STEP_MIN = 60;
   const allSlots = useMemo(() => makeSlots("08:00", "22:00", SLOT_STEP_MIN), []);
 
   const slotsInfo = useMemo(() => {
     const base = allSlots.map((s) => ({ time: s, booked: false }));
-
     if (!formData.date || !formData.studio_id) return base;
 
     const master = selectedStudio;
     const taken = bookings.filter(
       (b) =>
         b.date === formData.date &&
-        ((master &&
-          (b.studio_name || "").toLowerCase() ===
-            (master.name || "").toLowerCase()) ||
-          String(b.studio_id || "") === String(formData.studio_id))
+        (String(b.studio_id || "") === String(formData.studio_id) ||
+          (b.studio_name || "").toLowerCase() === (master?.name || "").toLowerCase())
     );
 
     return base.map((slotObj) => {
-      const overlappedBy = taken.filter((b) => {
-        if (!b.time_slot) return false;
-        return overlaps(
-          slotObj.time,
-          1,
-          b.time_slot,
-          Number(b.duration) || 1
-        );
-      });
+      const overlappedBy = taken.filter((b) =>
+        overlaps(slotObj.time, 1, b.time_slot, Number(b.duration) || 1)
+      );
       return { ...slotObj, booked: overlappedBy.length > 0 };
     });
   }, [allSlots, bookings, formData.date, formData.studio_id, selectedStudio]);
@@ -227,9 +241,8 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
     const range = computeRangeForStart(formData.time_slot, formData.duration);
-    const perSlotHr = SLOT_STEP_MIN / 60;
-    const neededCount = Math.ceil((Number(formData.duration) || 0) / perSlotHr) || 1;
-    if (range.length < neededCount) {
+    const needed = Math.ceil(Number(formData.duration || 0) / (SLOT_STEP_MIN / 60));
+    if (range.length < needed) {
       setFormData((p) => ({ ...p, time_slot: "" }));
       setSelectedRange([]);
       return;
@@ -241,18 +254,16 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
     setSelectedRange(range);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.duration, formData.date, formData.studio_id, bookings]);
+  }, [formData.duration, formData.date, formData.studio_id, formData.time_slot, bookings, slotsInfo]);
 
   const canStartAt = (time) => {
     const range = computeRangeForStart(time, formData.duration);
-    const perSlotHr = SLOT_STEP_MIN / 60;
-    const neededCount = Math.ceil((Number(formData.duration) || 0) / perSlotHr) || 1;
-    if (range.length < neededCount) return false;
+    const needed = Math.ceil(Number(formData.duration || 0) / (SLOT_STEP_MIN / 60));
+    if (range.length < needed) return false;
     return !range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
   };
 
-  /* --------- handlers ---------- */
+  /* Handlers */
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -264,11 +275,9 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
   const onSlotClick = (time) => {
     const range = computeRangeForStart(time, formData.duration);
-    const perSlotHr = SLOT_STEP_MIN / 60;
-    const neededCount = Math.ceil((Number(formData.duration) || 0) / perSlotHr) || 1;
-    if (range.length < neededCount) return;
-    const conflict = range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
-    if (conflict) return;
+    const needed = Math.ceil(Number(formData.duration || 0) / (SLOT_STEP_MIN / 60));
+    if (range.length < needed) return;
+    if (range.some((t) => slotsInfo.find((s) => s.time === t)?.booked)) return;
     setFormData((p) => ({ ...p, time_slot: time }));
     setSelectedRange(range);
   };
@@ -280,16 +289,20 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       studio_name: prev.studio_name,
     }));
     setSelectedRange([]);
+    setSearchTerm("");
+    setSelectedCategory("");
+    setMaxPrice("");
+    setSelectedLocation("");
   };
 
   const validate = () => {
-    if (!formData.full_name.trim()) return "Name is required.";
+    if (!formData.full_name.trim()) return "Full name is required.";
     if (!formData.mobile.trim()) return "Mobile number is required.";
-    if (!formData.studio_id) return "Studio is missing.";
+    if (!formData.studio_id) return "Please select a studio.";
     if (!formData.date) return "Date is required.";
-    if (!formData.time_slot) return "Please choose a time slot.";
+    if (!formData.time_slot) return "Please select a time slot.";
     const d = Number(formData.duration);
-    if (Number.isNaN(d) || d <= 0) return "Duration must be greater than 0.";
+    if (isNaN(d) || d < 0.5) return "Duration must be at least 0.5 hours.";
     return null;
   };
 
@@ -304,135 +317,222 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
 
-    const priceToSend =
-      pricePerHour !== undefined && pricePerHour !== null
-        ? Number(pricePerHour)
-        : 0;
+    const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
 
-    // payload shaped similar to admin StudioForm
     const payload = {
       customer: formData.full_name,
       contact_number: formData.mobile,
       email: formData.email,
-      address: "", // optional, not used here
+      address: "",
       studio_id: formData.studio_id,
       studio_name: formData.studio_name,
       date: formData.date,
       time_slot: formData.time_slot,
       duration: Number(formData.duration),
-      payment_methods: [], // user does not choose here
+      payment_methods: [],
       price_per_hour: priceToSend,
       price: priceToSend,
       notes: formData.notes || "",
     };
 
     setSaving(true);
-try {
-  // 1️⃣ Save booking first
-  const res = await api.post(BOOKINGS_URL, payload);
+    try {
+      const res = await api.post(BOOKINGS_URL, payload);
 
-  // 2️⃣ Calculate total amount
-  const totalAmount =
-    Number(priceToSend || 0) * Number(formData.duration || 1);
+      const totalAmount = priceToSend * Number(formData.duration || 1);
 
-  // 3️⃣ Redirect to payment page
-  navigate("/payment", {
-    state: {
-      booking: res.data,            // booking response
-      studio: selectedStudio,       // studio details
-      amount: totalAmount,          // total payment
-    },
-  });
-
-} catch (err) {
-  setError(humanizeErr(err));
-} finally {
-  setSaving(false);
-}
-
+      navigate("/payment", {
+        state: {
+          booking: res.data,
+          studio: selectedStudio,
+          amount: totalAmount,
+        },
+      });
+    } catch (err) {
+      setError(humanizeErr(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  /* --------- UI ---------- */
+  /* ── Render ────────────────────────────────────────────────── */
 
   return (
-    <div className="pf-wrap">
-      <div className="pf-header">
+    <div className="pf-wrap" style={{ padding: "1.5rem", maxWidth: "1100px", margin: "0 auto" }}>
+      <div className="pf-header" style={{ marginBottom: "1.8rem" }}>
         <div>
-          <h2>Studio Rental</h2>
-          <p className="pf-subtitle">
-            Fill your personal details and choose a time slot to rent this studio.
+          <h2 style={{ margin: 0, fontSize: "1.6rem" }}>Studio Booking</h2>
+          <p className="pf-subtitle" style={{ marginTop: "0.5rem", fontSize: "0.95rem" }}>
+            Choose your studio, date, time and enjoy professional sound quality.
           </p>
         </div>
         {onClose && (
-          <button
-            type="button"
-            className="btn ghost"
-            style={{ marginLeft: "auto" }}
-            onClick={onClose}
-          >
+          <button type="button" className="btn ghost" onClick={onClose}>
             Close
           </button>
         )}
       </div>
 
+      {/* ── Filters ───────────────────────────────────────────── */}
+      <section className="pf-card" style={{ marginBottom: "1.6rem" }}>
+        <h3 style={{ marginTop: 0 }}>Find Studio</h3>
+
+        <div className="pf-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+          <label>
+            Search
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Studio name or location..."
+              style={{ marginTop: "0.4rem" }}
+            />
+          </label>
+
+          <label>
+            Location
+            <input
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              placeholder="City / area"
+              style={{ marginTop: "0.4rem" }}
+            />
+          </label>
+
+          <label>
+            Max Price / hr
+            <input
+              type="number"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              placeholder="e.g. 2000"
+              min="0"
+              style={{ marginTop: "0.4rem" }}
+            />
+          </label>
+
+          {/* Add category if your data has it – otherwise remove */}
+          {/* <label>
+            Category
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              style={{ marginTop: "0.4rem", padding: "0.6rem" }}
+            >
+              <option value="">All</option>
+              <option value="recording">Recording</option>
+              <option value="rehearsal">Rehearsal</option>
+              <option value="mixing">Mixing & Mastering</option>
+            </select>
+          </label> */}
+        </div>
+      </section>
+
+      {/* ── Studio Selection ──────────────────────────────────── */}
+      {filteredStudios.length > 0 ? (
+        <section className="pf-card" style={{ marginBottom: "1.8rem" }}>
+          <h3 style={{ marginTop: 0 }}>Available Studios ({filteredStudios.length})</h3>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "1rem",
+            marginTop: "1rem",
+          }}>
+            {filteredStudios.map((studio) => {
+              const isSelected = String(studio.id) === String(formData.studio_id);
+              return (
+                <div
+                  key={studio.id}
+                  onClick={() => {
+                    setFormData((p) => ({
+                      ...p,
+                      studio_id: String(studio.id),
+                      studio_name: studio.name || "",
+                    }));
+                  }}
+                  style={{
+                    padding: "1rem",
+                    border: isSelected ? "2px solid #ef4444" : "1px solid #d1d5db",
+                    borderRadius: "12px",
+                    background: isSelected ? "#fef2f2" : "#fff",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: "1.05rem" }}>
+                    {studio.name}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "0.3rem" }}>
+                    {studio.full_location || studio.location || "—"}
+                  </div>
+                  <div style={{ marginTop: "0.6rem", fontWeight: 700, color: "#b91c1c" }}>
+                    {studio.hourly_rate ? `₹${studio.hourly_rate}/hr` : "Contact for price"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        loading ? (
+          <div className="pf-banner" style={{ textAlign: "center" }}>Loading studios...</div>
+        ) : (
+          <div className="pf-banner pf-error" style={{ textAlign: "center" }}>
+            No studios match your filters
+          </div>
+        )
+      )}
+
       {selectedStudio && (
-        <section className="pf-card" style={{ marginBottom: 14 }}>
-          <h3>Studio Details</h3>
-          <div className="pf-grid">
+        <section className="pf-card" style={{ margin: "1.6rem 0", background: "#f0fdfa" }}>
+          <h3>Selected Studio</h3>
+          <div className="pf-grid" style={{ gap: "1.2rem" }}>
             <div>
-              <div style={{ fontWeight: 600 }}>{selectedStudio.name}</div>
-              <div style={{ fontSize: 13, color: "#6b7280", marginTop: 2 }}>
+              <strong>{selectedStudio.name}</strong>
+              <div style={{ color: "#6b7280", fontSize: "0.9rem", marginTop: "0.3rem" }}>
                 {selectedStudio.full_location || selectedStudio.location}
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 13, color: "#6b7280" }}>Capacity</div>
-              <div style={{ fontWeight: 600 }}>
-                {selectedStudio.capacity
-                  ? `${selectedStudio.capacity} people`
-                  : "N/A"}
-              </div>
+              <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>Capacity</div>
+              <strong>{selectedStudio.capacity ? `${selectedStudio.capacity} pax` : "—"}</strong>
             </div>
             <div>
-              <div style={{ fontSize: 13, color: "#6b7280" }}>Price</div>
-              <div style={{ fontWeight: 700, color: "#b91c1c" }}>
-                {pricePerHour ? `₹${pricePerHour} / hour` : "On request"}
-              </div>
+              <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>Price</div>
+              <strong style={{ color: "#b91c1c" }}>
+                {pricePerHour ? `₹${pricePerHour}/hr` : "On request"}
+              </strong>
             </div>
           </div>
         </section>
       )}
 
-      {error && (
-        <pre className="pf-banner pf-error" style={{ whiteSpace: "pre-wrap" }}>
-          {error}
-        </pre>
-      )}
+      {error && <div className="pf-banner pf-error" style={{ whiteSpace: "pre-wrap" }}>{error}</div>}
       {successMsg && <div className="pf-banner pf-success">{successMsg}</div>}
 
+      {/* ── Booking Form ──────────────────────────────────────── */}
       <form onSubmit={handleSubmit} className="pf-form">
-        {/* PERSONAL DETAILS */}
         <section className="pf-card">
-          <h3>Personal Details</h3>
+          <h3>Personal Information</h3>
           <div className="pf-grid">
-            <label>
-              Full Name*
+            <label className={formData.full_name ? "" : "required-highlight"}>
+              Full Name *
               <input
                 name="full_name"
                 value={formData.full_name}
                 onChange={handleChange}
-                placeholder="Your name"
+                placeholder="Your full name"
                 required
               />
             </label>
 
-            <label>
-              Mobile Number*
+            <label className={formData.mobile ? "" : "required-highlight"}>
+              Mobile Number *
               <input
                 name="mobile"
                 value={formData.mobile}
                 onChange={handleChange}
-                placeholder="+91 XXXXX XXXXX"
+                placeholder="+91 XXXXXXXXXX"
                 required
               />
             </label>
@@ -449,38 +549,40 @@ try {
             </label>
 
             <label>
-              Notes (optional)
-              <input
+              Notes / Requirements
+              <textarea
                 name="notes"
                 value={formData.notes}
                 onChange={handleChange}
-                placeholder="Any special request?"
+                placeholder="Any special requests? (optional)"
+                rows={2}
+                style={{ resize: "vertical" }}
               />
             </label>
           </div>
         </section>
 
-        {/* SCHEDULE */}
         <section className="pf-card">
-          <h3>Schedule</h3>
+          <h3>Booking Details</h3>
           <div className="pf-grid">
-            <label>
-              Date*
+            <label className={!formData.date ? "required-highlight" : ""}>
+              Date *
               <input
                 type="date"
                 name="date"
+                min={new Date().toISOString().split("T")[0]}
                 value={formData.date}
                 onChange={(e) => {
                   handleChange(e);
-                  setSelectedRange([]);
                   setFormData((p) => ({ ...p, time_slot: "" }));
+                  setSelectedRange([]);
                 }}
                 required
               />
             </label>
 
-            <label>
-              Duration (hours)*
+            <label className={!formData.duration || formData.duration < 0.5 ? "required-highlight" : ""}>
+              Duration (hours) *
               <input
                 type="number"
                 step="0.5"
@@ -489,88 +591,65 @@ try {
                 value={formData.duration}
                 onChange={(e) => {
                   handleChange(e);
-                  setSelectedRange([]);
                   setFormData((p) => ({ ...p, time_slot: "" }));
+                  setSelectedRange([]);
                 }}
                 required
               />
             </label>
 
-            <label>
-              Time Slot*
-              <div className="slot-grid">
-                {!formData.date || !formData.duration || !formData.studio_id ? (
-                  <div className="muted">
-                    Date & studio required to view slots.
-                  </div>
+            <label className={!formData.time_slot ? "required-highlight" : ""}>
+              Start Time *
+              <div className="slot-grid" style={{ marginTop: "0.5rem" }}>
+                {!formData.date || !formData.studio_id ? (
+                  <div className="muted">Select date & studio first</div>
+                ) : slotsInfo.filter((s) => !s.booked).length === 0 ? (
+                  <div className="empty">No available slots for this date</div>
                 ) : (
-                  <>
-                    {slotsInfo.filter((s) => !s.booked).length === 0 &&
-                    slotsInfo.length > 0 ? (
-                      <div className="empty">
-                        No free slots for this date and duration.
-                      </div>
-                    ) : null}
+                  <div className="slot-list" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {slotsInfo.map(({ time, booked }) => {
+                      const isStart = formData.time_slot === time;
+                      const inRange = selectedRange.includes(time);
+                      const valid = canStartAt(time);
 
-                    <div
-                      className="slot-list"
-                      role="list"
-                      style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
-                    >
-                      {slotsInfo.map(({ time, booked }) => {
-                        const isSelectedStart = formData.time_slot === time;
-                        const inSelectedRange = selectedRange.includes(time);
-                        const validStart = canStartAt(time);
-                        const cls = [
-                          "slot",
-                          booked ? "booked" : "available",
-                          !booked && !validStart ? "disabled-start" : "",
-                          isSelectedStart ? "selected-start" : "",
-                          inSelectedRange ? "selected-range" : "",
-                        ].join(" ");
+                      let className = "slot";
+                      if (booked) className += " booked";
+                      else if (!valid) className += " disabled-start";
+                      else if (isStart) className += " selected-start";
+                      else if (inRange) className += " selected-range";
 
-                        return (
-                          <button
-                            key={time}
-                            type="button"
-                            role="listitem"
-                            className={cls}
-                            onClick={() => {
-                              if (booked || !validStart) return;
-                              onSlotClick(time);
-                            }}
-                            disabled={booked || !validStart}
-                            title={booked ? "Already booked" : format12(time)}
-                          >
-                            <div style={{ fontWeight: 800 }}>
-                              {format12(time)}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
+                      return (
+                        <button
+                          key={time}
+                          type="button"
+                          className={className}
+                          onClick={() => !booked && valid && onSlotClick(time)}
+                          disabled={booked || !valid}
+                          title={booked ? "Booked" : format12(time)}
+                        >
+                          {format12(time)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </label>
           </div>
-          <p style={{ fontSize: 12, color: "#6b7280", marginTop: 8 }}>
-            Start time will highlight the full reserved range based on duration.
+
+          <p style={{ fontSize: "0.82rem", color: "#6b7280", marginTop: "1rem", lineHeight: 1.4 }}>
+            • The full time range will be reserved based on duration<br />
+            • Gray = booked &nbsp; • Red = selected &nbsp; • Light red = range
           </p>
         </section>
 
-        {/* ACTIONS */}
-        <div className="pf-actions">
-          <button type="submit" className="btn" disabled={saving || loading}>
-            {saving ? "Submitting..." : "Confirm Booking"}
+        <div className="pf-actions" style={{ marginTop: "2rem", gap: "1rem" }}>
+          <button type="submit" className="btn" disabled={saving || loading || !formData.studio_id}>
+            {saving ? "Processing..." : "Proceed to Payment"}
           </button>
-          <button
-            type="button"
-            className="btn ghost"
-            onClick={resetForm}
-            disabled={saving}
-          >
-            Reset
+
+          <button type="button" className="btn ghost" onClick={resetForm} disabled={saving}>
+            Clear Form
           </button>
         </div>
       </form>

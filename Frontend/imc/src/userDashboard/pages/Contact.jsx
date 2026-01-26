@@ -7,6 +7,7 @@ import {
   Clock,
   Send,
   MessageSquare,
+  Music,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -16,217 +17,188 @@ import { toast } from "sonner";
 const contactInfo = [
   {
     icon: Phone,
-    title: "Phone",
+    title: "Call Us",
     value: "+91 8767055580 / 9834944461",
-    description: "Mon–Sat, 9am–9pm",
+    description: "Mon–Sat 9:00 AM – 9:00 PM",
   },
   {
     icon: Mail,
     title: "Email",
     value: "IMCPCMC@gmail.com",
-    description: "We reply within 24 hours",
+    description: "Reply within 24 hours",
   },
   {
     icon: MapPin,
-    title: "Location",
-    value: "Indian Musical Hub",
-    description:
-      "S-19, Ground floor, Greens Center, Opposite Pudumjee Paper Mill, Aditya Birla Hospital Road, Thergaon, Chinchwad 411033",
+    title: "Visit Us",
+    value: "Indian Musical Club",
+    description: "S-19, Ground floor, Greens Center, Opposite Pudumjee Paper Mill, Aditya Birla Hospital Road, Thergaon, Chinchwad, Pune 411033",
   },
   {
     icon: Clock,
-    title: "Hours",
+    title: "We're Open",
     value: "9:00 AM – 10:00 PM",
-    description: "Open 7 days a week",
+    description: "7 Days a Week",
   },
 ];
-
-const subjects = [
-  "General Inquiry",
-  "Studio Booking",
-  "Event Tickets",
-  "Singing Classes",
-  "Private Events",
-  "Partnership",
-  "Other",
-];
-
-/* ---------------- COMPONENT ---------------- */
 
 export default function Contact() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    subject: "",
     message: "",
   });
   const [loading, setLoading] = useState(false);
+
+  const GOOGLE_MAPS_KEY = "AIzaSyDHENL1zGd1L54VvhO0c6q6p8FJkBdg3AU";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.name || !formData.email || !formData.message) {
-      toast.error("Please fill all required fields");
+      toast.error("Name, Email & Message are required!");
       return;
     }
 
     setLoading(true);
-    // Simulate sending (replace with real API later)
-    await new Promise((r) => setTimeout(r, 1200));
-    toast.success("Message sent successfully! We'll get back to you soon.");
 
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      subject: "",
-      message: "",
-    });
+    // Simulate form submission (replace with real backend like EmailJS later)
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+
+    toast.success("Message Sent Successfully 🎵");
+    setFormData({ name: "", email: "", phone: "", message: "" });
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
-
+    <div className="min-h-screen bg-gradient-to-b from-amber-50 via-orange-50/70 to-white">
       {/* ================= HERO ================= */}
-      <section className="relative py-28 md:py-32 bg-gradient-to-br from-orange-950 via-amber-950 to-black overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-15"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?auto=format&fit=crop&w=1920&q=80')",
-          }}
-        />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-orange-600/30 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-600/30 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3" />
-
-        <div className="relative max-w-7xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <span className="inline-block px-6 py-2 bg-orange-500/20 text-orange-300 rounded-full text-sm font-semibold uppercase tracking-widest mb-6">
-              Get In Touch
+      <section className="relative pt-20 pb-32 bg-gradient-to-br from-black via-orange-950 to-amber-950">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-orange-600/30 rounded-full mb-8">
+            <Music className="w-5 h-5 text-orange-300" />
+            <span className="text-sm font-bold text-orange-200 uppercase tracking-widest">
+              Harmony Awaits
             </span>
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 tracking-tight">
-              Contact Us
-            </h1>
-            <p className="text-xl md:text-2xl text-orange-100 max-w-3xl mx-auto opacity-90">
-              Have questions about music classes, studio booking, events or anything else? We're here to help!
-            </p>
-          </motion.div>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-black text-white mb-6">
+            Let’s <span className="text-orange-400">Connect</span>
+          </h1>
+
+          <p className="text-xl text-orange-100 max-w-3xl mx-auto">
+            Questions about classes, studio sessions, or events? Drop us a message 🎤
+          </p>
         </div>
       </section>
 
       {/* ================= INFO CARDS ================= */}
-      <section className="-mt-20 md:-mt-24 relative z-10 px-6">
-        <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+      <section className="-mt-24 relative z-10 px-6">
+        <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {contactInfo.map((info, i) => (
             <motion.div
               key={info.title}
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 + 0.3, duration: 0.7 }}
-              className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-orange-100/50 hover:shadow-orange-500/20 transition-all duration-300"
+              transition={{ delay: i * 0.1 }}
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="bg-white rounded-2xl p-6 shadow-xl border border-orange-100 hover:border-orange-300 transition-all duration-300"
             >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-600 to-amber-600 flex items-center justify-center mb-5 shadow-lg">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-600 to-amber-600 flex items-center justify-center mb-4">
                 <info.icon className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-gray-800 mb-1">{info.title}</h3>
-              <p className="text-orange-700 font-medium text-lg">{info.value}</p>
-              <p className="text-sm text-gray-600 mt-2">{info.description}</p>
+
+              <h3 className="text-lg font-semibold text-gray-900">{info.title}</h3>
+              <p className="text-orange-700 font-medium text-sm">{info.value}</p>
+              <p className="text-gray-600 text-xs mt-1">{info.description}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ================= CONTACT FORM ================= */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-orange-100">
-          <div className="bg-gradient-to-r from-orange-700 via-orange-600 to-amber-600 p-8 md:p-10 flex items-center gap-4">
-            <MessageSquare className="w-10 h-10 text-white opacity-90" />
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white">Send us a Message</h2>
-              <p className="text-orange-100 mt-1 text-lg">We usually reply within 24 hours</p>
-            </div>
-          </div>
+      {/* ================= FORM + MAP ================= */}
+      <section className="py-24 px-6">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12">
 
-          <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-8">
-            <div className="grid md:grid-cols-2 gap-6">
+          {/* FORM */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="bg-white rounded-3xl shadow-2xl overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-8 text-white flex items-center gap-4">
+              <MessageSquare className="w-6 h-6" />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Your Name *</label>
-                <input
-                  required
-                  placeholder="Full Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full border border-orange-200 rounded-xl px-5 py-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
-                <input
-                  required
-                  type="email"
-                  placeholder="your@email.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full border border-orange-200 rounded-xl px-5 py-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
-                />
+                <h3 className="text-2xl font-bold">Send Message</h3>
+                <p className="text-sm opacity-90">We usually respond within 24 hours</p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                <input
-                  type="tel"
-                  placeholder="+91 8767055580"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full border border-orange-200 rounded-xl px-5 py-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                <select
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full border border-orange-200 rounded-xl px-5 py-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-white"
-                >
-                  <option value="">Select Subject</option>
-                  {subjects.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Your Message *</label>
-              <textarea
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <input
+                placeholder="Full Name *"
                 required
-                rows={5}
-                placeholder="How can we help you today?"
+                className="w-full border-b-2 border-gray-300 focus:border-orange-500 p-3 outline-none transition-colors"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+
+              <input
+                type="email"
+                placeholder="Email *"
+                required
+                className="w-full border-b-2 border-gray-300 focus:border-orange-500 p-3 outline-none transition-colors"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+
+              <input
+                type="tel"
+                placeholder="Phone (optional)"
+                className="w-full border-b-2 border-gray-300 focus:border-orange-500 p-3 outline-none transition-colors"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+
+              <textarea
+                placeholder="Your Message *"
+                rows={4}
+                required
+                className="w-full border-b-2 border-gray-300 focus:border-orange-500 p-3 outline-none resize-none transition-colors"
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="w-full border border-orange-200 rounded-xl px-5 py-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition resize-none"
               />
-            </div>
 
-            <button
-              disabled={loading}
-              type="submit"
-              className={`w-full bg-gradient-to-r from-orange-600 to-amber-600 text-white py-5 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all ${
-                loading ? "opacity-70 cursor-not-allowed" : "hover:shadow-lg hover:shadow-orange-500/40"
-              }`}
-            >
-              <Send size={20} />
-              {loading ? "Sending..." : "Send Message"}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${
+                  loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                <Send className="w-5 h-5" />
+                {loading ? "Sending..." : "Send Message"}
+              </button>
+            </form>
+          </motion.div>
+
+          {/* MAP – using exact provided address for precise pinning */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="rounded-3xl overflow-hidden shadow-2xl h-[500px] border border-orange-100"
+          >
+            <iframe
+              title="Indian Musical Club - Thergaon, Pune"
+              src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_KEY}&q=S-19%2C+Ground+floor%2C+Greens+Center%2C+Opposite+Pudumjee+Paper+Mill%2C+Aditya+Birla+Hospital+Road%2C+Thergaon%2C+Chinchwad%2C+Pune+411033&zoom=19`}
+              className="w-full h-full border-0"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </motion.div>
         </div>
       </section>
 

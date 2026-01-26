@@ -1,1 +1,95 @@
 @import "tailwindcss";
+
+
+/* ============================================= */
+/*  Full Continuous / Infinite Auto-Scroll Carousel */
+/* ============================================= */
+
+.carousel-scroll {
+  display: flex;
+  width: max-content;               /* Very important for infinite loop */
+  animation: scroll 60s linear infinite;  /* 60s = slow, change to 40s–80s for speed */
+  scroll-snap-type: x mandatory;
+}
+
+/* Each card should have snap-center */
+.carousel-scroll > * {
+  scroll-snap-align: center;
+  flex-shrink: 0;
+}
+
+/* Infinite scroll animation */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Hide scrollbar completely */
+.carousel-scroll::-webkit-scrollbar {
+  display: none;
+}
+.carousel-scroll {
+  -ms-overflow-style: none;         /* IE and Edge */
+  scrollbar-width: none;            /* Firefox */
+}
+
+/* Optional: Pause on hover */
+.carousel-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* Optional: Make arrows always visible or on hover */
+.carousel-container {
+  position: relative;
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px;
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.carousel-container:hover .carousel-arrow {
+  opacity: 1;
+}
+
+.left-arrow {
+  left: 16px;
+}
+
+.right-arrow {
+  right: 16px;
+}
+
+/* ============================================= */
+/*  Optional: Better mobile feel */
+/* ============================================= */
+@media (max-width: 640px) {
+  .carousel-scroll {
+    animation-duration: 45s; /* slightly faster on mobile */
+  }
+}
+
+
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-25px); }
+}
+.animate-float {
+  animation: float 7s ease-in-out infinite;
+}
+

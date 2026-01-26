@@ -453,11 +453,11 @@ export default function PrivateEventBooking() {
                 <button
                   onClick={submitBooking}
                   disabled={loading}
-                  className="w-full max-w-md mx-auto mt-12 py-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition flex items-center justify-center gap-4 disabled:opacity-70"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-6 h-6" />
+                      <Loader2 className="animate-spin w-4 h-4" />
                       Submitting Request...
                     </>
                   ) : (

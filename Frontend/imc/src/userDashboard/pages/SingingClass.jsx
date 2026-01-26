@@ -316,7 +316,7 @@ export default function SingingClassRegistration() {
   // Main Registration Form
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* Hero */}
+      {/* Hero - Algerian font applied here */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-75"
@@ -328,10 +328,24 @@ export default function SingingClassRegistration() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+            <h1
+              className="text-4xl md:text-5xl font-black text-white drop-shadow-lg tracking-wide"
+              style={{
+                fontFamily: '"Algerian", "Castellar", Georgia, "Times New Roman", serif',
+                textShadow: "4px 4px 16px rgba(0,0,0,0.8)",
+                letterSpacing: "0.05em",
+              }}
+            >
               Singing Class Enrollment
             </h1>
-            <p className="text-3xl md:text-4xl font-bold text-amber-400 mt-2 drop-shadow">
+            <p
+              className="text-3xl md:text-4xl font-bold text-amber-400 mt-2 drop-shadow"
+              style={{
+                fontFamily: '"Algerian", "Castellar", Georgia, "Times New Roman", serif',
+                textShadow: "3px 3px 12px rgba(0,0,0,0.7)",
+                letterSpacing: "0.03em",
+              }}
+            >
               IMC Music Academy
             </p>
           </motion.div>
@@ -598,11 +612,11 @@ export default function SingingClassRegistration() {
                 <button
                   onClick={handleEnrollClick}
                   disabled={loading || batchesLoading}
-                  className="w-full max-w-md mx-auto mt-12 py-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition flex items-center justify-center gap-4 disabled:opacity-70 disabled:cursor-not-allowed"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-6 h-6" />
+                      <Loader2 className="animate-spin w-4 h-4" />
                       Processing...
                     </>
                   ) : (

@@ -85,3 +85,21 @@ nav, .navbar, header { position: relative; z-index: 10; }
 @media (max-width: 768px) {
   .hero-carousel .slide-overlay { padding: 12px 16px; bottom: 24px; }
 }
+
+
+/* Hide scrollbar completely */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Snap scrolling */
+.snap-x {
+  scroll-snap-type: x mandatory;
+}
+.snap-center {
+  scroll-snap-align: center;
+}
