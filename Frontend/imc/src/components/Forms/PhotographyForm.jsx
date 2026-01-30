@@ -11,7 +11,7 @@ import "./Forms.css";
  * ✅ Package price field
  */
 
-const BASE_API = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE_API = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 const CANDIDATE_API_URLS = [
   `${BASE_API}/auth/photography/`,
   `${BASE_API}/photography/`,

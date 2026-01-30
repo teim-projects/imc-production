@@ -519,7 +519,7 @@ export default function SingerRegistration() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
-                      Education
+                      Musical Education
                     </label>
                     <input
                       type="text"
@@ -629,7 +629,7 @@ export default function SingerRegistration() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
-                      Expected Rate (₹ per event)
+                      Annual Fee(₹ per event)
                     </label>
                     <input
                       type="text"
