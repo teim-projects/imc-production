@@ -422,12 +422,7 @@ export default function Dashboard() {
                     Manage {prettyTitle(activeForm).toLowerCase()} details here.
                   </p>
                 </div>
-                <button
-                  onClick={closeForm}
-                  className="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold shadow-sm"
-                >
-                  ✕ Close
-                </button>
+                
               </div>
 
               {/* form container */}

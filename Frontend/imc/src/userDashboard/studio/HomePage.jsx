@@ -88,18 +88,18 @@ export default function HomePage() {
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="homepage-content flex-1 relative z-10">
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ">
           
           {/* ================= MODERN & ATTRACTIVE FILTER BAR ================= */}
           <div className="mb-12 bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl border border-gray-100/70 overflow-hidden">
-            <div className="px-6 pt-6 pb-3">
+            {/* <div className="px-6 pt-6 pb-3">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
                 Find Your Perfect Studio
               </h2>
               <p className="text-gray-600 mt-1.5 text-base">
                 Search by name, location or your budget
               </p>
-            </div>
+            </div> */}
 
             <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
               {/* Search */}
@@ -108,7 +108,7 @@ export default function HomePage() {
                   Keywords / Studio Name
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-orange-600 transition-colors" />
+                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-orange-600 transition-colors" />
                   <input
                     id="search"
                     type="text"

@@ -26,6 +26,7 @@ import Contact from "./userDashboard/pages/Contact";
 import SingingClass from "./userDashboard/pages/SingingClass";
 import SingerRegistration from "./userDashboard/pages/SingerRegistration";
 
+
 /* ================= BOOKING PAGES ================= */
 import PrivateBooking from "./userDashboard/pages/PrivateBooking";
 import PhotographyBooking from "./userDashboard/pages/PhotographyBooking";

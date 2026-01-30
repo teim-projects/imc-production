@@ -785,8 +785,6 @@ SoundSetup = Sound
 
 
 
-
-
 # ===============================================
 # ============  Singer (SERVICE)  =========
 # ===============================================
@@ -797,15 +795,16 @@ import re
 from datetime import date
 from django.db import models, transaction
 from django.db.models import Q
+from django.core.validators import FileExtensionValidator
 
 
 # --------------------------------------------------
-# IMAGE UPLOAD HELPERS
+# VIDEO UPLOAD HELPERS  ✅ (REPLACED PHOTO)
 # --------------------------------------------------
-def singer_photo_upload_to(instance, filename):
-    ext = filename.split('.')[-1] if '.' in filename else 'jpg'
+def singer_video_upload_to(instance, filename):
+    ext = filename.split('.')[-1] if '.' in filename else 'mp4'
     filename = f"{uuid.uuid4().hex}.{ext}"
-    return os.path.join("singers", filename)
+    return os.path.join("singer", "videos", filename)
 
 
 # --------------------------------------------------
@@ -850,7 +849,18 @@ class Singer(models.Model):
     )
 
     active = models.BooleanField(default=True)
-    photo = models.ImageField(upload_to=singer_photo_upload_to, null=True, blank=True)
+
+    # ✅ VIDEO FIELD (PHOTO REMOVED)
+    video = models.FileField(
+        upload_to=singer_video_upload_to,
+        null=True,
+        blank=True,
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=["mp4", "mov", "avi", "webm", "mkv"]
+            )
+        ],
+    )
 
     # ✅ AUTO DATE FIELDS
     created_at = models.DateField(editable=False)
@@ -862,7 +872,7 @@ class Singer(models.Model):
         verbose_name_plural = "Singers"
 
     # --------------------------------------------------
-    # AUTO ID + DATE LOGIC (SAFE & CONCURRENT)
+    # AUTO ID + DATE LOGIC (UNCHANGED)
     # --------------------------------------------------
     def save(self, *args, **kwargs):
 
@@ -895,6 +905,7 @@ class Singer(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.name}"
+
 
 # ===============================================
 # ============  Singing (SERVICE)  =========
@@ -1036,3 +1047,35 @@ class Batch(models.Model):
 
     def __str__(self):
         return f"{self.class_obj.name} - {self.day} {self.time_slot}"
+
+
+
+
+from django.db import models
+
+
+class AnnualFee(models.Model):
+    singer = models.ForeignKey(
+        "Singer",
+        on_delete=models.CASCADE,
+        related_name="annual_fees"
+    )
+
+    year = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    payment_method = models.CharField(
+        max_length=50,
+        default="Cash"
+    )
+
+    remarks = models.TextField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("singer", "year")
+
+    def __str__(self):
+        return f"{self.singer_id} - {self.year} - {self.amount}"

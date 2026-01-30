@@ -727,11 +727,6 @@ class SoundSerializer(serializers.ModelSerializer):
 
 
 
-
-
-# ---------------------------------------------------------------------
-# Singer Master (Service)
-# ---------------------------------------------------------------------
 from rest_framework import serializers
 from .models import Singer
 
@@ -741,24 +736,23 @@ class SingerSerializer(serializers.ModelSerializer):
         model = Singer
         fields = "__all__"
 
+    # ✅ DO NOT mutate raw multipart data
     def to_internal_value(self, data):
-        data = data.copy()
+        ret = super().to_internal_value(data)
 
-        # Remove frontend-only field
-        data.pop("agreed_terms", None)
+        # frontend-only field
+        ret.pop("agreed_terms", None)
 
-        # Normalize gender
-        if "gender" in data and isinstance(data["gender"], str):
-            data["gender"] = data["gender"].lower()
+        # normalize gender
+        if "gender" in ret and isinstance(ret["gender"], str):
+            ret["gender"] = ret["gender"].lower()
 
-        # Convert empty strings to None
+        # empty string → None
         for field in ["experience", "rate", "birth_date"]:
-            if field in data and data[field] == "":
-                data[field] = None
+            if field in ret and ret[field] in ["", None]:
+                ret[field] = None
 
-        return super().to_internal_value(data)
-
-
+        return ret
 
 # ---------------------------------------------------------------------
 # Singing class  (Service)
@@ -856,3 +850,13 @@ class BatchSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+
+
+from rest_framework import serializers
+from .models import AnnualFee
+
+
+class AnnualFeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnnualFee
+        fields = "__all__"

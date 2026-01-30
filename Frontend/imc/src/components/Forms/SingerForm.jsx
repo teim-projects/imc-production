@@ -1,16 +1,17 @@
 // src/components/Forms/SingerFormPage.jsx
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import axios from "axios";
+import { Download } from "lucide-react";
 import "./Forms.css";
 
-// Fixed import path - was wrong, now correct
+// Fixed import path
 const AnnualFeePage = lazy(() => import("../../userDashboard/pages/AnnualFeePage"));
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://localhost:8000/api";
 const API_URL = `${BASE.replace(/\/$/, "")}/auth/singer/`;
 const FEE_API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
 
-// Axios instance
+// Axios instance for Singer endpoints
 const api = axios.create({ baseURL: API_URL });
 api.interceptors.request.use((cfg) => {
   const token = localStorage.getItem("access");
@@ -93,11 +94,11 @@ export default function SingerFormPage({ initialMode = "list" }) {
     area: "",
     city: "",
     state: "",
-    rate: "",
+    rate: "1000",
     gender: "",
     payment_method: "Cash",
     active: true,
-    photo: null,
+    video: null,
   };
 
   const [form, setForm] = useState(emptyInitial);
@@ -165,6 +166,72 @@ export default function SingerFormPage({ initialMode = "list" }) {
     }
   };
 
+  const exportToCSV = () => {
+    if (!singers || singers.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    if (loadingList) {
+      alert("Please wait until loading finishes");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "ID",
+      "Name",
+      "Birth Date",
+      "Mobile",
+      "Profession",
+      "Education",
+      "Achievement",
+      "Favourite Singer",
+      "Reference",
+      "Genre",
+      "City",
+      "Annual Fee (₹)",
+      "Payment Method",
+      "Status",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...singers.map((s, index) => {
+        const row = [
+          index + 1,
+          s.id || "",
+          `"${(s.name || "").replace(/"/g, '""')}"`,
+          `"${formatDateDDMMYYYY(s.birth_date).replace(/"/g, '""')}"`,
+          s.mobile || "",
+          `"${(s.profession || "").replace(/"/g, '""')}"`,
+          `"${(s.education || "").replace(/"/g, '""')}"`,
+          `"${(s.achievement || "").replace(/"/g, '""')}"`,
+          `"${(s.favourite_singer || "").replace(/"/g, '""')}"`,
+          `"${(s.reference_by || "").replace(/"/g, '""')}"`,
+          `"${(s.genre || "").replace(/"/g, '""')}"`,
+          `"${(s.city || "").replace(/"/g, '""')}"`,
+          s.rate || "",
+          s.payment_method || "",
+          s.active ? "Active" : "Inactive",
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `singers_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const loadSinger = async (id) => {
     setError(null);
     try {
@@ -172,10 +239,12 @@ export default function SingerFormPage({ initialMode = "list" }) {
       const res = await api.get(`${encodedId}/`);
       const d = res.data.data || res.data || {};
 
+      const formattedBirth = formatDateDDMMYYYY(d.birth_date) === "—" ? "" : formatDateDDMMYYYY(d.birth_date);
+
       setForm({
         ...emptyInitial,
         name: d.name || "",
-        birth_date: formatDateDDMMYYYY(d.birth_date) === "—" ? "" : formatDateDDMMYYYY(d.birth_date),
+        birth_date: formattedBirth,
         mobile: d.mobile || "",
         profession: d.profession || "",
         education: d.education || "",
@@ -187,14 +256,14 @@ export default function SingerFormPage({ initialMode = "list" }) {
         area: d.area || "",
         city: d.city || "",
         state: d.state || "",
-        rate: d.rate ?? "",
+        rate: d.rate ?? "1000",
         gender: d.gender || "",
         payment_method: d.payment_method || "Cash",
         active: typeof d.active === "boolean" ? d.active : true,
-        photo: d.photo || null,
+        video: null, // file input starts empty – existing video shown via preview
       });
 
-      setPreview(d.photo ? safeImageUrl(d.photo) : null);
+      setPreview(d.video ? safeImageUrl(d.video) : null);
       setEditingId(id);
       setMode("form");
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -206,10 +275,10 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
   const startAdd = () => {
     setForm(emptyInitial);
-    if (preview) {
+    if (preview && preview.startsWith("blob:")) {
       URL.revokeObjectURL(preview);
-      setPreview(null);
     }
+    setPreview(null);
     setEditingId(null);
     setMode("form");
     setError(null);
@@ -221,34 +290,26 @@ export default function SingerFormPage({ initialMode = "list" }) {
     if (type === "checkbox") {
       setForm((f) => ({ ...f, [name]: checked }));
     } else {
+      if (name === "rate") return;
       setForm((f) => ({ ...f, [name]: value }));
     }
   };
 
   const handleFile = (e) => {
     const file = e.target.files?.[0] || null;
-    setForm((f) => ({ ...f, photo: file }));
-    if (file) {
-      if (preview) URL.revokeObjectURL(preview);
-      setPreview(URL.createObjectURL(file));
-    }
-  };
+    setForm((f) => ({ ...f, video: file }));
 
-  const buildFormData = () => {
-    const fd = new FormData();
-    Object.keys(form).forEach((k) => {
-      if (k === "photo") return;
-      const val = form[k];
-      if (val !== "" && val !== null && val !== undefined) {
-        if (k === "birth_date" && val) {
-          fd.append(k, val);
-        } else {
-          fd.append(k, String(val));
-        }
-      }
-    });
-    if (form.photo instanceof File) fd.append("photo", form.photo);
-    return fd;
+    // Clean up previous blob URL if exists
+    if (preview && preview.startsWith("blob:")) {
+      URL.revokeObjectURL(preview);
+    }
+
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+    } else {
+      // If user removes file, show existing server video again (if editing)
+      setPreview(editingId && form.video === null ? safeImageUrl(singers.find(s => s.id === editingId)?.video) : null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -270,25 +331,100 @@ export default function SingerFormPage({ initialMode = "list" }) {
     }
 
     setSaving(true);
+
     try {
+      let response;
+
       if (editingId) {
         const encodedId = encodeURIComponent(editingId);
-        if (form.photo instanceof File) {
-          await api.put(`${encodedId}/`, buildFormData(), {
+
+        if (form.video instanceof File) {
+          // New video uploaded → use FormData
+          const formData = new FormData();
+          formData.append("name", form.name);
+          formData.append("city", form.city || "");
+          formData.append("state", form.state || "");
+          formData.append("area", form.area || "");
+          formData.append("mobile", form.mobile || "");
+          formData.append("profession", form.profession || "");
+          formData.append("education", form.education || "");
+          formData.append("achievement", form.achievement || "");
+          formData.append("favourite_singer", form.favourite_singer || "");
+          formData.append("reference_by", form.reference_by || "");
+          formData.append("genre", form.genre || "");
+          formData.append("experience", form.experience || "");
+          formData.append("gender", form.gender || "");
+          formData.append("payment_method", form.payment_method || "Cash");
+          formData.append("active", form.active);
+
+          if (form.birth_date) {
+            const [dd, mm, yyyy] = form.birth_date.split("-");
+            formData.append("birth_date", `${yyyy}-${mm}-${dd}`);
+          }
+
+          formData.append("rate", "1000");
+          formData.append("video", form.video);
+
+          response = await api.patch(`${encodedId}/`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
           });
         } else {
-          await api.put(`${encodedId}/`, { ...form });
+          // No new video file → JSON PATCH (video remains unchanged)
+          const payload = {
+            name: form.name,
+            city: form.city || "",
+            state: form.state || "",
+            area: form.area || "",
+            mobile: form.mobile || "",
+            profession: form.profession || "",
+            education: form.education || "",
+            achievement: form.achievement || "",
+            favourite_singer: form.favourite_singer || "",
+            reference_by: form.reference_by || "",
+            genre: form.genre || "",
+            experience: form.experience || "",
+            gender: form.gender || "",
+            payment_method: form.payment_method || "Cash",
+            active: form.active,
+            rate: "1000",
+          };
+
+          if (form.birth_date) {
+            const [dd, mm, yyyy] = form.birth_date.split("-");
+            payload.birth_date = `${yyyy}-${mm}-${dd}`;
+          }
+
+          response = await api.patch(`${encodedId}/`, payload);
         }
         alert("Singer updated successfully.");
       } else {
-        if (form.photo instanceof File) {
-          await api.post("", buildFormData(), {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-        } else {
-          await api.post("", { ...form });
+        // CREATE
+        const formData = new FormData();
+
+        formData.append("name", form.name);
+        formData.append("rate", "1000");
+        formData.append("active", form.active);
+        formData.append("payment_method", form.payment_method || "Cash");
+
+        if (form.birth_date) {
+          const [dd, mm, yyyy] = form.birth_date.split("-");
+          formData.append("birth_date", `${yyyy}-${mm}-${dd}`);
         }
+
+        ["city", "state", "area", "mobile", "profession", "education",
+         "achievement", "favourite_singer", "reference_by", "genre",
+         "experience", "gender"].forEach(key => {
+          if (form[key]) formData.append(key, form[key]);
+        });
+
+        if (form.video instanceof File) {
+          formData.append("video", form.video);
+        }
+
+        response = await api.post("", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
         alert("Singer created successfully.");
       }
 
@@ -297,18 +433,28 @@ export default function SingerFormPage({ initialMode = "list" }) {
       await fetchSingers();
 
       setForm(emptyInitial);
-      if (preview) {
+      if (preview && preview.startsWith("blob:")) {
         URL.revokeObjectURL(preview);
-        setPreview(null);
       }
+      setPreview(null);
       setEditingId(null);
       setMode("list");
     } catch (err) {
-      console.error("handleSubmit:", err);
+      console.error("handleSubmit error:", err);
       const { status, data } = err?.response || {};
       if (status === 401) setError("Unauthorized — please login.");
-      else if (data) setError(typeof data === "string" ? data : JSON.stringify(data));
-      else setError("Save failed. Check console for details.");
+      else if (status === 400) {
+        const errMsg = data?.birth_date
+          ? data.birth_date.join(" ")
+          : data?.video
+          ? data.video.join(" ")
+          : data?.non_field_errors?.join(" ") || JSON.stringify(data);
+        setError(`Validation error: ${errMsg || "Check all fields"}`);
+      } else if (status === 415) {
+        setError("415 Unsupported Media Type — FormData issue");
+      } else {
+        setError(err.message || "Save failed. Check console.");
+      }
     } finally {
       setSaving(false);
     }
@@ -316,7 +462,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
   const handleDelete = async (id) => {
     if (!id) {
-      console.error("Invalid singer id:", id);
       alert("Invalid singer id");
       return;
     }
@@ -324,25 +469,19 @@ export default function SingerFormPage({ initialMode = "list" }) {
     if (!confirm("Are you sure you want to delete this singer?")) return;
 
     try {
-      console.log("Deleting singer:", id); // must be IMC-SM-xxx
-
-      // ❌ NO encodeURIComponent
-      await api.delete(`${id}/`);
-
-      await fetchSingers(); // refresh list
+      await api.delete(`${encodeURIComponent(id)}/`);
+      await fetchSingers();
     } catch (err) {
       console.error("handleDelete:", err.response || err);
-
       if (err?.response?.status === 401 || err?.response?.status === 403) {
         setError("Unauthorized — please login.");
       } else if (err?.response?.status === 404) {
-        alert("Singer not found (check ID format).");
+        alert("Singer not found.");
       } else {
         alert("Delete failed.");
       }
     }
   };
-
 
   if (!accessToken) {
     return (
@@ -366,7 +505,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
   return (
     <div className="pf-wrap">
-      {/* HEADER - Now includes Annual Fee button that loads AnnualFeePage */}
+      {/* HEADER */}
       <div className="pf-header">
         <div>
           <h2>Singer Master</h2>
@@ -408,7 +547,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
         </div>
       )}
 
-      {/* ANNUAL FEE PAGE MODE */}
       {mode === "annual-fee" && (
         <Suspense fallback={<div className="text-center py-10">Loading Annual Fee page...</div>}>
           <AnnualFeePage />
@@ -417,7 +555,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
       {/* FORM MODE */}
       {mode === "form" && (
-        <form className="pf-form" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form className="pf-form" onSubmit={handleSubmit}>
           {/* Profile & Contact */}
           <section className="pf-card">
             <h3>Profile & Contact</h3>
@@ -574,13 +712,19 @@ export default function SingerFormPage({ initialMode = "list" }) {
                 <input
                   className="input"
                   name="rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.rate}
-                  onChange={handleChange}
-                  placeholder="0.00"
+                  type="text"
+                  value="1000"
+                  readOnly
+                  disabled
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    cursor: "not-allowed",
+                    color: "#4b5563",
+                  }}
                 />
+                <small style={{ color: "#6b7280", display: "block", marginTop: "4px" }}>
+                  Fixed annual membership fee: ₹1000
+                </small>
               </label>
               <label>
                 Payment Method
@@ -616,35 +760,36 @@ export default function SingerFormPage({ initialMode = "list" }) {
             </div>
           </section>
 
-          {/* Photo */}
+          {/* Video */}
           <section className="pf-card">
-            <h3>Profile Photo</h3>
+            <h3>Profile Video</h3>
             <div className="pf-grid">
               <label>
-                Singer Photo
+                Singer Video
                 <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="video/*"
                     onChange={handleFile}
                   />
                   <span style={{ fontSize: "0.9rem", color: "#6b7280" }}>
-                    {form.photo instanceof File
-                      ? form.photo.name
-                      : form.photo
-                      ? "Existing photo"
-                      : "No photo selected"}
+                    {form.video instanceof File
+                      ? form.video.name
+                      : editingId && preview
+                      ? "Existing video loaded – upload new to replace"
+                      : "No video selected"}
                   </span>
                   {preview && (
-                    <img
+                    <video
                       src={preview}
-                      alt="Preview"
+                      controls
                       style={{
-                        width: 100,
-                        height: 100,
+                        width: 180,
+                        height: 120,
                         objectFit: "cover",
                         borderRadius: 8,
                         border: "1px solid #e5e7eb",
+                        background: "#000",
                       }}
                     />
                   )}
@@ -660,7 +805,9 @@ export default function SingerFormPage({ initialMode = "list" }) {
               className="btn ghost"
               onClick={() => {
                 setForm(emptyInitial);
-                if (preview) URL.revokeObjectURL(preview);
+                if (preview && preview.startsWith("blob:")) {
+                  URL.revokeObjectURL(preview);
+                }
                 setPreview(null);
                 setEditingId(null);
                 setMode("list");
@@ -680,48 +827,77 @@ export default function SingerFormPage({ initialMode = "list" }) {
       {mode === "list" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-              <input
-                className="pf-search"
-                placeholder="Search by name, mobile, city, id..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && fetchSingers()}
-              />
-              <button className="btn danger" onClick={fetchSingers}>
-                Search
-              </button>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+                width: "100%",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <input
+                  className="pf-search"
+                  placeholder="Search by name, mobile, city, id..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && fetchSingers()}
+                  style={{ minWidth: "220px" }}
+                />
 
+                <button className="btn danger" onClick={fetchSingers}>
+                  Search
+                </button>
 
-              <select
-                value={sortOption}
-                onChange={(e) => {
-                  setSortOption(e.target.value);
-                  setCurrentPage(1);
+                <select
+                  value={sortOption}
+                  onChange={(e) => {
+                    setSortOption(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="sort-select"
+                >
+                  <option value="id_desc">Newest first</option>
+                  <option value="id_asc">Oldest first</option>
+                  <option value="name">Name A→Z</option>
+                </select>
+              </div>
+
+              <button
+                onClick={exportToCSV}
+                className="btn ghost"
+                title="Export to CSV"
+                disabled={loadingList || singers.length === 0}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontWeight: 600,
+                  whiteSpace: "nowrap",
+                  padding: "8px 16px",
                 }}
-                className="sort-select"
               >
-                <option value="id_desc">Newest first</option>
-                <option value="id_asc">Oldest first</option>
-                <option value="name">Name A→Z</option>
-              </select>
+                <Download size={18} />
+                Export
+              </button>
             </div>
 
-            <div className="pf-table-meta">
+            <div className="pf-table-meta" style={{ marginTop: "12px" }}>
               {loadingList
                 ? "Loading singers..."
                 : `${totalCount} singer${totalCount !== 1 ? "s" : ""} • Page ${currentPage} of ${totalPages}`}
             </div>
           </div>
 
-          {/* Table and pagination unchanged */}
           <div className="pf-table-wrap">
             <table className="pf-table responsive-table">
               <thead>
                 <tr>
                   <th>ID</th>
                   <th>Name</th>
-                  <th>Photo</th>
+                  <th>Video</th>
                   <th>Birth Date</th>
                   <th>Mobile</th>
                   <th>Profession</th>
@@ -759,10 +935,21 @@ export default function SingerFormPage({ initialMode = "list" }) {
                         {s.area && <div className="text-xs text-gray-500">{s.area}</div>}
                       </td>
                       <td>
-                        {s.photo ? (
-                          <img src={safeImageUrl(s.photo)} alt={s.name} className="thumb" />
+                        {s.video ? (
+                          <video
+                            src={safeImageUrl(s.video)}
+                            controls
+                            muted
+                            style={{
+                              width: 120,
+                              height: 80,
+                              objectFit: "cover",
+                              borderRadius: 6,
+                              background: "#000",
+                            }}
+                          />
                         ) : (
-                          "—"
+                          <span style={{ color: "#9ca3af" }}>—</span>
                         )}
                       </td>
                       <td>{formatDateDDMMYYYY(s.birth_date)}</td>
@@ -774,7 +961,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>{s.reference_by || "—"}</td>
                       <td>{s.genre || "—"}</td>
                       <td>{s.city || "—"}</td>
-                      <td>₹ {fmtCurrency(s.rate)}</td>
+                      <td>₹ {fmtCurrency(s.rate || "1000")}</td>
                       <td>{s.payment_method || "—"}</td>
                       <td>
                         <span className={`chip ${s.active ? "chip-success" : "chip-muted"}`}>

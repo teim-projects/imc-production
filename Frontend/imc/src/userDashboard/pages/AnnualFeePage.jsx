@@ -2,8 +2,9 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const API = `${BASE}/auth/annual-fees/`;
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000/";
+const API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
+
 
 const api = axios.create();
 api.interceptors.request.use((c) => {
@@ -36,7 +37,13 @@ export default function AnnualFeePage({ singerId }) {
       setFees(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch fees:", err);
-      setError("Unable to load fee records. Please try again.");
+      if (err.code === "ERR_NETWORK" || !err.response) {
+        setError("Network error — is the backend running at " + BASE + " ?");
+      } else if (err.response?.status === 404) {
+        setError("Endpoint not found (404). Check if /api/auth/annual-fees/ exists in Django urls.py");
+      } else {
+        setError("Unable to load fee records. " + (err.message || ""));
+      }
       setFees([]);
     } finally {
       setLoading(false);
@@ -69,7 +76,16 @@ export default function AnnualFeePage({ singerId }) {
       alert("Fee added successfully!");
     } catch (err) {
       console.error("Failed to add fee:", err);
-      alert("Failed to add fee. Please try again.");
+      if (err.code === "ERR_NETWORK" || !err.response) {
+        alert("Network error — cannot reach backend at " + API);
+      } else if (err.response?.status === 404) {
+        alert("404 Not Found — annual-fees endpoint doesn't exist or URL is wrong");
+      } else if (err.response?.status === 400) {
+        const detail = err.response.data?.detail || JSON.stringify(err.response.data);
+        alert("Validation error: " + detail);
+      } else {
+        alert("Failed to add fee: " + (err.message || "Unknown error"));
+      }
     }
   };
 
@@ -126,7 +142,7 @@ export default function AnnualFeePage({ singerId }) {
         </form>
       </div>
 
-      {/* Fee Records Table - ONLY ID & AMOUNT */}
+      {/* Fee Records Table */}
       <div className="pf-card">
         <h3 style={{ marginBottom: "20px", color: "#dc2626", fontWeight: "600" }}>
           ● All Fee Records

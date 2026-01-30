@@ -1,6 +1,7 @@
 // src/components/Forms/PrivateBookingForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 const BASE = import.meta.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -104,6 +105,67 @@ const PrivateBookingForm = ({ onClose, viewOnly = false }) => {
     fetchRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---------- NEW: Export to CSV ----------
+  const exportBookingsToCSV = () => {
+    if (!filtered.length) {
+      alert("No bookings to export");
+      return;
+    }
+    if (loading) {
+      alert("Please wait while data is loading...");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Customer",
+      "Contact Number",
+      "Email",
+      "Event Type",
+      "Venue",
+      "Date",
+      "Time Slot",
+      "Duration (hrs)",
+      "Guest Count",
+      "Payment Methods",
+      "Notes",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filtered.map((b, index) => {
+        const row = [
+          index + 1,
+          `"${(b.customer || "").replace(/"/g, '""')}"`,
+          b.contact_number || "-",
+          b.email || "-",
+          `"${(b.event_type || "").replace(/"/g, '""')}"`,
+          `"${(b.venue || "").replace(/"/g, '""')}"`,
+          b.date || "-",
+          b.time_slot || "-",
+          b.duration || "-",
+          b.guest_count ?? "-",
+          Array.isArray(b.payment_methods) && b.payment_methods.length
+            ? `"${b.payment_methods.join(", ")}"`
+            : "-",
+          `"${(b.notes || "").replace(/"/g, '""')}"`,
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `private_bookings_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // ---------- Derived ----------
   const filtered = useMemo(() => {
@@ -506,6 +568,23 @@ const PrivateBookingForm = ({ onClose, viewOnly = false }) => {
             />
             <button className="btn" onClick={fetchRows} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
+            </button>
+
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportBookingsToCSV}
+              disabled={loading || filtered.length === 0}
+              title="Export filtered bookings to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
             </button>
           </div>
 

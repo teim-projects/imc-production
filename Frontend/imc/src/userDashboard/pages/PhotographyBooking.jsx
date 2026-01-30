@@ -94,7 +94,7 @@ export default function PhotographyBooking() {
   const validateForm = () => {
     if (!form.client.trim())              return "Client name is required";
     if (!form.contact_number.trim())      return "Contact number is required";
-    if (!form.email.trim())               return "Email is required";
+    // if (!form.email.trim())               return "Email is required";
     if (!form.event_type)                 return "Please select event / shoot type";
     if (form.event_type === "Other" && !form.event_type_other.trim()) {
       return "Please specify the other event type";
