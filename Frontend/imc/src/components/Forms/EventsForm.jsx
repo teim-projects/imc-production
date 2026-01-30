@@ -1,6 +1,7 @@
 // src/components/Forms/EventsForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -68,10 +69,10 @@ const EventsForm = ({ onClose }) => {
   const humanizeErr = (err) => {
     const data = err?.response?.data;
     if (data && typeof data === "object" && !Array.isArray(data)) {
-      const key = Object.keys(data)[0];
-      const val = data[key];
-      if (Array.isArray(val)) return `${key}: ${val[0]}`;
-      if (typeof val === "string") return `${key}: ${val}`;
+      const k = Object.keys(data)[0];
+      const v = data[k];
+      if (Array.isArray(v)) return `${k}: ${v[0]}`;
+      if (typeof v === "string") return `${k}: ${v}`;
       try {
         return JSON.stringify(data, null, 2);
       } catch {
@@ -117,6 +118,73 @@ const EventsForm = ({ onClose }) => {
     fetchEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---------------- NEW: Export to CSV ----------------
+  const exportEventsToCSV = () => {
+    if (!filtered.length) {
+      alert("No events to export");
+      return;
+    }
+    if (loading) {
+      alert("Please wait while data is loading...");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Title",
+      "Location",
+      "Date",
+      "Time Slot",
+      "Event Type",
+      "Total Seats",
+      "Available Seats",
+      "Ticket Price (₹)",
+      "Basic Price (₹)",
+      "Premium Price (₹)",
+      "VIP Price (₹)",
+      "Basic Seats",
+      "Premium Seats",
+      "VIP Seats",
+      "Description",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filtered.map((ev, index) => {
+        const row = [
+          index + 1,
+          `"${(ev.title || "").replace(/"/g, '""')}"`,
+          `"${(ev.location || "").replace(/"/g, '""')}"`,
+          ev.date || "-",
+          ev.time_slot || "-",
+          ev.event_type ? (ev.event_type === "live" ? "Live" : "Karaoke") : "-",
+          ev.total_seats ?? "-",
+          ev.available_seats ?? "-",
+          ev.ticket_price ? `₹${ev.ticket_price}` : "-",
+          ev.basic_price ? `₹${ev.basic_price}` : "-",
+          ev.premium_price ? `₹${ev.premium_price}` : "-",
+          ev.vip_price ? `₹${ev.vip_price}` : "-",
+          ev.basic_seats ?? "-",
+          ev.premium_seats ?? "-",
+          ev.vip_seats ?? "-",
+          `"${(ev.description || "").replace(/"/g, '""')}"`,
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `events_list_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // ---------------- Form handlers ----------------
   const handleChange = (e) => {
@@ -711,6 +779,23 @@ const EventsForm = ({ onClose }) => {
             />
             <button className="btn" onClick={fetchEvents} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
+            </button>
+
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportEventsToCSV}
+              disabled={loading || filtered.length === 0}
+              title="Export filtered events to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
             </button>
           </div>
 

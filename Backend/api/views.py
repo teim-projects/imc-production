@@ -580,13 +580,8 @@ class SoundViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(qs, many=True).data)
-
-# ====================================================================
-# Singer Master (Service)
-# ====================================================================
-
 from rest_framework import viewsets, permissions, filters, status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 
@@ -621,15 +616,15 @@ class SingerViewSet(viewsets.ModelViewSet):
     serializer_class = SingerSerializer
     permission_classes = [SingerPermission]
 
-    # 🔥 Required for image upload
-    parser_classes = (MultiPartParser, FormParser)
+    # ✅ REQUIRED FOR JSON + FORM + VIDEO
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
-    # 🔍 Search support
+    # 🔍 Search
     filter_backends = [filters.SearchFilter]
     search_fields = ["id", "name", "city", "genre", "mobile"]
 
     # -----------------------------
-    # CREATE
+    # CREATE (POST)
     # -----------------------------
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -642,13 +637,72 @@ class SingerViewSet(viewsets.ModelViewSet):
         )
 
     # -----------------------------
-    # DELETE (STANDARD DRF)
+    # UPDATE (PUT)
+    # -----------------------------
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+        except Singer.DoesNotExist:
+            raise NotFound("Singer not found")
+
+        # 🔥 allow full update with or without video
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=False  # PUT = full update
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # 🔁 Replace old video if new one is sent
+        if "video" in request.FILES and instance.video:
+            instance.video.delete(save=False)
+
+        serializer.save()
+
+        return Response(
+            {"success": True, "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+
+    # -----------------------------
+    # PARTIAL UPDATE (PATCH)
+    # -----------------------------
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+        except Singer.DoesNotExist:
+            raise NotFound("Singer not found")
+
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=True  # PATCH = partial update
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # 🔁 Replace old video only if new one uploaded
+        if "video" in request.FILES and instance.video:
+            instance.video.delete(save=False)
+
+        serializer.save()
+
+        return Response(
+            {"success": True, "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+
+    # -----------------------------
+    # DELETE
     # -----------------------------
     def destroy(self, request, *args, **kwargs):
         try:
             singer = self.get_object()
-        except Exception:
+        except Singer.DoesNotExist:
             raise NotFound("Singer not found")
+
+        # 🗑️ delete video from storage
+        if singer.video:
+            singer.video.delete(save=False)
 
         singer.delete()
         return Response(
@@ -988,3 +1042,23 @@ class ClassViewSet(ModelViewSet):
 class BatchViewSet(ModelViewSet):
     queryset = Batch.objects.select_related('class_obj', 'trainer').all()
     serializer_class = BatchSerializer  # ← ABSOLUTELY REQUIRED
+
+
+
+
+from rest_framework import viewsets, permissions
+from .models import AnnualFee
+from .serializers import AnnualFeeSerializer
+
+class AnnualFeeViewSet(viewsets.ModelViewSet):
+    queryset = AnnualFee.objects.all().order_by("-created_at")
+    serializer_class = AnnualFeeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        singer_id = self.request.query_params.get("singer")
+        if singer_id:
+            qs = qs.filter(singer_id=singer_id)
+        return qs
+

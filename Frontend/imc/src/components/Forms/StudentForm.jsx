@@ -1,6 +1,7 @@
 // src/components/Forms/SingingClassForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -216,6 +217,58 @@ export default function SingingClassForm({ onSuccess }) {
     } finally {
       setListLoading(false);
     }
+  };
+
+  // NEW: Export function for View Admissions
+  const exportAdmissionsToCSV = () => {
+    if (!filteredItems.length) {
+      alert("No admissions data to export");
+      return;
+    }
+    if (listLoading) {
+      alert("Please wait until loading finishes");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Student Name",
+      "Phone",
+      "Batch",
+      "Teacher",
+      "Class",
+      "Fee Paid",
+      "Reference By",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filteredItems.map((r, index) => {
+        const batchInfo = batches.find(b => b.id === r.batch);
+        const row = [
+          index + 1,
+          `"${(r.first_name + " " + r.last_name).replace(/"/g, '""')}"`,
+          r.phone || "-",
+          `"${batchInfo ? `${batchInfo.day} ${batchInfo.time_slot}` : "-"}"`,
+          `"${batchInfo?.trainer_name || "-"}"`,
+          `"${batchInfo?.class_name || "-"}"`,
+          r.fee ? `₹${r.fee}` : "-",
+          `"${r.reference_by || "-"}"`,
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `singing_admissions_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleDelete = async (id) => {
@@ -441,6 +494,23 @@ export default function SingingClassForm({ onSuccess }) {
             />
             <button className="btn" onClick={() => fetchList(1)} disabled={listLoading}>
               {listLoading ? "Refreshing..." : "Refresh"}
+            </button>
+
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportAdmissionsToCSV}
+              disabled={listLoading || filteredItems.length === 0}
+              title="Export filtered admissions to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
             </button>
           </div>
 

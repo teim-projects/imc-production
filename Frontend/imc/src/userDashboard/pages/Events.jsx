@@ -13,8 +13,7 @@ import {
 
 /* ===================== API ===================== */
 
-const BASE =
-  import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
@@ -86,48 +85,48 @@ function BookingModal({ event, onClose, onSuccess }) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl"
-          initial={{ y: 40 }}
-          animate={{ y: 0 }}
+          className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl"
+          initial={{ y: 50, scale: 0.95 }}
+          animate={{ y: 0, scale: 1 }}
         >
-          {/* HEADER */}
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold">{event.name}</h3>
-            <button onClick={onClose}>
-              <FaTimes />
+            <h3 className="text-base font-bold text-gray-800">{event.name}</h3>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-800">
+              <FaTimes size={18} />
             </button>
           </div>
 
-          {/* FORM */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <input
-              placeholder="Your Name"
+              placeholder="Your Name *"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border rounded-xl p-3"
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"
+              required
             />
 
             <input
-              placeholder="Phone Number"
+              placeholder="Phone Number *"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full border rounded-xl p-3"
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:border-orange-500 outline-none"
+              required
             />
 
             <div>
-              <label className="text-sm font-medium">
+              <label className="text-xs font-medium text-gray-700 block mb-1">
                 Number of Tickets
               </label>
               <select
                 value={tickets}
                 onChange={(e) => setTickets(Number(e.target.value))}
-                className="w-full border rounded-xl p-3 mt-1"
+                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm"
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>
@@ -140,25 +139,23 @@ function BookingModal({ event, onClose, onSuccess }) {
             <select
               value={payment}
               onChange={(e) => setPayment(e.target.value)}
-              className="w-full border rounded-xl p-3"
+              className="w-full border border-gray-300 rounded-lg p-2.5 text-sm"
             >
               <option value="UPI">UPI</option>
               <option value="Card">Card</option>
               <option value="Cash">Cash</option>
             </select>
 
-            <div className="text-right text-lg font-bold text-orange-600">
+            <div className="text-right text-base font-bold text-orange-600">
               Total ₹{total}
             </div>
 
-            {error && (
-              <div className="text-sm text-red-600">{error}</div>
-            )}
+            {error && <div className="text-xs text-red-600">{error}</div>}
 
             <button
               onClick={submitBooking}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-bold py-3 rounded-xl"
+              className="w-full bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-semibold py-2.5 rounded-lg text-sm shadow-md hover:shadow-lg transition-all"
             >
               {loading ? "Booking..." : "Confirm Booking"}
             </button>
@@ -181,9 +178,14 @@ export default function UserEvents() {
 
   const fetchEvents = async () => {
     setLoading(true);
-    const res = await api.get(EVENTS_URL);
-    setEvents(res.data || []);
-    setLoading(false);
+    try {
+      const res = await api.get(EVENTS_URL);
+      setEvents(res.data || []);
+    } catch (err) {
+      console.error("Failed to load events", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -198,47 +200,68 @@ export default function UserEvents() {
 
   return (
     <div
-      className="min-h-screen px-4 py-12"
-      style={{ backgroundColor: COLORS.cream }}
+      className="min-h-screen pb-16"
+      style={{ background: "linear-gradient(to bottom, #FFF7DF, #ffffff)" }}
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* HEADER */}
-        <div className="mb-10">
-          <h1
-            className="text-4xl font-extrabold"
-            style={{ color: COLORS.navy }}
-          >
-            🎟️ Upcoming Events
+        {/* HERO SECTION */}
+        <section className="pt-16 pb-12 text-center">
+          <div className="inline-flex items-center gap-2 px-5 py-2 bg-orange-600/20 rounded-full mb-5">
+            <FaTicketAlt className="text-orange-600" />
+            <span className="text-xs font-bold text-orange-800 uppercase tracking-wider">
+              Live Music & Energy
+            </span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl font-black text-[#0B2545] mb-4">
+            Live Events & Shows
+            <br />
+            <span className="text-[#FF7A3C]">At IMC Music Club</span>
           </h1>
-          <p className="text-slate-600 mt-2">
-            Discover and book live shows, concerts & karaoke nights
-          </p>
-        </div>
 
-        {/* SEARCH */}
-        <div className="relative mb-8 max-w-md">
-          <FaSearch className="absolute left-4 top-3 text-gray-400" />
+          <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto mb-6">
+            Experience unforgettable nights of music, energy, and entertainment.  
+            Book your seats now! 🎤🔥
+          </p>
+
+          {/* SMALLER EXPLORE EVENTS BUTTON */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-sm rounded-full shadow-md hover:shadow-lg transition-all"
+          >
+            Explore Events →
+          </motion.button>
+        </section>
+
+        {/* SEARCH BAR */}
+        <div className="relative max-w-lg mx-auto mb-10">
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
-            placeholder="Search events..."
+            placeholder="Search events by name or location..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 py-3 rounded-full border"
+            className="w-full pl-11 pr-4 py-3 rounded-full border border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-200 outline-none bg-white shadow-sm"
           />
         </div>
 
         {/* EVENTS GRID */}
         {loading ? (
-          <p>Loading events...</p>
+          <div className="text-center py-12 text-gray-600">Loading events...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            No events found matching your search.
+          </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((e) => (
               <motion.div
                 key={e.id}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-3xl shadow-xl overflow-hidden"
+                className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
               >
                 <img
                   src={
@@ -246,38 +269,38 @@ export default function UserEvents() {
                     "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800"
                   }
                   alt={e.name}
-                  className="h-56 w-full object-cover"
+                  className="h-48 w-full object-cover"
                 />
 
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#0B2545]">
+                <div className="p-5">
+                  <h3 className="text-lg font-bold text-[#0B2545] mb-3 line-clamp-2">
                     {e.name}
                   </h3>
 
-                  <div className="mt-3 space-y-2 text-sm text-slate-600">
-                    <div className="flex gap-2">
-                      <FaCalendarAlt /> {e.event_date}
+                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <FaCalendarAlt className="text-orange-500" /> {e.event_date}
                     </div>
-                    <div className="flex gap-2">
-                      <FaClock /> {e.event_time}
+                    <div className="flex items-center gap-2">
+                      <FaClock className="text-orange-500" /> {e.event_time}
                     </div>
-                    <div className="flex gap-2">
-                      <FaMapMarkerAlt /> {e.location}
+                    <div className="flex items-center gap-2">
+                      <FaMapMarkerAlt className="text-orange-500" /> {e.location}
                     </div>
-                    <div className="flex gap-2">
-                      <FaUsers /> {e.available_seats} seats
+                    <div className="flex items-center gap-2">
+                      <FaUsers className="text-orange-500" /> {e.available_seats} seats left
                     </div>
                   </div>
 
-                  <div className="mt-5 flex justify-between items-center">
-                    <span className="text-xl font-bold text-orange-600">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xl font-bold text-[#FF7A3C]">
                       ₹{e.ticket_price}
                     </span>
                     <button
                       onClick={() => setActiveEvent(e)}
-                      className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] px-5 py-2 rounded-full font-semibold text-[#0B2545]"
+                      className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] px-4 py-1.5 rounded-full font-medium text-sm shadow-md hover:shadow-lg transition-all"
                     >
-                      Book Tickets
+                      Book Now
                     </button>
                   </div>
                 </div>
@@ -287,6 +310,19 @@ export default function UserEvents() {
         )}
       </div>
 
+      {/* Connect Section */}
+      <section className="mt-16 py-12 bg-gradient-to-br from-[#0B2545] to-[#1a3a6e] text-white text-center">
+        <div className="max-w-4xl mx-auto px-4">
+          <h2 className="text-3xl sm:text-4xl font-black mb-4">
+            Let’s <span className="text-[#FF7A3C]">Connect</span>
+          </h2>
+          <p className="text-lg opacity-90">
+            Questions about classes, studio sessions, or events? Drop us a message 🎤
+          </p>
+        </div>
+      </section>
+
+      {/* Booking Modal */}
       {activeEvent && (
         <BookingModal
           event={activeEvent}

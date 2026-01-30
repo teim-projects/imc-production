@@ -1,6 +1,7 @@
 // src/components/Forms/StudioForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -413,6 +414,63 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     return !range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
   };
 
+  // NEW: Export function for View Bookings tab
+  const exportBookingsToCSV = () => {
+    if (!filtered.length) {
+      alert("No bookings to export");
+      return;
+    }
+    if (loading) {
+      alert("Please wait while data is loading...");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Customer",
+      "Studio",
+      "Date",
+      "Time",
+      "Duration (hrs)",
+      "Price (₹/hr)",
+      "Payment Methods",
+      "Contact Number",
+      "Email",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filtered.map((b, index) => {
+        const row = [
+          index + 1,
+          `"${(b.customer || "").replace(/"/g, '""')}"`,
+          `"${(b.studio_name || "").replace(/"/g, '""')}"`,
+          b.date || "-",
+          b.time_slot ? format12(b.time_slot) : "-",
+          b.duration || "-",
+          b.price_per_hour || b.price ? `₹${b.price_per_hour || b.price}` : "-",
+          Array.isArray(b.payment_methods) && b.payment_methods.length
+            ? `"${b.payment_methods.join(", ")}"`
+            : "-",
+          b.contact_number || "-",
+          b.email || "-",
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `studio_bookings_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // ---------- UI (Videography-style, reordered sections) ----------
   return (
     <div className="pf-wrap">
@@ -743,6 +801,23 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
             />
             <button className="btn" onClick={fetchAll} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
+            </button>
+
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportBookingsToCSV}
+              disabled={loading || filtered.length === 0}
+              title="Export filtered bookings to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
             </button>
           </div>
 

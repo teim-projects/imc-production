@@ -1,6 +1,7 @@
 // src/components/Forms/VideographyForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 /**
@@ -120,6 +121,73 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
   useEffect(() => {
     if (tab === "VIEW" && urlChecked) fetchRows();
   }, [tab, urlChecked, resolvedURL]);
+
+  // ---------- NEW: Export to CSV ----------
+  const exportVideographyToCSV = () => {
+    if (!filtered.length) {
+      alert("No videography bookings to export");
+      return;
+    }
+    if (loading) {
+      alert("Please wait while data is loading...");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Client Name",
+      "Mobile",
+      "Email",
+      "Project",
+      "Editor",
+      "Shoot Date",
+      "Start Time",
+      "Duration (hrs)",
+      "Location",
+      "Event Type",
+      "Other Event Name",
+      "Package Type",
+      "Package Price (₹)",
+      "Payment Method",
+      "Notes",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filtered.map((r, index) => {
+        const row = [
+          index + 1,
+          `"${(r.client_name || "").replace(/"/g, '""')}"`,
+          r.mobile_no || "-",
+          r.email || "-",
+          `"${(r.project || "").replace(/"/g, '""')}"`,
+          `"${(r.editor || "").replace(/"/g, '""')}"`,
+          r.shoot_date || r.date || "-",
+          r.start_time || "-",
+          r.duration_hours ?? "-",
+          `"${(r.location || "").replace(/"/g, '""')}"`,
+          `"${(r.event_type || "").replace(/"/g, '""')}"`,
+          r.event_type === "Other" ? `"${(r.other_event_name || "").replace(/"/g, '""')}"` : "-",
+          r.package_type || "-",
+          r.package_price ? `₹${r.package_price}` : "-",
+          r.payment_method || "-",
+          `"${(r.notes || "").replace(/"/g, '""')}"`,
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `videography_bookings_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // ---------- Handlers ----------
   const onChange = (e) => {
@@ -567,6 +635,23 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
             />
             <button className="btn" onClick={fetchRows} disabled={loading}>
               {loading ? "Loading..." : "Refresh"}
+            </button>
+
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportVideographyToCSV}
+              disabled={loading || filtered.length === 0}
+              title="Export filtered videography bookings to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
             </button>
           </div>
 

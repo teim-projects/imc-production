@@ -1,5 +1,7 @@
+// src/components/Forms/PhotographyForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
 /**
@@ -9,13 +11,21 @@ import "./Forms.css";
  * ✅ Package price field
  */
 
-const BASE_API = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE_API = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const CANDIDATE_API_URLS = [
   `${BASE_API}/auth/photography/`,
   `${BASE_API}/photography/`,
   `${BASE_API}/photography-bookings/`,
 ];
 const PAGE_SIZE = 10;
+
+// Event types for dropdown
+const eventTypes = [
+  "theatre music events",
+  "private music events",
+  "Birthday",
+  "Other",
+];
 
 const initialForm = {
   client_name: "",
@@ -42,7 +52,6 @@ const initialForm = {
 };
 
 const methodOptions = ["Cash", "Card", "UPI"];
-const eventTypes = ["theatre music events", "private music events", "Birthday", "Other"];
 const packages = ["Basic", "Standard", "Premium", "Custom"];
 
 const PhotographyForm = ({ onClose, viewOnly = false }) => {
@@ -118,6 +127,79 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
   useEffect(() => {
     if (tab === "VIEW" && urlChecked) fetchRows();
   }, [tab, urlChecked, resolvedURL]);
+
+  // ---------- NEW: Export to CSV ----------
+  const exportPhotographyToCSV = () => {
+    if (!filtered.length) {
+      alert("No photography bookings to export");
+      return;
+    }
+    if (loading) {
+      alert("Please wait while data is loading...");
+      return;
+    }
+
+    const headers = [
+      "Sr No",
+      "Client Name",
+      "Mobile",
+      "Email",
+      "Event Type",
+      "Other Event Name",
+      "Shoot Date",
+      "Start Time",
+      "Duration (hrs)",
+      "Location",
+      "Package Type",
+      "Package Price (₹)",
+      "Photographers",
+      "Drone Needed",
+      "Equipment Needed",
+      "Add-on Name",
+      "Add-on Price (₹)",
+      "Payment Method",
+      "Notes",
+    ];
+
+    const csvRows = [
+      headers.join(","),
+      ...filtered.map((r, index) => {
+        const row = [
+          index + 1,
+          `"${(r.client_name || "").replace(/"/g, '""')}"`,
+          r.mobile_no || "-",
+          r.email || "-",
+          `"${(r.event_type || "").replace(/"/g, '""')}"`,
+          r.event_type === "Other" ? `"${(r.event_type_other || "").replace(/"/g, '""')}"` : "-",
+          r.shoot_date || r.date || "-",
+          r.start_time || "-",
+          r.duration_hours ?? "-",
+          `"${(r.location || "").replace(/"/g, '""')}"`,
+          r.package_type || "-",
+          r.package_price ? `₹${r.package_price}` : "-",
+          r.photographers_count ?? "-",
+          r.drone_needed ? "Yes" : "No",
+          `"${(r.equipment_needed || "").replace(/"/g, '""')}"`,
+          `"${(r.addon_name || "").replace(/"/g, '""')}"`,
+          r.addon_price ? `₹${r.addon_price}` : "-",
+          r.payment_method || "-",
+          `"${(r.notes || "").replace(/"/g, '""')}"`,
+        ];
+        return row.join(",");
+      }),
+    ];
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `photography_bookings_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // ---------- Handlers ----------
   const onChange = (e) => {
@@ -198,9 +280,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
           ? `404: ${resolvedURL} not found. Backend route missing.`
           : typeof err?.response?.data === "object"
           ? JSON.stringify(err.response.data)
-          : err?.response?.data?.detail ||
-            err?.message ||
-            "Failed to save booking."
+          : err?.response?.data?.detail || err?.message || "Failed to save booking."
       );
     } finally {
       setSaving(false);
@@ -293,14 +373,6 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
       return `Other - ${r.event_type_other}`;
     }
     return r.event_type;
-  };
-
-  const displayAddon = (r) => {
-    if (!r.addon_name && !r.addon_price) return "";
-    if (r.addon_name && r.addon_price) {
-      return `${r.addon_name} (₹${r.addon_price})`;
-    }
-    return r.addon_name || `₹${r.addon_price}`;
   };
 
   // ---------- UI ----------
@@ -556,108 +628,124 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
       )}
 
       {/* VIEW TABLE */}
-{tab === "VIEW" && (
-  <div className="pf-table-card">
-    <div className="pf-table-top">
-      <input
-        className="pf-search"
-        placeholder="Search client, contact_number, email, event, location, package..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-      <button className="btn" onClick={fetchRows} disabled={loading}>
-        {loading ? "Loading..." : "Refresh"}
-      </button>
-    </div>
+      {tab === "VIEW" && (
+        <div className="pf-table-card">
+          <div className="pf-table-top">
+            <input
+              className="pf-search"
+              placeholder="Search client, contact_number, email, event, location, package..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <button className="btn" onClick={fetchRows} disabled={loading}>
+              {loading ? "Loading..." : "Refresh"}
+            </button>
 
-    <div className="pf-table-wrap">
-      <table className="pf-table">
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>Event</th>
-            <th>Date</th>
-            <th>Location</th>
-            <th>Package</th>
-            <th>Budget</th>
-            <th>Payment</th>
-            <th className="c">Actions</th>
-          </tr>
-        </thead>
+            {/* EXPORT BUTTON ADDED HERE */}
+            <button
+              className="btn ghost"
+              onClick={exportPhotographyToCSV}
+              disabled={loading || filtered.length === 0}
+              title="Export filtered photography bookings to CSV"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+              }}
+            >
+              <Download size={18} />
+              Export
+            </button>
+          </div>
 
-        <tbody>
-          {pageRows.map((r) => (
-            <tr key={r.id}>
-              <td>{r.client}</td>
-              <td>{displayEvent(r)}</td>
-              <td>{r.date}</td>
-              <td>{r.location}</td>
+          <div className="pf-table-wrap">
+            <table className="pf-table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Event</th>
+                  <th>Date</th>
+                  <th>Location</th>
+                  <th>Package</th>
+                  <th>Budget</th>
+                  <th>Payment</th>
+                  <th className="c">Actions</th>
+                </tr>
+              </thead>
 
-              {/* PACKAGE */}
-              <td>{r.package_type || "-"}</td>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.client}</td>
+                    <td>{displayEvent(r)}</td>
+                    <td>{r.date}</td>
+                    <td>{r.location}</td>
 
-              {/* BUDGET (from package_price) */}
-              <td>
-                {r.package_price
-                  ? `₹${Number(r.package_price).toLocaleString()}`
-                  : "-"}
-              </td>
+                    {/* PACKAGE */}
+                    <td>{r.package_type || "-"}</td>
 
-              {/* PAYMENT (from payment_methods_list) */}
-              <td>
-                {Array.isArray(r.payment_methods_list) &&
-                r.payment_methods_list.length > 0
-                  ? r.payment_methods_list.join(", ")
-                  : "-"}
-              </td>
+                    {/* BUDGET (from package_price) */}
+                    <td>
+                      {r.package_price
+                        ? `₹${Number(r.package_price).toLocaleString()}`
+                        : "-"}
+                    </td>
 
-              <td className="c">
-                <button className="mini" onClick={() => onEdit(r)}>
-                  Edit
-                </button>
-                <button
-                  className="mini danger"
-                  onClick={() => onDelete(r)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+                    {/* PAYMENT (from payment_methods_list) */}
+                    <td>
+                      {Array.isArray(r.payment_methods_list) &&
+                      r.payment_methods_list.length > 0
+                        ? r.payment_methods_list.join(", ")
+                        : "-"}
+                    </td>
 
-          {!pageRows.length && (
-            <tr>
-              <td colSpan="8" className="c muted">
-                {loading ? "Loading..." : "No records found."}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+                    <td className="c">
+                      <button className="mini" onClick={() => onEdit(r)}>
+                        Edit
+                      </button>
+                      <button
+                        className="mini danger"
+                        onClick={() => onDelete(r)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
 
-    <div className="pf-pager">
-      <button
-        className="mini"
-        disabled={page <= 1}
-        onClick={() => setPage((p) => Math.max(1, p - 1))}
-      >
-        Prev
-      </button>
-      <span>
-        Page {page} / {totalPages}
-      </span>
-      <button
-        className="mini"
-        disabled={page >= totalPages}
-        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-      >
-        Next
-      </button>
-    </div>
-  </div>
-)}
+                {!pageRows.length && (
+                  <tr>
+                    <td colSpan="8" className="c muted">
+                      {loading ? "Loading..." : "No records found."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
+          <div className="pf-pager">
+            <button
+              className="mini"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
+            <span>
+              Page {page} / {totalPages}
+            </span>
+            <button
+              className="mini"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

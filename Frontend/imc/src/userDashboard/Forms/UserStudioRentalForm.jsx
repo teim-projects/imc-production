@@ -87,12 +87,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
 
-  // ── Filters & Search ───────────────────────────────────────
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
-
   const emptyForm = {
     full_name: "",
     mobile: "",
@@ -161,41 +155,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
   const pricePerHour = selectedStudio?.hourly_rate ?? null;
 
-  /* ── Frontend Filtering ────────────────────────────────────── */
-
-  const filteredStudios = useMemo(() => {
-    let list = [...masters];
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      list = list.filter((s) =>
-        (s.name || "").toLowerCase().includes(term) ||
-        (s.location || "").toLowerCase().includes(term) ||
-        (s.full_location || "").toLowerCase().includes(term)
-      );
-    }
-
-    if (selectedCategory) {
-      list = list.filter((s) => (s.category || "").toLowerCase() === selectedCategory.toLowerCase());
-    }
-
-    if (maxPrice && !isNaN(Number(maxPrice))) {
-      const mp = Number(maxPrice);
-      list = list.filter((s) => Number(s.hourly_rate || 0) <= mp);
-    }
-
-    if (selectedLocation) {
-      const loc = selectedLocation.toLowerCase().trim();
-      list = list.filter((s) =>
-        (s.location || "").toLowerCase().includes(loc) ||
-        (s.full_location || "").toLowerCase().includes(loc)
-      );
-    }
-
-    return list;
-  }, [masters, searchTerm, selectedCategory, maxPrice, selectedLocation]);
-
-  /* ── Time Slots Logic (unchanged core) ─────────────────────── */
+  /* ── Time Slots Logic ──────────────────────────────────────── */
 
   const SLOT_STEP_MIN = 60;
   const allSlots = useMemo(() => makeSlots("08:00", "22:00", SLOT_STEP_MIN), []);
@@ -283,16 +243,8 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   };
 
   const resetForm = () => {
-    setFormData((prev) => ({
-      ...emptyForm,
-      studio_id: prev.studio_id,
-      studio_name: prev.studio_name,
-    }));
+    setFormData(emptyForm);
     setSelectedRange([]);
-    setSearchTerm("");
-    setSelectedCategory("");
-    setMaxPrice("");
-    setSelectedLocation("");
   };
 
   const validate = () => {
@@ -373,64 +325,16 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
         )}
       </div>
 
-      {/* ── Filters ───────────────────────────────────────────── */}
-      <section className="pf-card" style={{ marginBottom: "1.6rem" }}>
-        <h3 style={{ marginTop: 0 }}>Find Studio</h3>
-
-        <div className="pf-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-          <label>
-            Search
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Studio name or location..."
-              style={{ marginTop: "0.4rem" }}
-            />
-          </label>
-
-          <label>
-            Location
-            <input
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              placeholder="City / area"
-              style={{ marginTop: "0.4rem" }}
-            />
-          </label>
-
-          <label>
-            Max Price / hr
-            <input
-              type="number"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              placeholder="e.g. 2000"
-              min="0"
-              style={{ marginTop: "0.4rem" }}
-            />
-          </label>
-
-          {/* Add category if your data has it – otherwise remove */}
-          {/* <label>
-            Category
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              style={{ marginTop: "0.4rem", padding: "0.6rem" }}
-            >
-              <option value="">All</option>
-              <option value="recording">Recording</option>
-              <option value="rehearsal">Rehearsal</option>
-              <option value="mixing">Mixing & Mastering</option>
-            </select>
-          </label> */}
+      {/* ── Studio Selection (no filters) ────────────────────────────── */}
+      {loading ? (
+        <div className="pf-banner" style={{ textAlign: "center" }}>Loading studios...</div>
+      ) : masters.length === 0 ? (
+        <div className="pf-banner pf-error" style={{ textAlign: "center" }}>
+          No studios available at the moment
         </div>
-      </section>
-
-      {/* ── Studio Selection ──────────────────────────────────── */}
-      {filteredStudios.length > 0 ? (
+      ) : (
         <section className="pf-card" style={{ marginBottom: "1.8rem" }}>
-          <h3 style={{ marginTop: 0 }}>Available Studios ({filteredStudios.length})</h3>
+          <h3 style={{ marginTop: 0 }}>Available Studios ({masters.length})</h3>
 
           <div style={{
             display: "grid",
@@ -438,7 +342,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
             gap: "1rem",
             marginTop: "1rem",
           }}>
-            {filteredStudios.map((studio) => {
+            {masters.map((studio) => {
               const isSelected = String(studio.id) === String(formData.studio_id);
               return (
                 <div
@@ -473,14 +377,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
             })}
           </div>
         </section>
-      ) : (
-        loading ? (
-          <div className="pf-banner" style={{ textAlign: "center" }}>Loading studios...</div>
-        ) : (
-          <div className="pf-banner pf-error" style={{ textAlign: "center" }}>
-            No studios match your filters
-          </div>
-        )
       )}
 
       {selectedStudio && (
