@@ -3,11 +3,7 @@ import axios from "axios";
 import { X } from "lucide-react";
 
 /* ================= API CONFIG ================= */
-// ✅ Vite-safe API URL
-const API_URL =
-  import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
-
-// ✅ Teacher base endpoint
+const API_URL = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 const TEACHER_API = `${API_URL}/auth/teachers/`;
 
 export default function TeacherFormModal({
@@ -21,13 +17,11 @@ export default function TeacherFormModal({
 }) {
   if (!isOpen) return null;
 
-  /* ================= HANDLE CHANGE ================= */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /* ================= SUBMIT ================= */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -42,29 +36,26 @@ export default function TeacherFormModal({
       };
 
       if (isEdit && form.id) {
-        // ✅ UPDATE teacher
         await axios.put(`${TEACHER_API}${form.id}/`, form, config);
       } else {
-        // ✅ CREATE teacher
         await axios.post(TEACHER_API, form, config);
       }
 
-      if (onSave) onSave(); // refresh teacher list
+      if (onSave) onSave();
       onClose();
     } catch (error) {
       console.error("Teacher save error:", error.response?.data || error);
-      alert("Failed to save teacher. Please check form data.");
+      alert("Failed to save teacher. Please check the fields.");
     }
   };
 
-  /* ================= UI ================= */
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{isEdit ? "Edit Teacher" : "Add Teacher"}</h2>
-          <button onClick={onClose}>
-            <X />
+          <button className="close-btn" onClick={onClose}>
+            <X size={20} />
           </button>
         </div>
 
@@ -76,6 +67,7 @@ export default function TeacherFormModal({
               value={form.name || ""}
               onChange={handleChange}
               required
+              placeholder="Full name"
             />
           </label>
 
@@ -85,28 +77,33 @@ export default function TeacherFormModal({
               name="expertise"
               value={form.expertise || ""}
               onChange={handleChange}
-              placeholder="Classical / Bollywood / Guitar"
+              placeholder="e.g. Classical, Bollywood"
             />
           </label>
 
-          <label>
-            Experience (years)
-            <input
-              type="number"
-              name="experience"
-              value={form.experience || ""}
-              onChange={handleChange}
-            />
-          </label>
+          <div className="row">
+            <label className="half">
+              Experience (years)
+              <input
+                type="number"
+                name="experience"
+                value={form.experience || ""}
+                onChange={handleChange}
+                min="0"
+                placeholder="0"
+              />
+            </label>
 
-          <label>
-            Phone
-            <input
-              name="phone"
-              value={form.phone || ""}
-              onChange={handleChange}
-            />
-          </label>
+            <label className="half">
+              Phone
+              <input
+                name="phone"
+                value={form.phone || ""}
+                onChange={handleChange}
+                placeholder="Mobile number"
+              />
+            </label>
+          </div>
 
           <label>
             Email
@@ -115,6 +112,7 @@ export default function TeacherFormModal({
               name="email"
               value={form.email || ""}
               onChange={handleChange}
+              placeholder="teacher@example.com"
             />
           </label>
 
@@ -122,15 +120,16 @@ export default function TeacherFormModal({
             Bio
             <textarea
               name="bio"
-              rows="3"
+              rows="2"
               value={form.bio || ""}
               onChange={handleChange}
+              placeholder="Short description..."
             />
           </label>
 
           <div className="actions">
-            <button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save Teacher"}
+            <button type="submit" disabled={saving} className="primary">
+              {saving ? "Saving..." : "Save"}
             </button>
             <button type="button" className="secondary" onClick={onClose}>
               Cancel
@@ -138,24 +137,24 @@ export default function TeacherFormModal({
           </div>
         </form>
 
-        {/* ================= STYLES ================= */}
         <style jsx>{`
           .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 1000;
+            z-index: 1200;
           }
 
           .modal-box {
-            background: #fff;
-            width: 450px;
-            max-width: 95%;
-            border-radius: 14px;
-            padding: 1.5rem;
+            background: white;
+            width: 380px;           /* reduced from 450px */
+            max-width: 92%;
+            border-radius: 12px;
+            padding: 1.2rem;        /* tighter padding */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
           }
 
           .modal-header {
@@ -165,43 +164,97 @@ export default function TeacherFormModal({
             margin-bottom: 1rem;
           }
 
+          h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1f2937;
+          }
+
+          .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 4px;
+          }
+
           label {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-            margin-bottom: 1rem;
+            display: block;
+            margin-bottom: 0.9rem;   /* reduced spacing */
+            font-size: 0.9rem;
             font-weight: 500;
+            color: #374151;
           }
 
           input,
           textarea {
-            padding: 0.6rem;
-            border-radius: 0.5rem;
+            width: 100%;
+            padding: 0.55rem 0.8rem;
             border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            margin-top: 0.3rem;
+          }
+
+          input:focus,
+          textarea:focus {
+            outline: none;
+            border-color: #fb923c;
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+          }
+
+          textarea {
+            resize: vertical;
+          }
+
+          .row {
+            display: flex;
+            gap: 0.8rem;
+          }
+
+          .half {
+            flex: 1;
           }
 
           .actions {
             display: flex;
             justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 1rem;
+            gap: 0.8rem;
+            margin-top: 1.2rem;
           }
 
           button {
-            padding: 0.6rem 1.4rem;
+            padding: 0.55rem 1.2rem;
             border-radius: 999px;
-            border: none;
-            cursor: pointer;
+            font-size: 0.95rem;
             font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
           }
 
-          button:not(.secondary) {
+          .primary {
             background: #ea580c;
             color: white;
           }
 
+          .primary:hover:not(:disabled) {
+            background: #c2410c;
+          }
+
+          .primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+
           .secondary {
             background: #e5e7eb;
+            color: #374151;
+          }
+
+          .secondary:hover {
+            background: #d1d5db;
           }
         `}</style>
       </div>

@@ -19,8 +19,9 @@ import {
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const SINGER_API = `${API_BASE}/auth/singer/`;
+const PAYMENT_CREATE_API = `${API_BASE}/api/payments/create-payment/`;
 
-// Policies data
+// Policies data - complete (unchanged)
 const policies = [
   {
     id: "A",
@@ -224,7 +225,7 @@ the singer confirms acceptance of all policies stated above.
   },
 ];
 
-// Modal Component
+// Modal Component - unchanged
 function PoliciesModal({ onClose }) {
   const [activeTab, setActiveTab] = useState("A");
   const current = policies.find((p) => p.id === activeTab);
@@ -294,6 +295,7 @@ function PoliciesModal({ onClose }) {
 
 export default function SingerRegistration() {
   const [loading, setLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -320,7 +322,7 @@ export default function SingerRegistration() {
 
   const canSubmit = form.name.trim() && form.mobile.trim() && form.genre.trim() && form.agreed_terms;
 
-  const submit = async () => {
+  const handleRegistrationAndPayment = async () => {
     if (!canSubmit) {
       alert("Please fill required fields and agree to the Terms & Conditions");
       return;
@@ -337,15 +339,58 @@ export default function SingerRegistration() {
 
     try {
       setLoading(true);
-      await axios.post(SINGER_API, data, {
+
+      // Step 1: Create singer profile
+      const singerResponse = await axios.post(SINGER_API, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setSuccess(true);
+
+      console.log("Singer created successfully:", singerResponse.data);
+
+      // Step 2: Start payment
+      setLoading(false);
+      setPaymentLoading(true);
+
+      const paymentPayload = {
+        amount: 1000,  // Fixed as per your current button
+        customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, '') || 'guest'}`,
+        email: "singer@imc.com", // You can collect real email later
+        phone: form.mobile,
+      };
+
+      console.log("Initiating payment with payload:", paymentPayload);
+
+      const paymentResponse = await axios.post(PAYMENT_CREATE_API, paymentPayload, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      console.log("Payment initiation response:", paymentResponse.data);
+
+      if (paymentResponse.data?.payment_links?.web) {
+        // Success → redirect to payment gateway link
+        window.location.href = paymentResponse.data.payment_links.web;
+      } else {
+        alert("Registration successful, but payment link was not received from server.");
+      }
     } catch (err) {
-      console.error("API ERROR:", err.response?.data || err.message);
-      alert("Form submission failed — check console for details");
+      console.error("Registration/Payment error:", err);
+      console.error("Response data:", err.response?.data);
+      console.error("Status:", err.response?.status);
+
+      let errorMsg = "Something went wrong. Please try again or contact support.";
+
+      if (err.response?.data?.error) {
+        errorMsg = err.response.data.error;
+      } else if (err.response?.data?.detail) {
+        errorMsg = err.response.data.detail;
+      } else if (err.response?.data) {
+        errorMsg = JSON.stringify(err.response.data);
+      }
+
+      alert(errorMsg);
     } finally {
       setLoading(false);
+      setPaymentLoading(false);
     }
   };
 
@@ -373,6 +418,7 @@ export default function SingerRegistration() {
     });
   };
 
+  // Success screen (shown only if something goes wrong before redirect)
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
@@ -391,7 +437,9 @@ export default function SingerRegistration() {
           <h2 className="text-4xl font-extrabold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-4">
             Registration Successful!
           </h2>
-          
+          <p className="text-lg text-gray-700 mb-8">
+            Your profile has been created. You should be redirected to payment...
+          </p>
           <button
             onClick={resetForm}
             className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
@@ -405,15 +453,12 @@ export default function SingerRegistration() {
 
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION */}
+      {/* HERO SECTION - unchanged */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: `url(${SingerBackground})`,
-          }}
+          style={{ backgroundImage: `url(${SingerBackground})` }}
         />
-
         <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -430,7 +475,6 @@ export default function SingerRegistration() {
             >
               SINGER REGISTRATION
             </h1>
-
             <p
               className="text-3xl md:text-4xl lg:text-5xl font-bold drop-shadow-lg"
               style={{
@@ -693,7 +737,6 @@ export default function SingerRegistration() {
                   </div>
                 </div>
 
-                {/* EXACT TEXT COLOR AS YOUR SCREENSHOT */}
                 <div className="flex items-start gap-4 mt-12">
                   <input
                     type="checkbox"
@@ -724,24 +767,29 @@ export default function SingerRegistration() {
                 </div>
 
                 <button
-                  onClick={submit}
-                  disabled={loading || !canSubmit}
-                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                  onClick={handleRegistrationAndPayment}
+                  disabled={loading || paymentLoading || !canSubmit}
+                  className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-4 h-4" />
-                      Submitting...
+                      <Loader2 className="animate-spin w-6 h-6" />
+                      Registering...
+                    </>
+                  ) : paymentLoading ? (
+                    <>
+                      <Loader2 className="animate-spin w-6 h-6" />
+                      Redirecting to Payment...
                     </>
                   ) : (
-                    "Submit Registration"
+                    "Register & Pay ₹1000"
                   )}
                 </button>
               </motion.div>
             </div>
           </div>
 
-          {/* RIGHT: BENEFITS PANELS */}
+          {/* RIGHT: BENEFITS PANELS - unchanged */}
           <div className="lg:col-span-1 space-y-8 mt-20">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
