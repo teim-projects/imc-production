@@ -71,7 +71,8 @@ INSTALLED_APPS = [
 
     # My apps
     'api',
-    "User_Dashboard", 
+    "User_Dashboard",
+    'payments',   # ✅ PAYMENT APP 
 ] 
 
 SITE_ID = 1
