@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
@@ -14,12 +14,14 @@ import {
   Music,
   Star,
   Award,
+  AlertCircle,
 } from "lucide-react";
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const SINGER_API = `${API_BASE}/auth/singer/`;
-const PAYMENT_CREATE_API = `${API_BASE}/api/payments/create-payment/`;
+const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`; // ← Confirm this path with backend
+const PAYMENT_STATUS_API = `${API_BASE}/payments/status`; // ← Must create this endpoint on backend
 
 // Policies data - complete (unchanged)
 const policies = [
@@ -297,7 +299,10 @@ export default function SingerRegistration() {
   const [loading, setLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("idle"); // idle | checking | success | failed | pending
+  const [orderId, setOrderId] = useState(null); // Store order ID for polling
 
   const [form, setForm] = useState({
     name: "",
@@ -322,11 +327,51 @@ export default function SingerRegistration() {
 
   const canSubmit = form.name.trim() && form.mobile.trim() && form.genre.trim() && form.agreed_terms;
 
+  // Poll payment status when pending
+  useEffect(() => {
+    let interval;
+    if (paymentStatus === "pending" || paymentStatus === "checking") {
+      interval = setInterval(async () => {
+        if (!orderId) return;
+
+        try {
+          const res = await axios.get(PAYMENT_STATUS_API, {
+            params: { order_id: orderId, phone: form.mobile },
+          });
+
+          console.log("[STATUS POLL] Response:", res.data);
+
+          const status = res.data?.gateway_status || res.data?.status || "UNKNOWN";
+
+          if (status === "SUCCESS" || res.data?.success === true) {
+            setPaymentStatus("success");
+            setSuccess(true);
+            clearInterval(interval);
+          } else if (status === "FAILED" || status === "EXPIRED") {
+            setPaymentStatus("failed");
+            setErrorMessage("Payment failed or timed out. Please try again.");
+            clearInterval(interval);
+          } else if (status.includes("PENDING")) {
+            // Continue polling
+            console.log("[STATUS] Still pending...");
+          }
+        } catch (err) {
+          console.error("[POLL ERROR]", err);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    return () => clearInterval(interval);
+  }, [paymentStatus, orderId, form.mobile]);
+
   const handleRegistrationAndPayment = async () => {
     if (!canSubmit) {
-      alert("Please fill required fields and agree to the Terms & Conditions");
+      setErrorMessage("कृपया सर्व आवश्यक फील्ड भरा आणि नियम व अटी मान्य करा.");
       return;
     }
+
+    setErrorMessage("");
+    setLoading(true);
 
     const data = new FormData();
     Object.entries(form).forEach(([key, value]) => {
@@ -338,8 +383,6 @@ export default function SingerRegistration() {
     data.append("active", "true");
 
     try {
-      setLoading(true);
-
       // Step 1: Create singer profile
       const singerResponse = await axios.post(SINGER_API, data, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -347,14 +390,14 @@ export default function SingerRegistration() {
 
       console.log("Singer created successfully:", singerResponse.data);
 
-      // Step 2: Start payment
       setLoading(false);
       setPaymentLoading(true);
 
+      // Step 2: Start payment
       const paymentPayload = {
-        amount: 1000,  // Fixed as per your current button
+        amount: 1,
         customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, '') || 'guest'}`,
-        email: "singer@imc.com", // You can collect real email later
+        email: "singer@imc.com",
         phone: form.mobile,
       };
 
@@ -364,30 +407,44 @@ export default function SingerRegistration() {
         headers: { "Content-Type": "application/json" },
       });
 
-      console.log("Payment initiation response:", paymentResponse.data);
+      console.log("Full Payment Response:", paymentResponse.data);
+
+      const gatewayStatus = paymentResponse.data?.gateway_status;
+      const newOrderId = paymentResponse.data?.order_id || paymentResponse.data?.id;
 
       if (paymentResponse.data?.payment_links?.web) {
-        // Success → redirect to payment gateway link
+        // Direct redirect to gateway
         window.location.href = paymentResponse.data.payment_links.web;
+      } else if (gatewayStatus === "PENDING_VBV" || gatewayStatus?.includes("PENDING")) {
+        // UPI pending case - start polling
+        if (newOrderId) {
+          setOrderId(newOrderId);
+        }
+        setPaymentStatus("pending");
+        setPaymentLoading(false);
+        alert("Payment request sent to your UPI app. Please approve in Google Pay / BHIM.\n\nWaiting for approval...");
+      } else if (paymentResponse.data?.success === true) {
+        // Rare direct success case
+        setSuccess(true);
       } else {
-        alert("Registration successful, but payment link was not received from server.");
+        setErrorMessage("Payment initiation failed. Please try again or contact support.");
       }
     } catch (err) {
       console.error("Registration/Payment error:", err);
-      console.error("Response data:", err.response?.data);
-      console.error("Status:", err.response?.status);
 
-      let errorMsg = "Something went wrong. Please try again or contact support.";
+      let errorMsg = "काहीतरी चूक झाली. पुन्हा प्रयत्न करा किंवा support ला संपर्क करा.";
 
-      if (err.response?.data?.error) {
-        errorMsg = err.response.data.error;
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
       } else if (err.response?.data?.detail) {
         errorMsg = err.response.data.detail;
+      } else if (err.response?.data?.error) {
+        errorMsg = err.response.data.error;
       } else if (err.response?.data) {
         errorMsg = JSON.stringify(err.response.data);
       }
 
-      alert(errorMsg);
+      setErrorMessage(errorMsg);
     } finally {
       setLoading(false);
       setPaymentLoading(false);
@@ -396,6 +453,9 @@ export default function SingerRegistration() {
 
   const resetForm = () => {
     setSuccess(false);
+    setPaymentStatus("idle");
+    setOrderId(null);
+    setErrorMessage("");
     setForm({
       name: "",
       birth_date: "",
@@ -418,42 +478,71 @@ export default function SingerRegistration() {
     });
   };
 
-  // Success screen (shown only if something goes wrong before redirect)
-  if (success) {
+  // Success Screen
+  if (success || paymentStatus === "success") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center px-6 py-12">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-12 text-center max-w-lg w-full border border-white/50"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="bg-white rounded-3xl shadow-2xl p-10 md:p-16 text-center max-w-2xl w-full border border-green-200"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
           >
-            <CheckCircle className="w-24 h-24 text-green-500 mx-auto mb-6" />
+            <CheckCircle className="w-24 h-24 md:w-32 md:h-32 text-green-500 mx-auto mb-8" />
           </motion.div>
-          <h2 className="text-4xl font-extrabold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent mb-4">
-            Registration Successful!
-          </h2>
-          <p className="text-lg text-gray-700 mb-8">
-            Your profile has been created. You should be redirected to payment...
+
+          <h1 className="text-4xl md:text-5xl font-extrabold text-green-800 mb-4">
+            Payment Successful!
+          </h1>
+
+          <p className="text-xl md:text-2xl text-gray-700 mb-8">
+            ₹1,000 received successfully
           </p>
-          <button
-            onClick={resetForm}
-            className="px-10 py-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition"
-          >
-            Register Another Singer
-          </button>
+
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-10">
+            <p className="text-lg text-gray-800 leading-relaxed">
+              Congratulations! Your singer registration is now complete.<br />
+              You are officially part of the IMC Artist Program.
+            </p>
+            <p className="text-base text-gray-600 mt-4">
+              You will receive confirmation and next steps on your registered mobile/email.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => window.location.href = "/dashboard"}
+              className="px-10 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-3"
+            >
+              Go to Dashboard
+            </button>
+
+            <button
+              onClick={resetForm}
+              className="px-10 py-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-xl shadow transition transform hover:scale-105 flex items-center justify-center gap-3"
+            >
+              Register Another Singer
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-500 mt-12">
+            Thank you for joining IMC Artist Program!<br />
+            Secured by HDFC SmartGateway
+          </p>
         </motion.div>
       </div>
     );
   }
 
+  // Main Form (everything else unchanged)
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION - unchanged */}
+      {/* Hero */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -489,10 +578,10 @@ export default function SingerRegistration() {
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
+      {/* Main Content */}
       <section className="relative px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* LEFT: REGISTRATION FORM */}
+          {/* Form Column */}
           <div className="lg:col-span-2">
             <div className="sticky top-20 -mt-20 lg:-mt-32">
               <motion.div
@@ -506,6 +595,12 @@ export default function SingerRegistration() {
                   <span className="text-5xl">🎤</span>
                   Register Your Talent
                 </h2>
+
+                {errorMessage && (
+                  <div className="mb-8 p-5 bg-red-50 border border-red-200 rounded-2xl text-red-800">
+                    <strong>Error:</strong> {errorMessage}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
@@ -779,17 +874,17 @@ export default function SingerRegistration() {
                   ) : paymentLoading ? (
                     <>
                       <Loader2 className="animate-spin w-6 h-6" />
-                      Redirecting to Payment...
+                      Processing Payment...
                     </>
                   ) : (
-                    "Register & Pay ₹1000"
+                    "Register & Pay "
                   )}
                 </button>
               </motion.div>
             </div>
           </div>
 
-          {/* RIGHT: BENEFITS PANELS - unchanged */}
+          {/* RIGHT: BENEFITS PANELS */}
           <div className="lg:col-span-1 space-y-8 mt-20">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
@@ -845,7 +940,6 @@ export default function SingerRegistration() {
 
       <Footer />
 
-      {/* Modal Popup */}
       {showModal && <PoliciesModal onClose={() => setShowModal(false)} />}
     </div>
   );
