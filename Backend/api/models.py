@@ -788,7 +788,6 @@ SoundSetup = Sound
 # ===============================================
 # ============  Singer (SERVICE)  =========
 # ===============================================
-
 import os
 import uuid
 import re
@@ -848,6 +847,17 @@ class Singer(models.Model):
         default=""
     )
 
+    # ✅ NEW FIELD (THIS FIXES YOUR ISSUE)
+    payment_method = models.CharField(
+        max_length=20,
+        choices=[
+            ('Cash', 'Cash'),
+            ('UPI', 'UPI'),
+            ('Card', 'Card')
+        ],
+        default='Cash'
+    )
+
     active = models.BooleanField(default=True)
 
     # ✅ VIDEO FIELD (PHOTO REMOVED)
@@ -905,6 +915,7 @@ class Singer(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.name}"
+
 
 
 # ===============================================
