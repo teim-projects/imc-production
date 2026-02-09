@@ -120,6 +120,16 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
   const accessToken = localStorage.getItem("access");
 
+  // Helper for payment chip styling
+  const getPaymentChipClass = (method) => {
+    switch (method?.trim()) {
+      case "Cash": return "chip-success";
+      case "UPI":  return "chip-info";
+      case "Card": return "chip-warning";
+      default:     return "chip-muted";
+    }
+  };
+
   useEffect(() => {
     if (!accessToken) {
       setError("You are not logged in. Please login to manage singers.");
@@ -212,7 +222,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
           `"${(s.genre || "").replace(/"/g, '""')}"`,
           `"${(s.city || "").replace(/"/g, '""')}"`,
           s.rate || "",
-          s.payment_method || "",
+          s.payment_method || "Cash",
           s.active ? "Active" : "Inactive",
         ];
         return row.join(",");
@@ -260,7 +270,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         gender: d.gender || "",
         payment_method: d.payment_method || "Cash",
         active: typeof d.active === "boolean" ? d.active : true,
-        video: null, // file input starts empty – existing video shown via preview
+        video: null,
       });
 
       setPreview(d.video ? safeImageUrl(d.video) : null);
@@ -299,7 +309,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
     const file = e.target.files?.[0] || null;
     setForm((f) => ({ ...f, video: file }));
 
-    // Clean up previous blob URL if exists
     if (preview && preview.startsWith("blob:")) {
       URL.revokeObjectURL(preview);
     }
@@ -307,7 +316,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
     if (file) {
       setPreview(URL.createObjectURL(file));
     } else {
-      // If user removes file, show existing server video again (if editing)
       setPreview(editingId && form.video === null ? safeImageUrl(singers.find(s => s.id === editingId)?.video) : null);
     }
   };
@@ -369,7 +377,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
             headers: { "Content-Type": "multipart/form-data" },
           });
         } else {
-          // No new video file → JSON PATCH (video remains unchanged)
+          // No new video file → JSON PATCH
           const payload = {
             name: form.name,
             city: form.city || "",
@@ -962,7 +970,14 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>{s.genre || "—"}</td>
                       <td>{s.city || "—"}</td>
                       <td>₹ {fmtCurrency(s.rate || "1000")}</td>
-                      <td>{s.payment_method || "—"}</td>
+
+                      {/* IMPROVED PAYMENT DISPLAY */}
+                      <td>
+                        <span className={`chip ${getPaymentChipClass(s.payment_method)}`}>
+                          {s.payment_method || "Cash"}
+                        </span>
+                      </td>
+
                       <td>
                         <span className={`chip ${s.active ? "chip-success" : "chip-muted"}`}>
                           {s.active ? "Active" : "Inactive"}
