@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useParams,
+  useLocation,
 } from "react-router-dom";
 
 /* ================= COMMON ================= */
@@ -25,7 +26,6 @@ import Events from "./userDashboard/pages/Events";
 import Contact from "./userDashboard/pages/Contact";
 import SingingClass from "./userDashboard/pages/SingingClass";
 import SingerRegistration from "./userDashboard/pages/SingerRegistration";
-
 
 /* ================= BOOKING PAGES ================= */
 import PrivateBooking from "./userDashboard/pages/PrivateBooking";
@@ -49,6 +49,8 @@ import AnnualFeePage from "./userDashboard/pages/AnnualFeePage";
 
 /* ================= PAYMENT ================= */
 import PaymentPage from "./userDashboard/payment/PaymentPage";
+import PaymentButton from "./userDashboard/pages/PaymentButton";
+import PaymentSuccess from "./userDashboard/pages/PaymentSuccess";
 
 /* ================= STYLES ================= */
 import "./App.css";
@@ -81,9 +83,7 @@ function AnnualFeeWrapper() {
   const { id } = useParams();
   return <AnnualFeePage singerId={id} />;
 }
-import { useLocation } from "react-router-dom";
 
- 
 function Layout() {
   const location = useLocation();
 
@@ -254,6 +254,10 @@ function Layout() {
               </PrivateRoute>
             }
           />
+
+          {/* Added payment routes (from your earlier snippet) */}
+          <Route path="/pay" element={<PaymentButton />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
 
           {/* FALLBACK */}
           <Route path="*" element={<Navigate to="/" replace />} />
