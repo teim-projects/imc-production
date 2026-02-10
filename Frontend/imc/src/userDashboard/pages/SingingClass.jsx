@@ -1,3 +1,6 @@
+// SingingClassRegistration.jsx
+// Updated — Added Policies Modal + Payment Flow (same pattern as other forms)
+
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
@@ -25,6 +28,7 @@ import {
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const STUDENT_API = `${API_BASE.replace(/\/$/, "")}/auth/singing-classes/`;
 const BATCH_API = `${API_BASE.replace(/\/$/, "")}/auth/batches/`;
+const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`;
 
 const PAYMENT_OPTIONS = [
   { key: "card", label: "Credit / Debit Card", icon: CreditCard },
@@ -32,12 +36,173 @@ const PAYMENT_OPTIONS = [
   { key: "netbanking", label: "Net Banking", icon: Building2 },
 ];
 
+// ────────────────────────────────────────────────
+// Policies (tailored for Singing Classes)
+// ────────────────────────────────────────────────
+const policies = [
+  {
+    id: "A",
+    title: "A. Enrollment & Fee Policies",
+    content: `
+1. Enrollment Confirmation
+• Enrollment is confirmed only after full fee payment and seat availability.
+• Confirmation with batch details, schedule, and teacher info sent via WhatsApp/email within 24 hours.
+
+2. Fee Structure
+• Monthly fee is non-refundable and non-transferable once batch starts.
+• One-time registration fee (if any) is separate and non-refundable.
+
+3. Batch Allocation
+• Batch allocation is subject to availability and trainer discretion.
+• Change of batch allowed only within first 7 days (subject to seat availability).
+    `,
+  },
+  {
+    id: "B",
+    title: "B. Cancellation & Refund Policies",
+    content: `
+4. Cancellation Before Batch Starts
+• 15+ days before batch start → 100% refund (minus gateway charges).
+• 7–14 days before batch start → 50% refund.
+• Less than 7 days before batch start → No refund.
+
+5. Mid-Batch Withdrawal
+• No refund for any reason after batch has started (including missed classes).
+
+6. Batch Cancellation by IMC
+• In case of unavoidable circumstances, full fee refunded or alternate batch provided.
+    `,
+  },
+  {
+    id: "C",
+    title: "C. Class Execution & Attendance",
+    content: `
+7. Attendance & Missed Classes
+• Minimum 75% attendance required for certification.
+• Missed classes not compensated unless due to IMC fault.
+
+8. Class Recordings
+• Recordings (if provided) for personal reference only — not for commercial use.
+
+9. Conduct
+• Respectful behaviour towards teachers and fellow students mandatory.
+• Misconduct may lead to immediate termination without refund.
+    `,
+  },
+  {
+    id: "D",
+    title: "D. Certification & Deliverables",
+    content: `
+10. Certification
+• Official IMC Certified Vocalist certificate issued after course completion and minimum attendance.
+
+11. Materials
+• Study material / song sheets provided digitally or in class.
+
+12. Force Majeure
+• IMC not liable for class disruptions due to natural disasters, government orders, etc.
+    `,
+  },
+  {
+    id: "E",
+    title: "E. Payment & General Policies",
+    content: `
+13. Payment Modes
+• UPI, Card, Net Banking, Bank Transfer.
+
+14. Policy Updates
+• Policies subject to change — latest version communicated via official channels.
+
+15. Acceptance
+• Enrollment/payment implies acceptance of all policies.
+    `,
+  },
+  {
+    id: "F",
+    title: "F. Final Acceptance",
+    content: `
+By enrolling and making payment, the student/guardian confirms acceptance of all the above policies.
+    `,
+  },
+];
+
+// ────────────────────────────────────────────────
+// Policies Modal (same design as other pages)
+// ────────────────────────────────────────────────
+function PoliciesModal({ onClose }) {
+  const [activeTab, setActiveTab] = useState("A");
+  const current = policies.find((p) => p.id === activeTab);
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-gray-950 text-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-amber-800/50"
+      >
+        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black">Terms & Conditions</h2>
+            <p className="text-amber-200 mt-1">IMC Singing Classes Enrollment Policies</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-3xl font-bold hover:text-amber-200 transition"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 p-4 border-b border-gray-800 bg-gray-900/70">
+          {policies.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setActiveTab(p.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                activeTab === p.id
+                  ? "bg-amber-500 text-black shadow-md"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {p.id}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 md:p-8 overflow-y-auto flex-1">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-amber-400 mb-5">{current.title}</h3>
+            <pre className="whitespace-pre-wrap font-sans text-gray-200 text-base leading-relaxed">
+              {current.content.trim()}
+            </pre>
+          </motion.div>
+        </div>
+
+        <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex justify-center">
+          <button
+            onClick={onClose}
+            className="px-12 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition shadow-lg"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function SingingClassRegistration() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [batches, setBatches] = useState([]);
   const [batchesLoading, setBatchesLoading] = useState(true);
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added for modal
 
   const [form, setForm] = useState({
     first_name: "",
@@ -111,21 +276,8 @@ export default function SingingClassRegistration() {
     return null;
   };
 
-  const handleEnrollClick = () => {
-    const error = validateForm();
-    if (error) {
-      alert(error);
-      return;
-    }
-    setShowPaymentPage(true);
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!form.payment_method) {
-      alert("Please select a payment method");
-      return;
-    }
-
+  // ─── Create student record first (pending payment) ───
+  const createStudent = async () => {
     const payload = {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
@@ -141,19 +293,73 @@ export default function SingingClassRegistration() {
       fee: Number(form.fee),
       payment_method: form.payment_method,
       agreed_terms: form.agreed_terms,
+      payment_status: "pending",
     };
 
+    const res = await axios.post(STUDENT_API, payload);
+    if (res.status === 201) {
+      return res.data.id || res.data.pk || res.data._id;
+    }
+    throw new Error("Student creation failed");
+  };
+
+  // ─── Initiate payment ───
+  const initiatePayment = async (studentId) => {
+    const amount = Number(form.fee) || 0;
+    if (amount <= 0) throw new Error("Invalid fee amount");
+
+    const payload = {
+      amount,
+      customer_id: `SINGING_${form.phone.replace(/\D/g, '') || 'guest'}`,
+      email: form.email.trim() || "student@imc.com",
+      phone: form.phone.trim(),
+      description: `Singing Class Enrollment - Batch ${selectedBatch?.class_name || "Selected"}`,
+      return_url: `${window.location.origin}/payment-callback?type=singing-class&phone=${form.phone.trim()}&student_id=${studentId}`,
+    };
+
+    const paymentRes = await axios.post(PAYMENT_CREATE_API, payload);
+    const pData = paymentRes.data;
+    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      return;
+    }
+
+    // Rare instant success case
+    if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
+      setSuccess(true);
+      return;
+    }
+
+    throw new Error("Payment initiation failed - no redirect URL");
+  };
+
+  const handleEnrollClick = async () => {
+    const error = validateForm();
+    if (error) {
+      alert(error);
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      setLoading(true);
-      await axios.post(STUDENT_API, payload);
+      // Step 1: Create student record (pending)
+      const studentId = await createStudent();
+
+      // Step 2: Start payment
+      await initiatePayment(studentId);
+
+      // If we reach here → instant success (very rare)
       setSuccess(true);
     } catch (err) {
-      console.error("Enrollment failed:", err.response?.data || err);
-      const msg =
-        err.response?.data
-          ? Object.values(err.response.data).flat().join(" ")
-          : "Submission failed. Please try again.";
-      alert(msg);
+      console.error("Enrollment/Payment error:", err);
+      alert(
+        err.response?.data?.detail ||
+        err.message ||
+        "Something went wrong. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -202,112 +408,6 @@ export default function SingingClassRegistration() {
           >
             Enroll Another Student
           </button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Payment Confirmation Page
-  if (showPaymentPage) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 max-w-2xl w-full"
-        >
-          <button
-            onClick={() => setShowPaymentPage(false)}
-            className="flex items-center gap-2 text-amber-700 hover:text-amber-900 mb-8 font-medium"
-          >
-            <ArrowLeft className="w-5 h-5" /> Back to Edit Details
-          </button>
-
-          <h2 className="text-4xl font-bold text-center mb-6 text-amber-800">
-            Complete Your Payment
-          </h2>
-
-          {/* Summary Card */}
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-8">
-            <h3 className="font-bold text-amber-900 mb-4">Enrollment Summary</h3>
-            <div className="grid grid-cols-2 gap-4 text-gray-800">
-              <div>
-                <p className="font-medium">Student</p>
-                <p>{form.first_name} {form.last_name}</p>
-              </div>
-              <div>
-                <p className="font-medium">Phone</p>
-                <p>{form.phone}</p>
-              </div>
-              <div>
-                <p className="font-medium">Batch</p>
-                <p>{selectedBatch?.class_name}</p>
-              </div>
-              <div>
-                <p className="font-medium">Schedule</p>
-                <p>{selectedBatch?.day} • {selectedBatch?.time_slot}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Amount */}
-          <div className="text-center py-8 bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl mb-10">
-            <p className="text-2xl text-gray-700">Amount to Pay</p>
-            <p className="text-6xl font-extrabold text-amber-700 mt-4">
-              ₹{Number(form.fee).toLocaleString("en-IN")}
-            </p>
-          </div>
-
-          {/* Payment Methods */}
-          <div className="mb-10">
-            <h3 className="text-xl font-bold text-center mb-6">Select Payment Method</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {PAYMENT_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const isSelected = form.payment_method === option.key;
-                return (
-                  <button
-                    key={option.key}
-                    onClick={() => setPaymentMethod(option.key)}
-                    className={`p-6 rounded-2xl border-4 transition-all ${
-                      isSelected
-                        ? "border-amber-500 bg-amber-50 shadow-xl"
-                        : "border-gray-200 bg-gray-50 hover:border-amber-300"
-                    }`}
-                  >
-                    <Icon className={`w-12 h-12 mx-auto mb-4 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
-                    <p className={`font-bold text-lg ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
-                      {option.label}
-                    </p>
-                    {isSelected && <CheckCircle className="w-8 h-8 text-green-500 mx-auto mt-4" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Pay Button */}
-          <button
-            onClick={handlePaymentSubmit}
-            disabled={loading || !form.payment_method}
-            className="w-full py-6 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-2xl shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-4"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin w-8 h-8" />
-                Processing Payment...
-              </>
-            ) : (
-              <>
-                <IndianRupee className="w-8 h-8" />
-                Pay ₹{Number(form.fee).toLocaleString("en-IN")} Now
-              </>
-            )}
-          </button>
-
-          <p className="text-center text-sm text-gray-500 mt-8">
-            🔒 Secure • 256-bit SSL Encrypted • Powered by Trusted Gateway
-          </p>
         </motion.div>
       </div>
     );
@@ -591,7 +691,7 @@ export default function SingingClassRegistration() {
                   />
                 </div>
 
-                {/* Terms */}
+                {/* Terms with modal trigger */}
                 <div className="flex items-start gap-4 mt-12">
                   <input
                     type="checkbox"
@@ -601,9 +701,23 @@ export default function SingingClassRegistration() {
                     onChange={handleChange}
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed">
-                    I agree to the <span className="font-bold text-amber-700">Terms & Conditions</span> and{" "}
-                    <span className="font-bold text-amber-700">Privacy Policy</span>{" "}
+                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed select-none">
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                    >
+                      Terms & Conditions
+                    </button>{" "}
+                    and{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                    >
+                      Privacy Policy
+                    </button>{" "}
                     <span className="text-red-500">*</span>
                   </label>
                 </div>
@@ -681,6 +795,9 @@ export default function SingingClassRegistration() {
       </section>
 
       <Footer />
+
+      {/* Policies Modal */}
+      {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
 }

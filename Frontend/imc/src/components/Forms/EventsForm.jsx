@@ -1,11 +1,12 @@
 // src/components/Forms/EventsForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Download } from "lucide-react"; // ← added for export icon
+import { Download } from "lucide-react";
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 const API_URL = `${BASE}/auth/events/`;
+const BOOKINGS_URL = `${BASE}/user/events/`;   // ← added this line
 
 // Small axios client that injects JWT if present
 const api = axios.create();
@@ -33,9 +34,12 @@ const TIME_SLOT_OPTIONS = [
 const EventsForm = ({ onClose }) => {
   const [tab, setTab] = useState("ADD");
   const [events, setEvents] = useState([]);
+  const [bookings, setBookings] = useState([]);           // ← added
   const [loading, setLoading] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false); // ← added
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [bookingsError, setBookingsError] = useState(null);      // ← added
   const [success, setSuccess] = useState("");
 
   const [search, setSearch] = useState("");
@@ -50,15 +54,12 @@ const EventsForm = ({ onClose }) => {
     date: "",
     time_slot: "",
     event_type: "",
-    // ⭐ seats (total & available)
     total_seats: "",
     available_seats: "",
-    // prices
     ticket_price: "",
     basic_price: "",
     premium_price: "",
     vip_price: "",
-    // ⭐ seats per tier
     basic_seats: "",
     premium_seats: "",
     vip_seats: "",
@@ -92,7 +93,7 @@ const EventsForm = ({ onClose }) => {
     setSuccess("");
   };
 
-  // ---------------- Fetch ----------------
+  // ---------------- Fetch Events ----------------
   const fetchEvents = async () => {
     setLoading(true);
     clearStatus();
@@ -119,7 +120,27 @@ const EventsForm = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------- NEW: Export to CSV ----------------
+  // ---------------- Fetch Bookings ----------------
+  const fetchBookings = async () => {
+    setBookingsLoading(true);
+    setBookingsError(null);
+    try {
+      const res = await api.get(BOOKINGS_URL);
+      setBookings(Array.isArray(res.data) ? res.data : res.data?.results || []);
+    } catch (err) {
+      setBookingsError(humanizeErr(err) || "Failed to load bookings");
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "BOOKINGS") {
+      fetchBookings();
+    }
+  }, [tab]);
+
+  // ---------------- Export Events to CSV ----------------
   const exportEventsToCSV = () => {
     if (!filtered.length) {
       alert("No events to export");
@@ -186,7 +207,7 @@ const EventsForm = ({ onClose }) => {
     URL.revokeObjectURL(url);
   };
 
-  // ---------------- Form handlers ----------------
+  // ---------------- Form handlers (unchanged) ----------------
   const handleChange = (e) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -198,7 +219,7 @@ const EventsForm = ({ onClose }) => {
   const setEventType = (type) => {
     setFormData((prev) => ({
       ...prev,
-      event_type: prev.event_type === type ? "" : type, // toggle
+      event_type: prev.event_type === type ? "" : type,
     }));
   };
 
@@ -231,7 +252,6 @@ const EventsForm = ({ onClose }) => {
   };
 
   const validateSeats = () => {
-    // total / available
     if (formData.total_seats === "" || formData.total_seats === null) {
       return "Total seats is required.";
     }
@@ -242,7 +262,7 @@ const EventsForm = ({ onClose }) => {
 
     let avail;
     if (formData.available_seats === "" || formData.available_seats === null) {
-      avail = total; // backend will also default
+      avail = total;
     } else {
       avail = Number(formData.available_seats);
       if (Number.isNaN(avail) || avail < 0) {
@@ -253,7 +273,6 @@ const EventsForm = ({ onClose }) => {
       return "Available seats cannot be more than total seats.";
     }
 
-    // per-tier seats
     const basicSeats =
       formData.basic_seats === "" || formData.basic_seats === null
         ? 0
@@ -435,7 +454,7 @@ const EventsForm = ({ onClose }) => {
     return "-";
   };
 
-  // ---------------- UI (pf style) ----------------
+  // ---------------- UI ----------------
   return (
     <div className="pf-wrap">
       {/* HEADER */}
@@ -461,6 +480,15 @@ const EventsForm = ({ onClose }) => {
           >
             View Events
           </button>
+
+          <button
+            className={tab === "BOOKINGS" ? "active" : ""}
+            onClick={() => setTab("BOOKINGS")}
+            type="button"
+          >
+            Bookings
+          </button>
+
           {onClose && (
             <button
               type="button"
@@ -567,7 +595,6 @@ const EventsForm = ({ onClose }) => {
                 </div>
               </label>
 
-              {/* ⭐ Seats */}
               <label>
                 Total Seats*
                 <input
@@ -611,7 +638,6 @@ const EventsForm = ({ onClose }) => {
           <section className="pf-card">
             <h3>Ticket Tiers</h3>
             <div className="tier-grid pretty-tiers">
-              {/* BASIC */}
               <div className="tier-card tier-basic">
                 <div className="tier-header">
                   <span className="tier-name">Basic</span>
@@ -646,7 +672,6 @@ const EventsForm = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* PREMIUM */}
               <div className="tier-card tier-premium">
                 <div className="tier-header">
                   <span className="tier-name">Premium</span>
@@ -681,7 +706,6 @@ const EventsForm = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* VIP */}
               <div className="tier-card tier-vip">
                 <div className="tier-header">
                   <span className="tier-name">VIP</span>
@@ -781,7 +805,6 @@ const EventsForm = ({ onClose }) => {
               {loading ? "Refreshing..." : "Refresh"}
             </button>
 
-            {/* EXPORT BUTTON ADDED HERE */}
             <button
               className="btn ghost"
               onClick={exportEventsToCSV}
@@ -896,6 +919,81 @@ const EventsForm = ({ onClose }) => {
                 >
                   Next
                 </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* BOOKINGS TAB - NOW SHOWS REAL DATA */}
+      {tab === "BOOKINGS" && (
+        <div className="pf-table-card">
+          <div className="pf-table-top">
+            <h3 style={{ margin: 0 }}>Bookings</h3>
+            <button
+              className="btn"
+              onClick={fetchBookings}
+              disabled={bookingsLoading}
+            >
+              {bookingsLoading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
+
+          {bookingsLoading ? (
+            <div className="loader">Loading bookings...</div>
+          ) : bookingsError ? (
+            <pre className="pf-banner pf-error" style={{ whiteSpace: "pre-wrap" }}>
+              {bookingsError}
+            </pre>
+          ) : bookings.length === 0 ? (
+            <div className="empty">No bookings found.</div>
+          ) : (
+            <>
+              <div className="pf-table-wrap">
+                <table className="pf-table">
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Customer</th>
+                      <th>Phone</th>
+                      <th>Tickets</th>
+                      <th>Total (₹)</th>
+                      <th>Payment</th>
+                      <th>Booked On</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map((booking) => {
+                      const event = events.find((e) => e.id === booking.event) || {};
+                      return (
+                        <tr key={booking.id}>
+                          <td>{event.title || "Unknown Event"}</td>
+                          <td>{booking.customer_name || booking.name || "-"}</td>
+                          <td>{booking.contact_number || booking.phone || "-"}</td>
+                          <td>{booking.number_of_tickets || booking.tickets || "-"}</td>
+                          <td>
+                            {booking.total_amount
+                              ? `₹${Number(booking.total_amount).toLocaleString()}`
+                              : "-"}
+                          </td>
+                          <td>{booking.payment_method || "-"}</td>
+                          <td>
+                            {booking.created_at
+                              ? new Date(booking.created_at).toLocaleString("en-IN", {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })
+                              : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="pf-pager">
+                <span>Showing {bookings.length} booking{bookings.length !== 1 ? "s" : ""}</span>
               </div>
             </>
           )}

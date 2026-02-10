@@ -2,6 +2,7 @@ import uuid
 import json
 import requests
 from django.http import JsonResponse, HttpResponse
+from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from .utils import get_headers
 
@@ -53,6 +54,7 @@ def create_payment(request):
 
 # ==============================
 # 2️⃣ RETURN URL (Gateway → Backend)
+# 👉 REDIRECT TO REACT
 # ==============================
 @csrf_exempt
 def payment_return(request):
@@ -62,9 +64,12 @@ def payment_return(request):
     order_id = request.POST.get("order_id")
 
     if not order_id:
-        return JsonResponse({"error": "order_id missing"}, status=400)
+        return redirect("http://localhost:5173/payment-success?status=failed")
 
-    return verify_payment(order_id)
+    # 🔥 IMPORTANT: redirect to React page
+    return redirect(
+        f"http://localhost:5173/payment-success?order_id={order_id}"
+    )
 
 
 # ==============================
@@ -122,7 +127,7 @@ def refund_payment(request):
 
     payload = {
         "unique_request_id": f"REFUND{uuid.uuid4().hex[:10]}",
-        "amount": 1.00
+        "amount": ""
     }
 
     res = requests.post(

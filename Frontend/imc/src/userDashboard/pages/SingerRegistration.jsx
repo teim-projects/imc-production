@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
@@ -20,10 +20,10 @@ import {
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const SINGER_API = `${API_BASE}/auth/singer/`;
-const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`; // ← Confirm this path with backend
-const PAYMENT_STATUS_API = `${API_BASE}/payments/status`; // ← Must create this endpoint on backend
+const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`;
+const PAYMENT_STATUS_API = `${API_BASE}/payments/status`;
 
-// Policies data - complete (unchanged)
+// Full Policies data
 const policies = [
   {
     id: "A",
@@ -227,7 +227,7 @@ the singer confirms acceptance of all policies stated above.
   },
 ];
 
-// Modal Component - unchanged
+// Policies Modal Component
 function PoliciesModal({ onClose }) {
   const [activeTab, setActiveTab] = useState("A");
   const current = policies.find((p) => p.id === activeTab);
@@ -301,8 +301,9 @@ export default function SingerRegistration() {
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState("idle"); // idle | checking | success | failed | pending
-  const [orderId, setOrderId] = useState(null); // Store order ID for polling
+  const [paymentStatus, setPaymentStatus] = useState("idle"); // idle | pending | checking | success | failed
+  const [orderId, setOrderId] = useState(null);
+  const [singerId, setSingerId] = useState(null); // For updating after payment
 
   const [form, setForm] = useState({
     name: "",
@@ -327,7 +328,7 @@ export default function SingerRegistration() {
 
   const canSubmit = form.name.trim() && form.mobile.trim() && form.genre.trim() && form.agreed_terms;
 
-  // Poll payment status when pending
+  // Poll payment status
   useEffect(() => {
     let interval;
     if (paymentStatus === "pending" || paymentStatus === "checking") {
@@ -341,10 +342,12 @@ export default function SingerRegistration() {
 
           console.log("[STATUS POLL] Response:", res.data);
 
-          const status = res.data?.gateway_status || res.data?.status || "UNKNOWN";
+          const status = (res.data?.gateway_status || res.data?.status || "").toUpperCase();
 
-          if (status === "SUCCESS" || res.data?.success === true) {
+          if (status === "SUCCESS" || status === "CHARGED" || res.data?.success === true) {
             setPaymentStatus("success");
+            // After payment success → finalize singer in DB
+            await finalizeSingerRegistration();
             setSuccess(true);
             clearInterval(interval);
           } else if (status === "FAILED" || status === "EXPIRED") {
@@ -352,17 +355,60 @@ export default function SingerRegistration() {
             setErrorMessage("Payment failed or timed out. Please try again.");
             clearInterval(interval);
           } else if (status.includes("PENDING")) {
-            // Continue polling
             console.log("[STATUS] Still pending...");
           }
         } catch (err) {
           console.error("[POLL ERROR]", err);
         }
-      }, 5000); // Check every 5 seconds
+      }, 5000); // 5 seconds
     }
 
     return () => clearInterval(interval);
   }, [paymentStatus, orderId, form.mobile]);
+
+  // Save or update singer record
+  const saveSinger = async (isUpdate = false) => {
+    const data = new FormData();
+    Object.entries(form).forEach(([key, value]) => {
+      if (key === "agreed_terms") return;
+      if (value === "" || value === null) return;
+      if (key === "photo" && value) {
+        data.append("photo", value);
+      } else {
+        data.append(key, value);
+      }
+    });
+
+    data.append("active", "true");
+    data.append("payment_status", isUpdate ? "completed" : "pending");
+    if (orderId) data.append("payment_order_id", orderId);
+
+    try {
+      let res;
+      if (isUpdate && singerId) {
+        res = await axios.put(`${SINGER_API}${singerId}/`, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        console.log("Singer UPDATED after payment:", res.data);
+      } else {
+        res = await axios.post(SINGER_API, data, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        console.log("Singer CREATED:", res.data);
+        setSingerId(res.data?.id || null);
+      }
+      return true;
+    } catch (err) {
+      console.error("Singer save failed:", err);
+      setErrorMessage("Profile save failed after payment. Contact support.");
+      return false;
+    }
+  };
+
+  // Finalize after payment success
+  const finalizeSingerRegistration = async () => {
+    await saveSinger(true); // update with completed status
+  };
 
   const handleRegistrationAndPayment = async () => {
     if (!canSubmit) {
@@ -373,78 +419,52 @@ export default function SingerRegistration() {
     setErrorMessage("");
     setLoading(true);
 
-    const data = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === "agreed_terms") return;
-      if (value === "" || value === null) return;
-      data.append(key, value);
-    });
-
-    data.append("active", "true");
-
     try {
-      // Step 1: Create singer profile
-      const singerResponse = await axios.post(SINGER_API, data, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      console.log("Singer created successfully:", singerResponse.data);
+      // Step 1: Pre-create singer (pending)
+      await saveSinger(false);
 
       setLoading(false);
       setPaymentLoading(true);
 
-      // Step 2: Start payment
+      // Step 2: Create payment
       const paymentPayload = {
-        amount: 1,
+        amount: 1000, // ← change to real amount if needed
         customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, '') || 'guest'}`,
         email: "singer@imc.com",
-        phone: form.mobile,
+        phone: form.mobile.trim(),
+        description: "IMC Singer Registration Fee",
+        return_url: `${window.location.origin}/payment-success`, // ← important!
       };
 
-      console.log("Initiating payment with payload:", paymentPayload);
+      const paymentRes = await axios.post(PAYMENT_CREATE_API, paymentPayload);
 
-      const paymentResponse = await axios.post(PAYMENT_CREATE_API, paymentPayload, {
-        headers: { "Content-Type": "application/json" },
-      });
+      const pData = paymentRes.data;
+      const gatewayStatus = pData?.gateway_status?.toUpperCase();
+      const newOrderId = pData?.order_id || pData?.id;
 
-      console.log("Full Payment Response:", paymentResponse.data);
+      if (pData?.payment_links?.web || pData?.payment_url) {
+        window.location.href = pData.payment_links?.web || pData.payment_url;
+        return;
+      }
 
-      const gatewayStatus = paymentResponse.data?.gateway_status;
-      const newOrderId = paymentResponse.data?.order_id || paymentResponse.data?.id;
-
-      if (paymentResponse.data?.payment_links?.web) {
-        // Direct redirect to gateway
-        window.location.href = paymentResponse.data.payment_links.web;
-      } else if (gatewayStatus === "PENDING_VBV" || gatewayStatus?.includes("PENDING")) {
-        // UPI pending case - start polling
-        if (newOrderId) {
-          setOrderId(newOrderId);
-        }
+      if (newOrderId && (gatewayStatus?.includes("PENDING") || gatewayStatus === "PENDING_VBV")) {
+        setOrderId(newOrderId);
         setPaymentStatus("pending");
         setPaymentLoading(false);
-        alert("Payment request sent to your UPI app. Please approve in Google Pay / BHIM.\n\nWaiting for approval...");
-      } else if (paymentResponse.data?.success === true) {
-        // Rare direct success case
+        alert("Payment request sent! Complete in UPI app.\nWaiting...");
+      } else if (pData?.success === true) {
+        await finalizeSingerRegistration();
         setSuccess(true);
       } else {
-        setErrorMessage("Payment initiation failed. Please try again or contact support.");
+        setErrorMessage("Payment initiation failed.");
       }
     } catch (err) {
-      console.error("Registration/Payment error:", err);
-
-      let errorMsg = "काहीतरी चूक झाली. पुन्हा प्रयत्न करा किंवा support ला संपर्क करा.";
-
-      if (err.response?.data?.message) {
-        errorMsg = err.response.data.message;
-      } else if (err.response?.data?.detail) {
-        errorMsg = err.response.data.detail;
-      } else if (err.response?.data?.error) {
-        errorMsg = err.response.data.error;
-      } else if (err.response?.data) {
-        errorMsg = JSON.stringify(err.response.data);
+      console.error("Error:", err);
+      let msg = "काहीतरी चूक झाली. पुन्हा प्रयत्न करा.";
+      if (err.response?.data) {
+        msg = err.response.data.message || err.response.data.detail || err.response.data.error || JSON.stringify(err.response.data);
       }
-
-      setErrorMessage(errorMsg);
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
       setPaymentLoading(false);
@@ -455,6 +475,7 @@ export default function SingerRegistration() {
     setSuccess(false);
     setPaymentStatus("idle");
     setOrderId(null);
+    setSingerId(null);
     setErrorMessage("");
     setForm({
       name: "",
@@ -479,7 +500,7 @@ export default function SingerRegistration() {
   };
 
   // Success Screen
-  if (success || paymentStatus === "success") {
+  if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center px-6 py-12">
         <motion.div
@@ -497,7 +518,7 @@ export default function SingerRegistration() {
           </motion.div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold text-green-800 mb-4">
-            Payment Successful!
+            Registration & Payment Successful!
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-700 mb-8">
@@ -506,15 +527,15 @@ export default function SingerRegistration() {
 
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-10">
             <p className="text-lg text-gray-800 leading-relaxed">
-              Congratulations! Your singer registration is now complete.<br />
+              Congratulations! Your singer profile is now fully registered and active.<br />
               You are officially part of the IMC Artist Program.
             </p>
             <p className="text-base text-gray-600 mt-4">
-              You will receive confirmation and next steps on your registered mobile/email.
+              You will receive confirmation, certificate details, and next event updates on your registered mobile / email.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-5 justify-center">
             <button
               onClick={() => window.location.href = "/dashboard"}
               className="px-10 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-3"
@@ -539,10 +560,10 @@ export default function SingerRegistration() {
     );
   }
 
-  // Main Form (everything else unchanged)
+  // Main Registration Form
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"

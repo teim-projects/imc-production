@@ -32,12 +32,17 @@ router.register(
     basename="auth-videography",
 )
 
-router.register(r"events", PublicEventViewSet, basename="user-events")
-router.register(
-    r"event-bookings",
-    UserEventBookingViewSet,
-    basename="user-event-bookings",
-)
+from rest_framework.routers import DefaultRouter
+from .views import PublicEventViewSet, UserEventBookingViewSet
+
+router = DefaultRouter()
+router.register("events", PublicEventViewSet, basename="user-events")
+router.register("event-bookings", UserEventBookingViewSet, basename="event-bookings")
+
+urlpatterns = router.urls
+
+
+
 
 # 🚀 THIS NOW RETURNS SINGER LIST, NOT EVENTS
 router.register(
