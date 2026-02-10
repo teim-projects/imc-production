@@ -1,162 +1,237 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import {
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  ArrowRight,
+  Home,
+  IndianRupee,
+  User,
+  Sparkles,
+} from "lucide-react";
 
-const PaymentSuccess = () => {
-  return (
-    <>
-      {/* ===== CSS INSIDE SAME FILE ===== */}
-      <style>{`
-        * {
-          box-sizing: border-box;
-        }
+const API_BASE = "http://localhost:8000"; // ← use env variable in production
 
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        }
+export default function PaymentSuccess() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-        .payment-wrapper {
-          height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, #0f9d58, #34a853);
-        }
+  const orderId = searchParams.get("order_id") || searchParams.get("OrderId");
 
-        .payment-card {
-          background: #ffffff;
-          padding: 45px 40px;
-          border-radius: 18px;
-          width: 400px;
-          text-align: center;
-          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.18);
-          animation: fadeIn 0.6s ease-in-out;
-        }
+  const [loading, setLoading] = useState(true);
+  const [paymentData, setPaymentData] = useState(null);
+  const [error, setError] = useState("");
 
-        .checkmark-circle {
-          width: 90px;
-          height: 90px;
-          margin: 0 auto 25px;
-          border-radius: 50%;
-          background: #0f9d58;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 10px 20px rgba(15, 157, 88, 0.4);
-        }
+  useEffect(() => {
+    if (!orderId) {
+      setError("Order ID is missing from URL");
+      setLoading(false);
+      return;
+    }
 
-        .checkmark {
-          color: #ffffff;
-          font-size: 48px;
-          font-weight: bold;
-        }
+    const verifyPayment = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/payments/status/`, {
+          params: { order_id: orderId },
+        });
 
-        .success-title {
-          font-size: 28px;
-          color: #0f9d58;
-          margin-bottom: 10px;
-        }
+        console.log("API Response:", res.data); // keep for debugging
 
-        .success-text {
-          font-size: 15px;
-          color: #555;
-          margin-bottom: 30px;
-        }
+        setPaymentData(res.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Payment verification failed:", err);
+        setError(
+          err.response?.data?.message ||
+            "Failed to verify payment status. Please contact support."
+        );
+        setLoading(false);
+      }
+    };
 
-        .info-box {
-          background: #f6f8fb;
-          padding: 18px;
-          border-radius: 12px;
-          margin-bottom: 30px;
-          text-align: left;
-        }
+    verifyPayment();
+  }, [orderId]);
 
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 14px;
-          margin: 8px 0;
-          color: #333;
-        }
+  // Use nested data object
+  const apiData = paymentData?.data || paymentData || {};
 
-        .info-row span:last-child {
-          font-weight: 600;
-        }
+  const isSuccess =
+    paymentData?.gateway_status === "CHARGED" ||
+    paymentData?.success === true ||
+    apiData?.status === "CHARGED";
 
-        .primary-btn {
-          width: 100%;
-          padding: 14px;
-          background: #0f9d58;
-          color: #ffffff;
-          border: none;
-          border-radius: 10px;
-          font-size: 16px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
+  // Get amount safely (in rupees)
+  const displayAmount = () => {
+    const raw = apiData.amount || apiData.effective_amount || apiData.net_amount || apiData.txnx_amount || 0;
+    return Number(raw).toLocaleString("en-IN");
+  };
 
-        .primary-btn:hover {
-          background: #0b7a43;
-          transform: translateY(-2px);
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (max-width: 480px) {
-          .payment-card {
-            width: 90%;
-            padding: 35px 25px;
-          }
-        }
-      `}</style>
-
-      {/* ===== UI ===== */}
-      <div className="payment-wrapper">
-        <div className="payment-card">
-          <div className="checkmark-circle">
-            <span className="checkmark">✓</span>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
+            <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-pulse" />
           </div>
-
-          <h1 className="success-title">Payment Successful</h1>
-          <p className="success-text">
-            Thank you for your payment. Your transaction has been completed
-            successfully.
+          <p className="text-lg font-semibold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+            Verifying payment...
           </p>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="info-box">
-            <div className="info-row">
-              <span>Status</span>
-              <span>Completed</span>
-            </div>
-            <div className="info-row">
-              <span>Payment Method</span>
-              <span>UPI</span>
-            </div>
-            <div className="info-row">
-              <span>Amount Paid</span>
-              <span>₹1.00</span>
-            </div>
-          </div>
-
+  if (error || !isSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 to-red-50 flex items-center justify-center p-5">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-7 max-w-sm w-full text-center border border-rose-100/60">
+          <AlertCircle className="w-14 h-14 text-rose-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-rose-800 mb-3">Payment Failed</h2>
+          <p className="text-gray-700 mb-6 text-sm leading-relaxed">
+            {error || "We couldn't process your transaction"}
+          </p>
           <button
-            className="primary-btn"
-            onClick={() => (window.location.href = "/")}
+            onClick={() => navigate("/dashboard")}
+            className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
           >
-            Go to Dashboard
+            Return to Dashboard
           </button>
         </div>
       </div>
-    </>
-  );
-};
+    );
+  }
 
-export default PaymentSuccess;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-5 overflow-hidden">
+      <div
+        className="relative bg-white/75 backdrop-blur-xl rounded-2xl shadow-2xl p-6 max-w-md w-full border border-white/40 overflow-hidden"
+        style={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.8), rgba(240,255,245,0.65))",
+        }}
+      >
+        {/* Animated gradient border */}
+        <div className="absolute inset-0 rounded-2xl pointer-events-none border-2 border-transparent bg-gradient-to-r from-emerald-400/30 via-teal-400/30 to-cyan-400/30 animate-gradient-x"></div>
+
+        {/* Floating particles */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-10 left-10 w-2 h-2 bg-emerald-300 rounded-full animate-float-particle opacity-60"></div>
+          <div className="absolute bottom-16 right-12 w-1.5 h-1.5 bg-teal-300 rounded-full animate-float-particle delay-1000 opacity-50"></div>
+        </div>
+
+        <div className="relative z-10 text-center space-y-5">
+
+          {/* Success badge */}
+          <div className="relative inline-flex justify-center mb-2">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-xl ring-4 ring-emerald-100/70">
+              <CheckCircle className="w-11 h-11 text-white" strokeWidth={3} />
+            </div>
+            <Sparkles className="absolute -top-2 -right-1 w-8 h-8 text-yellow-300 animate-pulse" />
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-700 bg-clip-text text-transparent tracking-tight">
+            Payment Confirmed
+          </h1>
+
+          {/* Fixed dynamic amount */}
+          <div className="flex items-center justify-center gap-2 my-6">
+            <IndianRupee className="w-10 h-10 text-emerald-700" strokeWidth={2.5} />
+            <span className="text-6xl sm:text-7xl font-black text-emerald-900 tracking-tighter drop-shadow-sm">
+              {displayAmount()}
+            </span>
+          </div>
+
+          {/* Greeting */}
+          <div className="inline-flex items-center gap-2.5 px-5 py-2 bg-white/60 rounded-full border border-emerald-100/80 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+              <User className="w-5 h-5 text-emerald-700" />
+            </div>
+            <span className="font-semibold text-gray-800 text-base">
+              {apiData.customer_name ||
+                apiData.customer_email?.split("@")[0] ||
+                "Welcome back"}
+            </span>
+          </div>
+
+          {/* Details */}
+          <div className="bg-white/50 rounded-2xl p-5 text-sm border border-white/60 shadow-inner">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-left">
+              <div>
+                <p className="text-gray-500 text-xs font-medium">Order</p>
+                <p className="font-mono font-semibold text-gray-900 text-sm">{orderId}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs font-medium">Method</p>
+                <p className="font-semibold text-gray-900">
+                  {apiData.payment_method || "UPI / Card"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs font-medium">Date</p>
+                <p className="font-semibold text-gray-900">
+                  {apiData["last-updated"] || apiData.date_updated || apiData["date-created"]
+                    ? new Date(apiData["last-updated"] || apiData.date_updated || apiData["date-created"]).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : new Date().toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs font-medium">Status</p>
+                <p className="font-bold text-emerald-600">Success ✓</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              <Home size={17} />
+              Dashboard
+            </button>
+
+            <button
+              onClick={() => navigate("/my-registrations")}
+              className="flex-1 py-3.5 bg-white border-2 border-emerald-600/80 text-emerald-700 font-semibold rounded-2xl hover:bg-emerald-50/70 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              My Registrations
+              <ArrowRight size={17} />
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-600 pt-2">
+            Confirmation sent to your registered email & mobile
+          </p>
+        </div>
+      </div>
+
+      {/* Animations */}
+      <style>{`
+        @keyframes gradient-x {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes float-particle {
+          0%, 100%   { transform: translate(0, 0) scale(1); opacity: 0.6; }
+          50%        { transform: translate(20px, -30px) scale(1.4); opacity: 0.2; }
+        }
+        .animate-gradient-x {
+          background-size: 200% 200%;
+          animation: gradient-x 12s ease infinite;
+        }
+        .animate-float-particle {
+          animation: float-particle 8s infinite ease-in-out;
+        }
+        .delay-1000 { animation-delay: 1s; }
+      `}</style>
+    </div>
+  );
+}

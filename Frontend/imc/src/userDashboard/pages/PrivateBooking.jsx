@@ -1,8 +1,11 @@
+// src/pages/PrivateEventBooking.jsx (or wherever you place it)
+// Public-facing Private Event Booking Form with Policies Modal
+
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/private event banner desktop.png"; // You can replace with event-themed image
+import SingerBackground from "../../assets/private event banner desktop.png";
 import {
   Loader2,
   CheckCircle,
@@ -51,9 +54,179 @@ const DURATION_OPTIONS = [
   "Multi-Day",
 ];
 
+// ────────────────────────────────────────────────
+// Policies (tailored for private events — same tabbed style)
+// ────────────────────────────────────────────────
+const policies = [
+  {
+    id: "A",
+    title: "A. Booking & Confirmation Policies",
+    content: `
+1. Booking Confirmation
+• Booking is confirmed only after receipt of advance payment (minimum 30–50% depending on event type).
+• Confirmation details (team lineup, quote, timeline) will be shared via WhatsApp/email within 24–48 hours.
+
+2. Advance & Balance Payment
+• Advance locks your date and team.
+• Balance must be cleared at least 72 hours before the event (or as mutually agreed).
+• All payments are non-refundable except as per cancellation policy.
+
+3. Custom Quote
+• Final pricing depends on location, travel, guest count, equipment, and special requirements.
+• Any add-ons (extra hours, special lighting, additional performers) will be charged extra.
+    `,
+  },
+  {
+    id: "B",
+    title: "B. Cancellation & Refund Policies",
+    content: `
+4. Cancellation by Client
+• 30+ days before event → 75% refund of advance (minus gateway charges).
+• 15–29 days before event → 50% refund of advance.
+• 7–14 days before event → 25% refund of advance.
+• Less than 7 days before event → No refund.
+
+5. Cancellation by IMC
+• In case of unavoidable circumstances (force majeure, health emergency, government restrictions), full advance refunded or alternate date provided.
+• IMC not liable for any indirect/consequential losses.
+
+6. No-show / Late Arrival
+• If client is unavailable at agreed time + 90 minutes grace → event may be cancelled without refund.
+    `,
+  },
+  {
+    id: "C",
+    title: "C. Event Execution & Deliverables",
+    content: `
+7. Performance / Service Duration
+• Service starts at agreed time slot.
+• Extra hours charged as per prevailing rates.
+
+8. Deliverables (Photography / Videography)
+• Edited photos/videos delivered within 30–60 days (rush delivery extra).
+• RAW files not provided unless specifically paid for.
+
+9. Usage Rights
+• Client gets personal & social media usage rights.
+• IMC reserves right to use selected content for portfolio/promotion (credit given where possible).
+
+10. Weather / Venue Issues
+• Outdoor events affected by weather → rescheduling mutually decided, no automatic refund if partial service delivered.
+    `,
+  },
+  {
+    id: "D",
+    title: "D. Travel, Permissions & Responsibility",
+    content: `
+11. Travel & Logistics
+• Outstation events: Travel, accommodation, food & permits borne by client (or included in quote).
+
+12. Permissions
+• Client responsible for venue permissions, parking, electricity, sound limits, drone NOC, etc.
+
+13. Code of Conduct
+• Respectful behaviour expected from all parties.
+• Misconduct may lead to immediate termination without refund.
+    `,
+  },
+  {
+    id: "E",
+    title: "E. Payment & Force Majeure",
+    content: `
+14. Payment Modes
+• UPI, Bank Transfer, Online Gateway, Cash (balance only on event day).
+
+15. Force Majeure
+• IMC not liable for delays/cancellations due to natural disasters, strikes, government orders, etc.
+
+16. Jurisdiction
+• All disputes subject to Pune jurisdiction only.
+    `,
+  },
+  {
+    id: "F",
+    title: "F. Final Acceptance",
+    content: `
+By submitting this booking request and making any payment,
+the client confirms full acceptance of the above policies.
+    `,
+  },
+];
+
+// ────────────────────────────────────────────────
+// Policies Modal (same design as Singer & Photography pages)
+// ────────────────────────────────────────────────
+function PoliciesModal({ onClose }) {
+  const [activeTab, setActiveTab] = useState("A");
+  const current = policies.find((p) => p.id === activeTab);
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-gray-950 text-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-amber-800/50"
+      >
+        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black">Terms & Conditions</h2>
+            <p className="text-amber-200 mt-1">IMC Private Event Booking Policies</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-3xl font-bold hover:text-amber-200 transition"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 p-4 border-b border-gray-800 bg-gray-900/70">
+          {policies.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setActiveTab(p.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                activeTab === p.id
+                  ? "bg-amber-500 text-black shadow-md"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {p.id}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 md:p-8 overflow-y-auto flex-1">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-amber-400 mb-5">{current.title}</h3>
+            <pre className="whitespace-pre-wrap font-sans text-gray-200 text-base leading-relaxed">
+              {current.content.trim()}
+            </pre>
+          </motion.div>
+        </div>
+
+        <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex justify-center">
+          <button
+            onClick={onClose}
+            className="px-12 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition shadow-lg"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function PrivateEventBooking() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added for modal
 
   const [form, setForm] = useState({
     customer: "",
@@ -433,7 +606,7 @@ export default function PrivateEventBooking() {
                   </div>
                 </div>
 
-                {/* Terms */}
+                {/* Terms with modal trigger */}
                 <div className="flex items-start gap-4 mt-12">
                   <input
                     type="checkbox"
@@ -442,9 +615,23 @@ export default function PrivateEventBooking() {
                     onChange={(e) => setForm({ ...form, agreed_terms: e.target.checked })}
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed">
-                    I agree to the <span className="font-bold text-amber-700">Terms & Conditions</span> and{" "}
-                    <span className="font-bold text-amber-700">Privacy Policy</span>{" "}
+                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed select-none">
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                    >
+                      Terms & Conditions
+                    </button>{" "}
+                    and{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                    >
+                      Privacy Policy
+                    </button>{" "}
                     <span className="text-red-500">*</span>
                   </label>
                 </div>
@@ -522,6 +709,9 @@ export default function PrivateEventBooking() {
       </section>
 
       <Footer />
+
+      {/* Policies Modal */}
+      {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
 }

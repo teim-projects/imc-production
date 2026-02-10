@@ -45,7 +45,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
   const [previews, setPreviews] = useState([]);
 
   // Lightbox
-  const [lightboxImg, setLightboxImg] = useState(null); // {src, caption, studioName}
+  const [lightboxImg, setLightboxImg] = useState(null);
 
   const fetchRows = async () => {
     setLoading(true);
@@ -285,6 +285,17 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
 
   const closeImagePreview = () => setLightboxImg(null);
 
+  // Clean junk from location (removes garbage patterns)
+  const cleanLocation = (loc) => {
+    if (!loc) return "";
+    return loc
+      .replace(/Chinm0WD|Chinm0|Ch|m0WD|Chin0hwva|3CHIN0hwva|vad|F|○|ah/gi, "")
+      .replace(/,{2,}/g, ", ")
+      .replace(/,\s*$/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
   // ===================== UI =====================
   return (
     <div className="pf-wrap studio-master-page">
@@ -346,7 +357,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
                 name="area"
                 value={form.area}
                 onChange={onChange}
-                placeholder="e.g., Andheri East"
+                placeholder="e.g., Thergaon"
               />
             </div>
 
@@ -356,7 +367,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
                 name="city"
                 value={form.city}
                 onChange={onChange}
-                placeholder="e.g., Mumbai"
+                placeholder="e.g., Chinchwad"
               />
             </div>
 
@@ -391,7 +402,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
             </div>
 
             <div className="field">
-              <label>Capacity</label>
+              <label>Capacity (people)</label>
               <input
                 type="number"
                 min="0"
@@ -437,7 +448,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
                       <div key={img.id} className="sm-thumb-cell">
                         <img
                           src={img.url}
-                          alt={img.caption || ""}
+                          alt={img.caption || "Studio image"}
                           className="sm-thumb-img"
                           onClick={() =>
                             openImagePreview(
@@ -480,8 +491,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
                 ))}
               </div>
               <div className="sm-help-text">
-                You can select multiple images; they will be uploaded after the
-                studio is saved.
+                Select multiple images; they upload after saving the studio.
               </div>
             </div>
           </div>
@@ -493,13 +503,12 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
 
           <div className="sm-footer">
             <div className="note muted">
-              Manage studios, their address and images here. Use View to edit/delete
-              records and images.
+              Manage studios, addresses, rates & images. Use View tab to edit/delete.
             </div>
 
             <div className="cta">
               <button type="submit" className="btn primary" disabled={saving}>
-                {saving ? "Saving..." : editingId ? "Update" : "Save"}
+                {saving ? "Saving..." : editingId ? "Update Studio" : "Save Studio"}
               </button>
               <button
                 type="button"
@@ -514,7 +523,7 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
         </form>
       )}
 
-      {/* ---------------- VIEW TABLE ---------------- */}
+      {/* ---------------- VIEW TABLE (proper spacing & clean) ---------------- */}
       {tab === "VIEW" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
@@ -534,112 +543,131 @@ export default function StudioMasterForm({ defaultTab = "ADD", onSaved } = {}) {
             {loading ? (
               <div className="loader">Loading studios…</div>
             ) : (
-              <table className="pf-table nice-table">
+              <table className="pf-table nice-table" style={{ tableLayout: "auto", width: "100%" }}>
                 <thead>
                   <tr>
-                    <th>NAME</th>
-                    <th>LOCATION</th>
-                    <th>IMAGES</th>
-                    <th>CAPACITY</th>
-                    <th>₹/HR</th>
-                    <th>STATUS</th>
-                    <th style={{ width: 220 }}>ACTIONS</th>
+                    <th style={{ minWidth: "180px" }}>NAME</th>
+                    <th style={{ minWidth: "280px" }}>LOCATION</th>
+                    <th style={{ minWidth: "140px" }}>IMAGES</th>
+                    <th style={{ minWidth: "100px", textAlign: "center" }}>CAPACITY</th>
+                    <th style={{ minWidth: "100px", textAlign: "right" }}>₹/HR</th>
+                    <th style={{ minWidth: "110px", textAlign: "center" }}>STATUS</th>
+                    <th style={{ minWidth: "220px", textAlign: "center" }}>ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id}>
-                      <td className="td-main">{r.name}</td>
+                  {rows.map((r) => {
+                    const cleanedLoc = r.area || r.city || r.state
+                      ? `${r.area ? r.area + ", " : ""}${r.city ? r.city + ", " : ""}${r.state || ""}`.replace(/,+$/, "").trim()
+                      : cleanLocation(r.location) || "—";
 
-                      {/* LOCATION CELL – auto adjust, wraps text nicely */}
-                      <td className="sm-td-location">
-                        <div className="sm-location-main">
-                          {r.area || r.city || r.state
-                            ? `${r.area ? r.area + ", " : ""}${
-                                r.city ? r.city + ", " : ""
-                              }${r.state ? r.state : ""}`
-                            : r.location || "—"}
-                        </div>
-                        {r.google_map_link && (
-                          <div className="sm-location-map">
-                            <a
-                              href={r.google_map_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                    const isValidCapacity = Number.isFinite(Number(r.capacity)) && Number(r.capacity) >= 0;
+                    const isValidRate = r.hourly_rate != null && !isNaN(parseFloat(r.hourly_rate)) && parseFloat(r.hourly_rate) >= 0;
+
+                    return (
+                      <tr key={r.id}>
+                        <td className="td-main" style={{ verticalAlign: "top", padding: "12px" }}>
+                          {r.name?.trim() || "Unnamed Studio"}
+                        </td>
+
+                        <td className="sm-td-location" style={{ verticalAlign: "top", padding: "12px", whiteSpace: "normal", wordBreak: "break-word", lineHeight: "1.4" }}>
+                          <div className="sm-location-main">{cleanedLoc}</div>
+                          {r.google_map_link && (
+                            <div className="sm-location-map" style={{ marginTop: "6px" }}>
+                              <a
+                                href={r.google_map_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: "#007bff", fontSize: "0.9em" }}
+                              >
+                                View on Map
+                              </a>
+                            </div>
+                          )}
+                        </td>
+
+                        <td style={{ verticalAlign: "top", padding: "12px" }}>
+                          {r.images && Array.isArray(r.images) && r.images.length > 0 ? (
+                            <div className="sm-images-cell" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {r.images.map((img) => (
+                                <div key={img.id} className="sm-thumb-cell" style={{ position: "relative" }}>
+                                  <img
+                                    src={img.url}
+                                    alt={img.caption || "Studio photo"}
+                                    className="sm-thumb-img"
+                                    style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "4px", cursor: "pointer" }}
+                                    onClick={() => openImagePreview(r, img)}
+                                  />
+                                  <button
+                                    title="Delete this image"
+                                    type="button"
+                                    className="sm-thumb-delete"
+                                    style={{ position: "absolute", top: "-6px", right: "-6px", background: "red", color: "white", border: "none", borderRadius: "50%", width: "20px", height: "20px", fontSize: "12px", cursor: "pointer" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteImage(r.id, img.id);
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="muted" style={{ fontSize: "0.9em" }}>No images</span>
+                          )}
+                        </td>
+
+                        <td style={{ textAlign: "center", verticalAlign: "top", padding: "12px" }}>
+                          <span className={isValidCapacity ? "" : "muted"}>
+                            {isValidCapacity ? r.capacity : "—"}
+                          </span>
+                        </td>
+
+                        <td style={{ textAlign: "right", verticalAlign: "top", padding: "12px" }}>
+                          <span className={isValidRate ? "" : "muted"}>
+                            {isValidRate ? `₹${parseFloat(r.hourly_rate).toFixed(2)}` : "—"}
+                          </span>
+                        </td>
+
+                        <td style={{ textAlign: "center", verticalAlign: "top", padding: "12px" }}>
+                          <button
+                            className={`chip ${r.is_active ? "ok" : "muted"}`}
+                            onClick={() => toggleActive(r)}
+                            type="button"
+                            style={{ padding: "6px 12px", borderRadius: "16px", fontSize: "0.9em" }}
+                          >
+                            {r.is_active ? "Active" : "Inactive"}
+                          </button>
+                        </td>
+
+                        <td style={{ textAlign: "center", verticalAlign: "top", padding: "12px" }}>
+                          <div className="action-buttons" style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                            <button
+                              className="mini primary"
+                              type="button"
+                              onClick={() => startEdit(r)}
+                              style={{ padding: "6px 12px", background: "#007bff", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
                             >
-                              Open map
-                            </a>
+                              Edit
+                            </button>
+                            <button
+                              className="mini danger"
+                              type="button"
+                              onClick={() => deleteRow(r.id)}
+                              style={{ padding: "6px 12px", background: "#dc3545", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                            >
+                              Delete
+                            </button>
                           </div>
-                        )}
-                      </td>
-
-                      {/* IMAGES CELL – auto layout thumbnails */}
-                      <td>
-                        {r.images && r.images.length > 0 ? (
-                          <div className="sm-images-cell">
-                            {r.images.map((img) => (
-                              <div key={img.id} className="sm-thumb-cell">
-                                <img
-                                  src={img.url}
-                                  alt={img.caption || ""}
-                                  className="sm-thumb-img"
-                                  onClick={() => openImagePreview(r, img)}
-                                />
-                                <button
-                                  title="Delete image"
-                                  type="button"
-                                  className="sm-thumb-delete"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteImage(r.id, img.id);
-                                  }}
-                                >
-                                  <FaTrash size={10} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-
-                      <td>{r.capacity ?? 0}</td>
-                      <td>{r.hourly_rate ?? "0.00"}</td>
-                      <td>
-                        <button
-                          className={`chip ${r.is_active ? "ok" : "muted"}`}
-                          onClick={() => toggleActive(r)}
-                          type="button"
-                        >
-                          {r.is_active ? "Active" : "Inactive"}
-                        </button>
-                      </td>
-
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="mini"
-                            type="button"
-                            onClick={() => startEdit(r)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="mini danger"
-                            type="button"
-                            onClick={() => deleteRow(r.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {!rows.length && (
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {!rows.length && !loading && (
                     <tr>
-                      <td colSpan={7} className="muted center">
-                        No studios found.
+                      <td colSpan={7} className="muted center" style={{ padding: "40px", fontSize: "1.1em" }}>
+                        No studios found. Add one using the Add Studio tab.
                       </td>
                     </tr>
                   )}

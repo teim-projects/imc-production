@@ -3,7 +3,7 @@ from .views import (
     create_payment,
     payment_return,
     check_status,
-    refund_payment
+    refund_payment,
 )
 
 urlpatterns = [

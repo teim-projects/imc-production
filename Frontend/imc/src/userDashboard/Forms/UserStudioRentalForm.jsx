@@ -1,4 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+// UserStudioRentalForm.jsx
+// Updated — Added Policies Modal + Payment Flow (same pattern as other forms)
+
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../../components/Forms/Forms.css"; // adjust path if needed
@@ -6,6 +9,7 @@ import "../../components/Forms/Forms.css"; // adjust path if needed
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
+const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
 
 const api = axios.create();
 api.interceptors.request.use((config) => {
@@ -75,6 +79,153 @@ const humanizeErr = (err) => {
   return err?.message || "Unknown error";
 };
 
+/* Policies ──────────────────────────────────────────────── */
+const policies = [
+  {
+    id: "A",
+    title: "A. Booking & Confirmation Policies",
+    content: `
+1. Booking Confirmation
+• Booking is confirmed only after advance/full payment and availability check.
+• Confirmation with studio details, time slot, and pricing sent via WhatsApp/email within 24 hours.
+
+2. Advance Payment
+• Minimum 50% advance required to block the studio slot.
+• Balance must be cleared at least 48 hours before booking date.
+
+3. Pricing
+• Hourly rate is as displayed — subject to final confirmation.
+• Any additional services (extra equipment, technician, etc.) charged separately.
+    `,
+  },
+  {
+    id: "B",
+    title: "B. Cancellation & Refund Policies",
+    content: `
+4. Cancellation by Customer
+• 48+ hours before booking → 100% refund of advance (minus gateway charges).
+• 24–48 hours before → 50% refund.
+• Less than 24 hours → No refund.
+
+5. Cancellation by IMC
+• In case of technical failure, maintenance, or force majeure — full refund or rescheduling.
+• IMC not liable for any indirect losses.
+
+6. No-show / Late Arrival
+• If customer arrives >60 minutes late — booking may be cancelled without refund.
+    `,
+  },
+  {
+    id: "C",
+    title: "C. Usage & Conduct Policies",
+    content: `
+7. Studio Usage
+• Studio must be used only for the booked purpose and time slot.
+• No sub-letting or transfer of booking allowed.
+
+8. Equipment & Damage
+• Customer responsible for any damage caused during usage.
+• Security deposit (if applicable) refunded after inspection.
+
+9. Conduct
+• Respectful behaviour towards staff and property mandatory.
+• Misconduct may lead to immediate termination without refund.
+    `,
+  },
+  {
+    id: "D",
+    title: "D. General & Force Majeure",
+    content: `
+10. Payment Modes
+• UPI, Card, Net Banking, Bank Transfer.
+
+11. Force Majeure
+• IMC not liable for delays/cancellations due to power failure, natural disasters, government restrictions, etc.
+
+12. Jurisdiction
+• All disputes subject to Pune jurisdiction only.
+    `,
+  },
+  {
+    id: "E",
+    title: "E. Final Acceptance",
+    content: `
+By submitting this booking and making payment,
+the customer confirms acceptance of all the above policies.
+    `,
+  },
+];
+
+// ────────────────────────────────────────────────
+// Policies Modal (same design as your other pages)
+// ────────────────────────────────────────────────
+function PoliciesModal({ onClose }) {
+  const [activeTab, setActiveTab] = useState("A");
+  const current = policies.find((p) => p.id === activeTab);
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-gray-950 text-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-amber-800/50"
+      >
+        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-6 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black">Terms & Conditions</h2>
+            <p className="text-amber-200 mt-1">IMC Studio Rental Policies</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-3xl font-bold hover:text-amber-200 transition"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 p-4 border-b border-gray-800 bg-gray-900/70">
+          {policies.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setActiveTab(p.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                activeTab === p.id
+                  ? "bg-amber-500 text-black shadow-md"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {p.id}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6 md:p-8 overflow-y-auto flex-1">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-amber-400 mb-5">{current.title}</h3>
+            <pre className="whitespace-pre-wrap font-sans text-gray-200 text-base leading-relaxed">
+              {current.content.trim()}
+            </pre>
+          </motion.div>
+        </div>
+
+        <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex justify-center">
+          <button
+            onClick={onClose}
+            className="px-12 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition shadow-lg"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ───────────────────────────────────────────────────────────── */
 
 const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
@@ -86,6 +237,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState("");
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added
 
   const emptyForm = {
     full_name: "",
@@ -258,6 +410,66 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     return null;
   };
 
+  // ─── Create booking first (pending payment) ───
+  const createBooking = async () => {
+    const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
+
+    const payload = {
+      customer: formData.full_name.trim(),
+      contact_number: formData.mobile.trim(),
+      email: formData.email.trim() || null,
+      address: "", // can add later if needed
+      studio_id: formData.studio_id,
+      studio_name: formData.studio_name,
+      date: formData.date,
+      time_slot: formData.time_slot,
+      duration: Number(formData.duration),
+      payment_methods: [],
+      price_per_hour: priceToSend,
+      price: priceToSend * Number(formData.duration || 1),
+      notes: formData.notes || "",
+      payment_status: "pending",
+    };
+
+    const res = await api.post(BOOKINGS_URL, payload);
+    if (res.status === 201 || res.status === 200) {
+      return res.data.id || res.data.pk || res.data._id;
+    }
+    throw new Error("Booking creation failed");
+  };
+
+  // ─── Initiate payment ───
+  const initiatePayment = async (bookingId) => {
+    const amount = pricePerHour * Number(formData.duration || 1);
+    if (amount <= 0) throw new Error("Invalid booking amount");
+
+    const payload = {
+      amount,
+      customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
+      email: formData.email.trim() || "booking@imc.com",
+      phone: formData.mobile.trim(),
+      description: `Studio Rental - ${formData.studio_name || "Selected Studio"} on ${formData.date}`,
+      return_url: `${window.location.origin}/payment-callback?type=studio-booking&mobile=${formData.mobile.trim()}&booking_id=${bookingId}`,
+    };
+
+    const paymentRes = await axios.post(PAYMENT_CREATE_API, payload);
+    const pData = paymentRes.data;
+    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      return;
+    }
+
+    // Rare instant success
+    if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
+      setSuccessMsg("Booking & Payment completed successfully!");
+      return;
+    }
+
+    throw new Error("Payment initiation failed - no redirect URL");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -269,37 +481,18 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
 
-    const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
-
-    const payload = {
-      customer: formData.full_name,
-      contact_number: formData.mobile,
-      email: formData.email,
-      address: "",
-      studio_id: formData.studio_id,
-      studio_name: formData.studio_name,
-      date: formData.date,
-      time_slot: formData.time_slot,
-      duration: Number(formData.duration),
-      payment_methods: [],
-      price_per_hour: priceToSend,
-      price: priceToSend,
-      notes: formData.notes || "",
-    };
-
     setSaving(true);
+
     try {
-      const res = await api.post(BOOKINGS_URL, payload);
+      // Step 1: Create booking record (pending)
+      const bookingId = await createBooking();
 
-      const totalAmount = priceToSend * Number(formData.duration || 1);
+      // Step 2: Start payment
+      await initiatePayment(bookingId);
 
-      navigate("/payment", {
-        state: {
-          booking: res.data,
-          studio: selectedStudio,
-          amount: totalAmount,
-        },
-      });
+      // If we reach here → instant success (rare)
+      setSuccessMsg("Studio booked successfully!");
+      resetForm();
     } catch (err) {
       setError(humanizeErr(err));
     } finally {
@@ -539,6 +732,37 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           </p>
         </section>
 
+        {/* Terms with modal trigger */}
+        <div className="flex items-start gap-4 mt-8 mb-6">
+          <input
+            type="checkbox"
+            id="agreed_terms"
+            name="agreed_terms"
+            checked={formData.agreed_terms}
+            onChange={handleChange}
+            className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500 mt-1"
+          />
+          <label htmlFor="agreed_terms" className="text-gray-700 text-base leading-relaxed select-none">
+            I agree to the{" "}
+            <button
+              type="button"
+              onClick={() => setShowPoliciesModal(true)}
+              className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+            >
+              Terms & Conditions
+            </button>{" "}
+            and{" "}
+            <button
+              type="button"
+              onClick={() => setShowPoliciesModal(true)}
+              className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+            >
+              Privacy Policy
+            </button>{" "}
+            <span className="text-red-500">*</span>
+          </label>
+        </div>
+
         <div className="pf-actions" style={{ marginTop: "2rem", gap: "1rem" }}>
           <button type="submit" className="btn" disabled={saving || loading || !formData.studio_id}>
             {saving ? "Processing..." : "Proceed to Payment"}
@@ -549,6 +773,9 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           </button>
         </div>
       </form>
+
+      {/* Policies Modal */}
+      {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
 };
