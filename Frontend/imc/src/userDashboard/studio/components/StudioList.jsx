@@ -4,13 +4,16 @@ import axios from "axios";
 import { MapPin, Users } from "lucide-react";
 
 const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
-
 const STUDIOS_URL = `${BASE}/auth/studio-master/`;
 
 // Public API – no auth needed
 const publicApi = axios.create({
   timeout: 15000,
 });
+
+// ✅ SAFE fallback image (RELIABLE)
+const FALLBACK_IMAGE =
+  "https://placehold.co/500x320?text=Image+Not+Available";
 
 export default function StudioList({
   searchTerm = "",
@@ -22,7 +25,7 @@ export default function StudioList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Fetch studios
+  /* ── Fetch studios ───────────────────────────────────────── */
   useEffect(() => {
     let mounted = true;
 
@@ -47,7 +50,11 @@ export default function StudioList({
         if (mounted) setStudios(activeStudios);
       } catch (err) {
         console.error("Failed to fetch studios:", err);
-        if (mounted) {
+        if (!mounted) return;
+
+        if (err.response?.status === 404) {
+          setError("Studios API not found. Please contact support.");
+        } else {
           setError("Unable to load studios. Please try again later.");
         }
       } finally {
@@ -56,14 +63,16 @@ export default function StudioList({
     };
 
     fetchStudios();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Filtering logic
+  /* ── Filtering logic ─────────────────────────────────────── */
   const filteredStudios = useMemo(() => {
     let result = [...studios];
 
-    // 1. Search by name or location
+    // Search by name or location
     if (searchTerm.trim()) {
       const query = searchTerm.toLowerCase().trim();
       result = result.filter((s) => {
@@ -71,19 +80,16 @@ export default function StudioList({
         const loc = (
           s.full_location ||
           s.location ||
-          [s.area, s.city, s.state]
-            .filter(Boolean)
-            .join(", ")
+          [s.area, s.city, s.state].filter(Boolean).join(", ")
         ).toLowerCase();
         return name.includes(query) || loc.includes(query);
       });
     }
 
-    // 2. Price range filter – FIXED: using 's' instead of 'studio'
+    // Price range filter
     if (priceRange) {
       result = result.filter((s) => {
         const rate = Number(s.hourly_rate || 0);
-
         if (priceRange === "0-500") return rate <= 500;
         if (priceRange === "500-1000") return rate > 500 && rate <= 1000;
         if (priceRange === "1000-2000") return rate > 1000 && rate <= 2000;
@@ -92,7 +98,7 @@ export default function StudioList({
       });
     }
 
-    // 3. Location filter
+    // Location filter
     if (locationFilter.trim()) {
       const locQuery = locationFilter.toLowerCase().trim();
       result = result.filter((s) => {
@@ -110,17 +116,19 @@ export default function StudioList({
     return result;
   }, [studios, searchTerm, priceRange, locationFilter]);
 
-  // Loading UI
+  /* ── Loading UI ──────────────────────────────────────────── */
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
         <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-6 text-lg font-medium text-gray-700">Loading premium studios...</p>
+        <p className="mt-6 text-lg font-medium text-gray-700">
+          Loading premium studios...
+        </p>
       </div>
     );
   }
 
-  // Error UI
+  /* ── Error UI ────────────────────────────────────────────── */
   if (error) {
     return (
       <div className="text-center py-20 px-4">
@@ -135,11 +143,13 @@ export default function StudioList({
     );
   }
 
-  // No results
+  /* ── No results ──────────────────────────────────────────── */
   if (filteredStudios.length === 0) {
     return (
       <div className="text-center py-20 px-6">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">No Studios Found</h2>
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">
+          No Studios Found
+        </h2>
         <p className="text-lg text-gray-600 max-w-lg mx-auto">
           Try adjusting your search term, price range or location.
         </p>
@@ -147,7 +157,7 @@ export default function StudioList({
     );
   }
 
-  // Render list
+  /* ── Render list ─────────────────────────────────────────── */
   return (
     <section className="py-10">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
@@ -155,13 +165,11 @@ export default function StudioList({
           const imageUrl =
             s.images?.[0]?.url?.replace("http://", "https://") ||
             s.image ||
-            "https://via.placeholder.com/500x320?text=Studio";
+            FALLBACK_IMAGE;
 
           const locationText =
             s.full_location ||
-            [s.area, s.city, s.state]
-              .filter(Boolean)
-              .join(", ") ||
+            [s.area, s.city, s.state].filter(Boolean).join(", ") ||
             "Location not specified";
 
           return (
@@ -176,17 +184,10 @@ export default function StudioList({
                   alt={s.name || "Music Studio"}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/500x320?text=Image+Not+Found";
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = FALLBACK_IMAGE;
                   }}
                 />
-
-                {s.is_featured && (
-                  <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-lg animate-pulse">
-                    Featured
-                  </div>
-                )}
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </div>
 
               {/* Content */}
@@ -206,7 +207,10 @@ export default function StudioList({
                     <span className="text-2xl font-extrabold text-orange-600">
                       ₹{Number(s.hourly_rate || 0).toLocaleString()}
                     </span>
-                    <span className="text-sm text-gray-500 font-medium"> / hr</span>
+                    <span className="text-sm text-gray-500 font-medium">
+                      {" "}
+                      / hr
+                    </span>
                   </div>
 
                   <button
@@ -220,7 +224,8 @@ export default function StudioList({
                 {s.capacity && (
                   <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
                     <Users size={16} className="text-gray-500" />
-                    Capacity: <span className="font-medium">{s.capacity} pax</span>
+                    Capacity:{" "}
+                    <span className="font-medium">{s.capacity} pax</span>
                   </div>
                 )}
               </div>
