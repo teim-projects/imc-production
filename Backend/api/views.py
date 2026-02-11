@@ -330,33 +330,51 @@ class StudioViewSet(viewsets.ModelViewSet):
 # ====================================================================
 # Private Bookings
 # ====================================================================
+
+# authapp/views.py
+
+from rest_framework import viewsets, status, filters
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import PrivateBooking
+from .serializers import PrivateBookingSerializer
+
+
 class PrivateBookingViewSet(viewsets.ModelViewSet):
     queryset = PrivateBooking.objects.all().order_by("-id")
     serializer_class = PrivateBookingSerializer
-    pagination_class = DefaultPagination
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    # 🔥 IMPORTANT → Prevent 401
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["customer", "event_type", "venue", "email", "contact_number", "address", "notes"]
-    ordering_fields = ["date", "time_slot", "duration", "guest_count", "created_at"]
-    ordering = ["-date", "-time_slot"]
+    search_fields = ["customer", "event_type", "venue", "email"]
+    ordering_fields = ["date", "time_slot", "duration"]
+    ordering = ["-date"]
 
     @action(detail=False, methods=["get"])
     def by_date(self, request):
         target = request.query_params.get("date")
         if not target:
-            return Response({"error": "Missing 'date' parameter."}, status=status.HTTP_400_BAD_REQUEST)
-        qs = self.get_queryset().filter(date=target).order_by("time_slot")
+            return Response(
+                {"error": "Missing 'date' parameter."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        qs = self.get_queryset().filter(date=target)
         return Response(self.get_serializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"])
     def stats(self, request):
         qs = self.get_queryset()
         total = qs.count()
-        total_duration = sum(float(x.duration or 0) for x in qs)
-        avg_duration = round(total_duration / total, 2) if total else 0.0
         total_guests = sum(int(x.guest_count or 0) for x in qs)
-        return Response({"total_bookings": total, "avg_duration": avg_duration, "total_guests": total_guests})
 
+        return Response({
+            "total_bookings": total,
+            "total_guests": total_guests
+        })
 
 # ====================================================================
 # Events
