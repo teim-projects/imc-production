@@ -1,5 +1,5 @@
-// src/pages/PrivateEventBooking.jsx (or wherever you place it)
-// Public-facing Private Event Booking Form with Policies Modal
+// src/pages/PrivateEventBooking.jsx
+// Updated form fields & placeholders to match screenshot exactly — UI/layout kept identical
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -54,9 +54,7 @@ const DURATION_OPTIONS = [
   "Multi-Day",
 ];
 
-// ────────────────────────────────────────────────
-// Policies (tailored for private events — same tabbed style)
-// ────────────────────────────────────────────────
+// Policies (unchanged)
 const policies = [
   {
     id: "A",
@@ -153,9 +151,7 @@ the client confirms full acceptance of the above policies.
   },
 ];
 
-// ────────────────────────────────────────────────
-// Policies Modal (same design as Singer & Photography pages)
-// ────────────────────────────────────────────────
+// Policies Modal (unchanged)
 function PoliciesModal({ onClose }) {
   const [activeTab, setActiveTab] = useState("A");
   const current = policies.find((p) => p.id === activeTab);
@@ -226,21 +222,20 @@ function PoliciesModal({ onClose }) {
 export default function PrivateEventBooking() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added for modal
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
 
   const [form, setForm] = useState({
-    customer: "",
+    customer_name: "",
     contact_number: "",
     email: "",
     address: "",
     event_type: "",
     venue: "",
-    date: "",
-    time_slot: "",
-    duration: "",
     guest_count: "",
+    date: "",
+    time: "",
+    duration: "",
     notes: "",
-    reference_images: null, // For file upload
     agreed_terms: false,
   });
 
@@ -249,20 +244,14 @@ export default function PrivateEventBooking() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setForm((prev) => ({ ...prev, reference_images: e.target.files?.[0] || null }));
-  };
-
   const validateForm = () => {
-    if (!form.customer.trim()) return "Full name is required";
+    if (!form.customer_name.trim()) return "Customer name is required";
     if (!form.contact_number.trim()) return "Contact number is required";
     if (!form.email.trim()) return "Email is required";
-    if (!form.event_type) return "Please select event type";
+    if (!form.event_type.trim()) return "Event type is required";
     if (!form.venue.trim()) return "Venue is required";
     if (!form.date) return "Date is required";
-    if (!form.time_slot.trim()) return "Time slot is required";
-    if (!form.duration) return "Duration is required";
-    if (!form.guest_count || form.guest_count <= 0) return "Guest count must be greater than 0";
+    if (!form.duration.trim()) return "Duration is required";
     if (!form.agreed_terms) return "You must agree to terms";
     return null;
   };
@@ -275,18 +264,17 @@ export default function PrivateEventBooking() {
     }
 
     const data = new FormData();
-    data.append("customer", form.customer.trim());
+    data.append("customer_name", form.customer_name.trim());
     data.append("contact_number", form.contact_number.trim());
     data.append("email", form.email.trim());
     if (form.address.trim()) data.append("address", form.address.trim());
-    data.append("event_type", form.event_type);
+    data.append("event_type", form.event_type.trim());
     data.append("venue", form.venue.trim());
     data.append("date", form.date);
-    data.append("time_slot", form.time_slot.trim());
-    data.append("duration", form.duration);
-    data.append("guest_count", Number(form.guest_count));
+    if (form.time.trim()) data.append("time", form.time.trim());
+    data.append("duration", form.duration.trim());
+    if (form.guest_count.trim()) data.append("guest_count", Number(form.guest_count));
     if (form.notes.trim()) data.append("notes", form.notes.trim());
-    if (form.reference_images) data.append("reference_images", form.reference_images);
 
     try {
       setLoading(true);
@@ -305,23 +293,22 @@ export default function PrivateEventBooking() {
   const resetForm = () => {
     setSuccess(false);
     setForm({
-      customer: "",
+      customer_name: "",
       contact_number: "",
       email: "",
       address: "",
       event_type: "",
       venue: "",
-      date: "",
-      time_slot: "",
-      duration: "",
       guest_count: "",
+      date: "",
+      time: "",
+      duration: "",
       notes: "",
-      reference_images: null,
       agreed_terms: false,
     });
   };
 
-  // Success Page
+  // Success Page (unchanged)
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
@@ -341,7 +328,7 @@ export default function PrivateEventBooking() {
             Booking Request Sent!
           </h2>
           <p className="text-gray-600 text-lg mb-10">
-            Thank you, {form.customer}! We’ve received your private event request. Our team will contact you within 24 hours with a custom quote.
+            Thank you, {form.customer_name}! We’ve received your private event request. Our team will contact you within 24 hours with a custom quote.
           </p>
           <button
             onClick={resetForm}
@@ -354,10 +341,12 @@ export default function PrivateEventBooking() {
     );
   }
 
-  // Main Booking Form
+  // ────────────────────────────────────────────────
+  // Main Form – fields updated to match screenshot
+  // ────────────────────────────────────────────────
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION */}
+      {/* HERO SECTION – unchanged */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-75"
@@ -387,7 +376,7 @@ export default function PrivateEventBooking() {
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CONTENT – layout unchanged, only inner form fields changed */}
       <section className="relative px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* FORM */}
@@ -404,210 +393,196 @@ export default function PrivateEventBooking() {
                   Book Your Private Event
                 </h2>
 
-                {/* Personal Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <User className="inline w-5 h-5 mr-2" />
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="customer"
-                      value={form.customer}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
+                {/* Customer Details */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold text-red-600 mb-6">Customer Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Customer Name<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="customer_name"
+                        value={form.customer_name}
+                        onChange={handleChange}
+                        placeholder="e.g., Rahul Verma"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Contact Number<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="contact_number"
+                        value={form.contact_number}
+                        onChange={handleChange}
+                        placeholder="+91XXXXXXXXXX"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Email<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="customer@email.com"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Phone className="inline w-5 h-5 mr-2" />
-                      Contact Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="contact_number"
-                      value={form.contact_number}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Mail className="inline w-5 h-5 mr-2" />
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <MapPin className="inline w-5 h-5 mr-2" />
-                      Address (Optional)
-                    </label>
+
+                  <div className="mt-6">
+                    <label className="block text-gray-700 font-medium mb-2">Address</label>
                     <input
                       type="text"
                       name="address"
                       value={form.address}
                       onChange={handleChange}
+                      placeholder="Street, City"
                       className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                     />
                   </div>
                 </div>
 
                 {/* Event Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      Event Type <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold text-red-600 mb-6">Event Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Event Type<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
                         name="event_type"
                         value={form.event_type}
                         onChange={handleChange}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition"
-                      >
-                        <option value="">Select Event Type</option>
-                        {EVENT_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                        placeholder="Birthday / Wedding / Corporate / Private Party"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Venue<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="venue"
+                        value={form.venue}
+                        onChange={handleChange}
+                        placeholder="IMC Banquet Hall / Client Venue"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Guest Count</label>
+                      <input
+                        type="text"
+                        name="guest_count"
+                        value={form.guest_count}
+                        onChange={handleChange}
+                        placeholder="e.g., 120"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <MapPin className="inline w-5 h-5 mr-2" />
-                      Venue / Location <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="venue"
-                      value={form.venue}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                      placeholder="e.g. Taj Hotel, Mumbai"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Calendar className="inline w-5 h-5 mr-2" />
-                      Event Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={form.date}
-                      onChange={handleChange}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Clock className="inline w-5 h-5 mr-2" />
-                      Time Slot <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="time_slot"
-                      value={form.time_slot}
-                      onChange={handleChange}
-                      placeholder="e.g. 7:00 PM - 11:00 PM"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      Duration <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
+                </div>
+
+                {/* Schedule */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold text-red-600 mb-6">Schedule</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Date<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="date"
+                        value={form.date}
+                        onChange={handleChange}
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">dd-mm-yyyy</p>
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Time</label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={form.time}
+                        onChange={handleChange}
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">
+                        Duration (hours)<span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
                         name="duration"
                         value={form.duration}
                         onChange={handleChange}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition"
-                      >
-                        <option value="">Select Duration</option>
-                        {DURATION_OPTIONS.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                        placeholder="e.g, 3"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Users className="inline w-5 h-5 mr-2" />
-                      Expected Guests <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="guest_count"
-                      value={form.guest_count}
-                      onChange={handleChange}
-                      min="1"
-                      placeholder="e.g. 100"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
                 </div>
 
-                {/* Upload & Notes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      <Camera className="inline w-6 h-6 mr-2" />
-                      Reference Images / Mood Board (Optional)
-                    </label>
-                    <label className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center bg-gray-50 flex flex-col items-center cursor-pointer hover:border-amber-400 transition">
-                      <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                      <p className="text-gray-600">
-                        <span className="text-amber-600 font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">Images up to 10MB</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
+                {/* Payment & Notes */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold text-red-600 mb-6">Payment & Notes</h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-gray-800 font-medium mb-3">Payment Options</label>
+                      <div className="flex flex-wrap gap-4">
+                        <button
+                          type="button"
+                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
+                        >
+                          Card
+                        </button>
+                        <button
+                          type="button"
+                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
+                        >
+                          UPI
+                        </button>
+                        <button
+                          type="button"
+                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
+                        >
+                          NetBanking
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-800 font-medium mb-3">Special Notes</label>
+                      <textarea
+                        name="notes"
+                        value={form.notes}
+                        onChange={handleChange}
+                        rows="5"
+                        placeholder="Any special arrangements,artist requirements, A/V setup, etc."
+                        className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
                       />
-                    </label>
-                    {form.reference_images && (
-                      <p className="text-sm text-green-600 mt-2 text-center">
-                        ✓ {form.reference_images.name}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      <FileText className="inline w-6 h-6 mr-2" />
-                      Special Requests / Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={form.notes}
-                      onChange={handleChange}
-                      rows="6"
-                      placeholder="Theme, specific songs, lighting, photography style, etc."
-                      className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
-                    />
+                    </div>
                   </div>
                 </div>
 
-                {/* Terms with modal trigger */}
-                <div className="flex items-start gap-4 mt-12">
+                {/* Terms */}
+                <div className="flex items-start gap-4 mt-10">
                   <input
                     type="checkbox"
                     id="terms"
@@ -640,12 +615,12 @@ export default function PrivateEventBooking() {
                 <button
                   onClick={submitBooking}
                   disabled={loading}
-                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                  className="mt-10 w-full max-w-[300px] mx-auto py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-4 h-4" />
-                      Submitting Request...
+                      <Loader2 className="animate-spin w-5 h-5" />
+                      Submitting...
                     </>
                   ) : (
                     "Submit Booking Request"
@@ -655,7 +630,7 @@ export default function PrivateEventBooking() {
             </div>
           </div>
 
-          {/* BENEFITS SIDEBAR */}
+          {/* BENEFITS SIDEBAR – unchanged */}
           <div className="lg:col-span-1 space-y-8 mt-20">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
@@ -710,7 +685,6 @@ export default function PrivateEventBooking() {
 
       <Footer />
 
-      {/* Policies Modal */}
       {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
