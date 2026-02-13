@@ -14,7 +14,7 @@ import {
   faUser,
   faGear,
   faRightFromBracket,
-  faTicketAlt, // For My Bookings
+  faTicketAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import logo from "../assets/logo.png";
 
@@ -38,7 +38,7 @@ const Navbar = () => {
 
   const BASE = (import.meta.env.VITE_BASE_API_URL || "").replace(/\/+$/, "");
 
-  /* ---------------- HELPERS ---------------- */
+  // ─── Helpers ────────────────────────────────────────────────
   const toAbsolute = (url) => {
     if (!url) return "";
     if (/^https?:\/\//i.test(url)) return url;
@@ -46,7 +46,7 @@ const Navbar = () => {
     return `${BASE}/${url}`;
   };
 
-  const initials = (name) =>
+  const getInitials = (name) =>
     (name || "")
       .trim()
       .split(/\s+/)
@@ -57,18 +57,17 @@ const Navbar = () => {
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
-  /* ---------------- RESPONSIVE WIDTH ---------------- */
+  // ─── Responsive check ───────────────────────────────────────
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 900);
     };
-
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ---------------- LOGOUT ---------------- */
+  // ─── Logout ─────────────────────────────────────────────────
   const handleLogout = useCallback(() => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
@@ -81,7 +80,7 @@ const Navbar = () => {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  /* ---------------- FETCH USER ---------------- */
+  // ─── Fetch current user ─────────────────────────────────────
   const fetchMe = useCallback(async () => {
     const token = localStorage.getItem("access");
     if (!token) {
@@ -127,9 +126,11 @@ const Navbar = () => {
     fetchMe();
   }, [fetchMe]);
 
-  const avatarSrc = user.profile_photo ? toAbsolute(user.profile_photo) : "";
+  // We only ever have OUR OWN photo → show photo only if it exists
+  const showPhoto = !!user.profile_photo?.trim();
+  const avatarSrc = showPhoto ? toAbsolute(user.profile_photo) : "";
 
-  /* ---------------- CLOSE MENU ON OUTSIDE CLICK ---------------- */
+  // ─── Close dropdown on outside click ────────────────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (
@@ -146,7 +147,7 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Global keyframes */}
+      {/* Global animation */}
       <style jsx global>{`
         @keyframes rotate {
           from { transform: rotate(0deg); }
@@ -154,9 +155,9 @@ const Navbar = () => {
         }
       `}</style>
 
-      {/* ================= NAVBAR ================= */}
+      {/* ==================== NAVBAR ==================== */}
       <nav style={styles.navbar}>
-        {/* LOGO */}
+        {/* Logo */}
         <div style={styles.logo}>
           <Link to="/" style={styles.logoLink}>
             <img src={logo} alt="IMC Logo" style={styles.logoImg} />
@@ -164,18 +165,16 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* DESKTOP CENTER NAV - ONLY FOR LOGGED-IN NON-ADMIN USERS */}
+        {/* Center navigation (logged-in non-admin users on desktop) */}
         {isAuthenticated && !isAdmin && isDesktop && (
           <div style={styles.centerLinks}>
             {[
               ["Home", "/"],
               ["Services", "/services"],
-              
               ["Studio", "/studio-booking"],
               ["Singer", "/singer"],
               ["Classes", "/classes"],
               ["Events", "/events-booking"],
-             
               ["Contact", "/contact"],
             ].map(([label, path]) => (
               <Link
@@ -192,47 +191,55 @@ const Navbar = () => {
           </div>
         )}
 
-        {/* RIGHT SIDE */}
+        {/* Right side – auth controls */}
         <div style={styles.right}>
           {isAuthenticated ? (
             <>
-              {/* MOBILE HAMBURGER */}
+              {/* Mobile menu button */}
               {!isDesktop && (
                 <button
                   onClick={() => setSidebarOpen(true)}
                   style={styles.mobileMenuBtn}
+                  aria-label="Open menu"
                 >
                   <FontAwesomeIcon icon={faBars} size="lg" />
                 </button>
               )}
 
-              {/* DESKTOP AVATAR DROPDOWN */}
+              {/* Desktop avatar + dropdown */}
               {isDesktop && (
                 <div style={{ position: "relative" }}>
                   <button
                     ref={btnRef}
-                    onClick={() => setMenuOpen((s) => !s)}
+                    onClick={() => setMenuOpen((prev) => !prev)}
                     style={styles.avatarButton}
+                    aria-label="User menu"
                   >
                     <span style={styles.halo} />
                     <span style={styles.avatarCircle}>
-                      {avatarSrc ? (
-                        <img src={avatarSrc} alt="Profile" style={styles.avatarImg} />
+                      {showPhoto ? (
+                        <img
+                          src={avatarSrc}
+                          alt={`${user.full_name || "User"} profile`}
+                          style={styles.avatarImg}
+                          referrerPolicy="no-referrer"
+                        />
                       ) : (
                         <span style={styles.avatarInitials}>
-                          {initials(user.full_name)}
+                          {getInitials(user.full_name)}
                         </span>
                       )}
                     </span>
                     <span style={styles.statusDot} />
                   </button>
 
-                  {/* DROPDOWN MENU */}
                   {menuOpen && (
                     <div ref={menuRef} style={styles.menu}>
                       <div style={styles.menuHeader}>
                         <strong>{user.full_name || "User"}</strong>
-                        <span style={{ fontSize: 12 }}>{user.email}</span>
+                        <span style={{ fontSize: 12, opacity: 0.8 }}>
+                          {user.email}
+                        </span>
                       </div>
 
                       <div style={styles.menuDivider} />
@@ -245,7 +252,7 @@ const Navbar = () => {
                         }}
                         onClick={() => setMenuOpen(false)}
                       >
-                        <FontAwesomeIcon icon={faUser} /> Profile
+                        <FontAwesomeIcon icon={faUser} fixedWidth /> Profile
                       </Link>
 
                       <Link
@@ -256,21 +263,8 @@ const Navbar = () => {
                         }}
                         onClick={() => setMenuOpen(false)}
                       >
-                        <FontAwesomeIcon icon={faTicketAlt} /> My Bookings
+                        <FontAwesomeIcon icon={faTicketAlt} fixedWidth /> My Bookings
                       </Link>
-
-                      {!isAdmin && (
-                        <Link
-                          to="/settings"
-                          style={{
-                            ...styles.menuItem,
-                            ...(isActive("/settings") ? styles.menuActive : {}),
-                          }}
-                          onClick={() => setMenuOpen(false)}
-                        >
-                          <FontAwesomeIcon icon={faGear} /> Settings
-                        </Link>
-                      )}
 
                       <div style={styles.menuDivider} />
 
@@ -278,7 +272,7 @@ const Navbar = () => {
                         onClick={handleLogout}
                         style={{ ...styles.menuItem, ...styles.menuDanger }}
                       >
-                        <FontAwesomeIcon icon={faRightFromBracket} /> Logout
+                        <FontAwesomeIcon icon={faRightFromBracket} fixedWidth /> Logout
                       </button>
                     </div>
                   )}
@@ -298,7 +292,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* ================= MOBILE SIDEBAR ================= */}
+      {/* ==================== MOBILE SIDEBAR ==================== */}
       {sidebarOpen && (
         <>
           <div style={styles.overlay} onClick={() => setSidebarOpen(false)} />
@@ -308,26 +302,32 @@ const Navbar = () => {
               <button
                 onClick={() => setSidebarOpen(false)}
                 style={styles.sidebarClose}
+                aria-label="Close menu"
               >
-                <FontAwesomeIcon icon={faXmark} />
+                <FontAwesomeIcon icon={faXmark} size="xl" />
               </button>
 
               <div style={styles.sidebarProfile}>
                 <div style={styles.sidebarAvatar}>
-                  {avatarSrc ? (
-                    <img src={avatarSrc} alt="Profile" style={styles.avatarImg} />
+                  {showPhoto ? (
+                    <img
+                      src={avatarSrc}
+                      alt={`${user.full_name || "User"} profile`}
+                      style={styles.avatarImg}
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <span style={styles.avatarInitials}>
-                      {initials(user.full_name)}
+                      {getInitials(user.full_name)}
                     </span>
                   )}
                 </div>
                 <div>
                   <p style={styles.sidebarName}>
-                    {isAuthenticated ? user.full_name : "Guest"}
+                    {user.full_name || "Guest"}
                   </p>
                   <p style={styles.sidebarEmail}>
-                    {isAuthenticated ? user.email : "Not logged in"}
+                    {user.email || "Not logged in"}
                   </p>
                 </div>
               </div>
@@ -353,14 +353,13 @@ const Navbar = () => {
                       ...(isActive(path) ? styles.sidebarActive : {}),
                     }}
                   >
-                    <FontAwesomeIcon icon={icon} />
+                    <FontAwesomeIcon icon={icon} fixedWidth />
                     <span>{label}</span>
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* FOOTER LINKS - INCLUDING MY BOOKINGS */}
             <div style={styles.sidebarFooter}>
               {isAuthenticated && (
                 <>
@@ -372,7 +371,7 @@ const Navbar = () => {
                     }}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <FontAwesomeIcon icon={faUser} /> Profile
+                    <FontAwesomeIcon icon={faUser} fixedWidth /> Profile
                   </Link>
 
                   <Link
@@ -383,7 +382,7 @@ const Navbar = () => {
                     }}
                     onClick={() => setSidebarOpen(false)}
                   >
-                    <FontAwesomeIcon icon={faTicketAlt} /> My Bookings
+                    <FontAwesomeIcon icon={faTicketAlt} fixedWidth /> My Bookings
                   </Link>
 
                   {!isAdmin && (
@@ -395,12 +394,15 @@ const Navbar = () => {
                       }}
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <FontAwesomeIcon icon={faGear} /> Settings
+                      <FontAwesomeIcon icon={faGear} fixedWidth /> Settings
                     </Link>
                   )}
 
-                  <button onClick={handleLogout} style={styles.sidebarLogout}>
-                    <FontAwesomeIcon icon={faRightFromBracket} /> Logout
+                  <button
+                    onClick={handleLogout}
+                    style={styles.sidebarLogout}
+                  >
+                    <FontAwesomeIcon icon={faRightFromBracket} fixedWidth /> Logout
                   </button>
                 </>
               )}
@@ -412,7 +414,7 @@ const Navbar = () => {
   );
 };
 
-/* ================= STYLES ================= */
+/* ==================== STYLES ==================== */
 const styles = {
   navbar: {
     display: "flex",
@@ -426,7 +428,12 @@ const styles = {
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
   },
   logo: { display: "flex", alignItems: "center" },
-  logoLink: { display: "flex", alignItems: "center", textDecoration: "none", color: "#fff" },
+  logoLink: {
+    display: "flex",
+    alignItems: "center",
+    textDecoration: "none",
+    color: "#fff",
+  },
   logoImg: { height: 40, marginRight: 12 },
   logoText: { fontSize: "1.6em", fontWeight: 800, letterSpacing: "1px" },
 
@@ -450,7 +457,13 @@ const styles = {
   activeNav: { background: "#fff", color: "#5B21B6", fontWeight: 700 },
 
   right: { display: "flex", gap: 16, alignItems: "center" },
-  mobileMenuBtn: { background: "none", border: "none", color: "#fff", fontSize: "24px", cursor: "pointer" },
+  mobileMenuBtn: {
+    background: "none",
+    border: "none",
+    color: "#fff",
+    fontSize: "24px",
+    cursor: "pointer",
+  },
 
   link: {
     color: "#fff",
@@ -471,7 +484,15 @@ const styles = {
     transition: "all 0.3s",
   },
 
-  avatarButton: { position: "relative", height: 48, width: 48, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer" },
+  avatarButton: {
+    position: "relative",
+    height: 48,
+    width: 48,
+    borderRadius: "50%",
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+  },
   halo: {
     position: "absolute",
     inset: -6,
@@ -495,7 +516,16 @@ const styles = {
   },
   avatarImg: { width: "100%", height: "100%", objectFit: "cover" },
   avatarInitials: { color: "#fff", fontWeight: 800 },
-  statusDot: { position: "absolute", right: 2, bottom: 2, height: 12, width: 12, borderRadius: "50%", background: "#2ecc71", border: "2px solid #fff" },
+  statusDot: {
+    position: "absolute",
+    right: 2,
+    bottom: 2,
+    height: 12,
+    width: 12,
+    borderRadius: "50%",
+    background: "#2ecc71",
+    border: "2px solid #fff",
+  },
 
   menu: {
     position: "absolute",
@@ -508,7 +538,13 @@ const styles = {
     boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
     zIndex: 100,
   },
-  menuHeader: { display: "flex", flexDirection: "column", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #eee" },
+  menuHeader: {
+    display: "flex",
+    flexDirection: "column",
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottom: "1px solid #eee",
+  },
   menuItem: {
     display: "flex",
     gap: 12,
@@ -523,11 +559,16 @@ const styles = {
     width: "100%",
     textAlign: "left",
   },
-  menuActive: { background: "#FFF3E0", color: "#FF6F3C" }, // Highlight active
+  menuActive: { background: "#FFF3E0", color: "#FF6F3C" },
   menuDivider: { height: 1, background: "#eee", margin: "8px 0" },
   menuDanger: { color: "#b42318" },
 
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100 },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.5)",
+    zIndex: 1100,
+  },
   sidebar: {
     position: "fixed",
     top: 0,
@@ -540,7 +581,16 @@ const styles = {
     flexDirection: "column",
     boxShadow: "10px 0 30px rgba(0,0,0,0.2)",
   },
-  sidebarClose: { position: "absolute", top: 20, right: 20, background: "none", border: "none", color: "#fff", fontSize: "24px", cursor: "pointer" },
+  sidebarClose: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    background: "none",
+    border: "none",
+    color: "#fff",
+    fontSize: "24px",
+    cursor: "pointer",
+  },
   sidebarHeader: {
     background: "linear-gradient(135deg, #5b21b6, #9333ea)",
     padding: "30px 24px",
@@ -567,7 +617,12 @@ const styles = {
   sidebarEmail: { fontSize: "14px", opacity: 0.9 },
 
   sidebarLinksContainer: { flex: 1, overflowY: "auto", padding: "0 24px" },
-  sidebarLinks: { display: "flex", flexDirection: "column", gap: 8, padding: "20px 0" },
+  sidebarLinks: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    padding: "20px 0",
+  },
   sidebarLink: {
     display: "flex",
     alignItems: "center",
@@ -580,9 +635,19 @@ const styles = {
     fontSize: "16px",
     transition: "all 0.3s",
   },
-  sidebarActive: { background: "linear-gradient(135deg, #FFD23F, #FF8A3C)", color: "#0A2C56", fontWeight: "700" },
+  sidebarActive: {
+    background: "linear-gradient(135deg, #FFD23F, #FF8A3C)",
+    color: "#0A2C56",
+    fontWeight: "700",
+  },
 
-  sidebarFooter: { padding: "20px 24px", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", gap: 12 },
+  sidebarFooter: {
+    padding: "20px 24px",
+    borderTop: "1px solid #eee",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
   sidebarFooterLink: {
     display: "flex",
     alignItems: "center",

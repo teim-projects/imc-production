@@ -199,23 +199,23 @@ export default function Services() {
                   </span>
                 )}
 
-                <Link
-                  to={service.link}
-                  className={`
-                    inline-flex items-center gap-3
-                    px-7 py-3.5
-                    rounded-xl font-bold text-base
-                    text-white shadow-lg hover:shadow-xl
-                    transform hover:scale-105 transition-all duration-300
-                    bg-gradient-to-r ${service.color}
-                    no-underline hover:no-underline focus:no-underline active:no-underline
-                    !decoration-none hover:!decoration-none focus:!decoration-none
-                    underline-none decoration-0
-                  `}
-                >
-                  Get Started
-                  <ArrowRight size={20} />
-                </Link>
+              <Link
+  to={service.link}
+className={`
+  inline-flex items-center gap-3
+  px-7 py-3.5
+  rounded-xl font-bold text-base
+  text-white shadow-lg hover:shadow-xl
+  transform hover:scale-105 transition-all duration-300
+  bg-gradient-to-r ${service.color}
+  !no-underline
+`}
+
+>
+  Get Started
+  <ArrowRight size={20} />
+</Link>
+
               </div>
             </div>
           </motion.div>

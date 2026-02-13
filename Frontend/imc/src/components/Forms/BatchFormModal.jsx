@@ -12,6 +12,7 @@ const DAYS = [
   "Wednesday",
   "Friday",
   "Saturday",
+  "Sunday",
 ];
 
 const TIMES = [

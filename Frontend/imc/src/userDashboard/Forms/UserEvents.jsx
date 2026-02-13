@@ -9,75 +9,103 @@ import {
   FaSearch,
   FaTicketAlt,
   FaTimes,
+  FaCheckCircle,
 } from "react-icons/fa";
 
-/* ===================== API ===================== */
+/* ===================== CONFIG ===================== */
 
-const BASE =
-  import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
 
-/* ===================== AXIOS ===================== */
+/* ===================== AXIOS INSTANCE ===================== */
 
 const api = axios.create();
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
   if (token) {
-    config.headers = {
-      ...(config.headers || {}),
-      Authorization: `Bearer ${token}`,
-    };
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-/* ===================== COLORS ===================== */
-
-const COLORS = {
-  cream: "#FFF7DF",
-  navy: "#0B2545",
-  yellow: "#FFD447",
-  orange: "#FF7A3C",
-};
-
 /* ======================================================
-   SIMPLE BOOKING MODAL (NO SEATS)
+   BOOKING MODAL – FORM STYLE (NO SEAT SELECTION)
 ====================================================== */
 
 function BookingModal({ event, onClose, onSuccess }) {
-  const [tickets, setTickets] = useState(1);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [payment, setPayment] = useState("UPI");
+  const [form, setForm] = useState({
+    customer_name: "",
+    contact_number: "",
+    email: "",
+    number_of_tickets: 1,
+    payment_method: "UPI",
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   if (!event) return null;
 
-  const total = tickets * Number(event.ticket_price || 0);
+  const ticketPrice = Number(event.ticket_price) || 0;
+  const total = form.number_of_tickets * ticketPrice;
 
-  const submitBooking = async () => {
-    if (!name || !phone) {
-      setError("Please fill all required fields");
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === "number_of_tickets" ? Number(value) : value,
+    }));
+    setError(""); // clear error on change
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!form.customer_name.trim()) {
+      setError("Please enter your full name");
+      return;
+    }
+    if (!form.contact_number.trim() || form.contact_number.length < 10) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+    if (form.number_of_tickets < 1) {
+      setError("Please select at least 1 ticket");
       return;
     }
 
+    setLoading(true);
+
     try {
-      setLoading(true);
       await api.post(BOOKINGS_URL, {
         event: event.id,
-        customer_name: name,
-        contact_number: phone,
-        number_of_tickets: tickets,
+        customer_name: form.customer_name.trim(),
+        contact_number: form.contact_number.trim(),
+        email: form.email.trim() || null,
+        number_of_tickets: form.number_of_tickets,
         total_amount: total,
-        payment_method: payment,
+        payment_method: form.payment_method,
       });
-      onSuccess();
-      onClose();
-    } catch (e) {
-      setError("Booking failed. Please try again.");
+
+      setSuccess(true);
+
+      // Auto-refresh parent list & close after short delay
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 2200);
+    } catch (err) {
+      console.error("Booking error:", err);
+      setError(
+        err.response?.data?.detail ||
+        err.response?.data?.non_field_errors?.[0] ||
+        "Could not complete booking. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -86,83 +114,159 @@ function BookingModal({ event, onClose, onSuccess }) {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
         <motion.div
-          className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl"
-          initial={{ y: 40 }}
-          animate={{ y: 0 }}
+          className="bg-white rounded-2xl w-full max-w-md p-6 md:p-7 shadow-2xl relative"
+          initial={{ y: 80, scale: 0.92 }}
+          animate={{ y: 0, scale: 1 }}
+          exit={{ y: 60, scale: 0.9 }}
         >
-          {/* HEADER */}
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold">{event.name}</h3>
-            <button onClick={onClose}>
-              <FaTimes />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-5 text-gray-500 hover:text-gray-800 transition-colors"
+            disabled={loading}
+          >
+            <FaTimes size={22} />
+          </button>
 
-          {/* FORM */}
-          <div className="space-y-4">
-            <input
-              placeholder="Your Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border rounded-xl p-3"
-            />
+          <h2 className="text-2xl font-bold text-[#0B2545] mb-6 pr-10">
+            {event.name}
+          </h2>
 
-            <input
-              placeholder="Phone Number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full border rounded-xl p-3"
-            />
+          {success ? (
+            <div className="text-center py-12">
+              <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-green-700 mb-3">
+                Booking Confirmed!
+              </h3>
+              <p className="text-gray-600 mb-2">
+                Thank you, {form.customer_name.split(" ")[0]}!
+              </p>
+              <p className="text-gray-500 text-sm">
+                You'll receive confirmation on your phone shortly.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Full Name *
+                </label>
+                <input
+                  name="customer_name"
+                  value={form.customer_name}
+                  onChange={handleChange}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base"
+                  required
+                  disabled={loading}
+                />
+              </div>
 
-            <div>
-              <label className="text-sm font-medium">
-                Number of Tickets
-              </label>
-              <select
-                value={tickets}
-                onChange={(e) => setTickets(Number(e.target.value))}
-                className="w-full border rounded-xl p-3 mt-1"
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Phone Number *
+                </label>
+                <input
+                  name="contact_number"
+                  value={form.contact_number}
+                  onChange={handleChange}
+                  placeholder="9876543210"
+                  maxLength={10}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base"
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Email (optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email (optional)
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base"
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Tickets */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Number of Tickets
+                </label>
+                <select
+                  name="number_of_tickets"
+                  value={form.number_of_tickets}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none bg-white text-base"
+                  disabled={loading}
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? "ticket" : "tickets"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Payment */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Payment Method
+                </label>
+                <select
+                  name="payment_method"
+                  value={form.payment_method}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none bg-white text-base"
+                  disabled={loading}
+                >
+                  <option value="UPI">UPI</option>
+                  <option value="Card">Credit / Debit Card</option>
+                  <option value="Cash">Cash at Venue</option>
+                </select>
+              </div>
+
+              {/* Total */}
+              <div className="pt-3 pb-2 flex justify-between items-center text-xl font-bold">
+                <span className="text-gray-800">Total Amount:</span>
+                <span className="text-[#FF7A3C]">₹{total.toLocaleString()}</span>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`
+                  w-full py-3.5 px-6 rounded-xl font-bold text-lg shadow-lg transition-all
+                  ${
+                    loading
+                      ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                      : "bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] hover:brightness-105 hover:shadow-xl"
+                  }
+                `}
               >
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <select
-              value={payment}
-              onChange={(e) => setPayment(e.target.value)}
-              className="w-full border rounded-xl p-3"
-            >
-              <option value="UPI">UPI</option>
-              <option value="Card">Card</option>
-              <option value="Cash">Cash</option>
-            </select>
-
-            <div className="text-right text-lg font-bold text-orange-600">
-              Total ₹{total}
-            </div>
-
-            {error && (
-              <div className="text-sm text-red-600">{error}</div>
-            )}
-
-            <button
-              onClick={submitBooking}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-bold py-3 rounded-xl"
-            >
-              {loading ? "Booking..." : "Confirm Booking"}
-            </button>
-          </div>
+                {loading ? "Processing..." : "Confirm Booking"}
+              </button>
+            </form>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -170,7 +274,7 @@ function BookingModal({ event, onClose, onSuccess }) {
 }
 
 /* ======================================================
-   MAIN USER EVENTS PAGE
+   MAIN EVENTS PAGE
 ====================================================== */
 
 export default function UserEvents() {
@@ -181,9 +285,14 @@ export default function UserEvents() {
 
   const fetchEvents = async () => {
     setLoading(true);
-    const res = await api.get(EVENTS_URL);
-    setEvents(res.data || []);
-    setLoading(false);
+    try {
+      const res = await api.get(EVENTS_URL);
+      setEvents(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch events:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -198,86 +307,112 @@ export default function UserEvents() {
 
   return (
     <div
-      className="min-h-screen px-4 py-12"
-      style={{ backgroundColor: COLORS.cream }}
+      className="min-h-screen pb-20"
+      style={{ background: "linear-gradient(to bottom, #FFF7DF, #ffffff)" }}
     >
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* HEADER */}
-        <div className="mb-10">
-          <h1
-            className="text-4xl font-extrabold"
-            style={{ color: COLORS.navy }}
-          >
-            🎟️ Upcoming Events
+        {/* Hero */}
+        <section className="pt-16 pb-14 text-center">
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-orange-600/10 rounded-full mb-6">
+            <FaTicketAlt className="text-orange-600" size={20} />
+            <span className="text-sm font-bold text-orange-800 uppercase tracking-wider">
+              Live Events • Concerts • Comedy
+            </span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#0B2545] mb-5 leading-tight">
+            Live Events & Shows
+            <br />
+            <span className="text-[#FF7A3C]">IMC Music Club</span>
           </h1>
-          <p className="text-slate-600 mt-2">
-            Discover and book live shows, concerts & karaoke nights
+
+          <p className="text-lg sm:text-xl text-gray-700 max-w-3xl mx-auto">
+            Experience unforgettable nights of music, energy & entertainment.
+            Book your spot now! 🎤🔥
           </p>
+        </section>
+
+        {/* Search */}
+        <div className="max-w-2xl mx-auto mb-12">
+          <div className="relative">
+            <FaSearch
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"
+              size={20}
+            />
+            <input
+              placeholder="Search events by name or location..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 rounded-full border border-gray-300 focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none bg-white shadow-md text-base"
+            />
+          </div>
         </div>
 
-        {/* SEARCH */}
-        <div className="relative mb-8 max-w-md">
-          <FaSearch className="absolute left-4 top-3 text-gray-400" />
-          <input
-            placeholder="Search events..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 py-3 rounded-full border"
-          />
-        </div>
-
-        {/* EVENTS GRID */}
+        {/* Events Grid */}
         {loading ? (
-          <p>Loading events...</p>
+          <div className="text-center py-20 text-gray-600 text-xl font-medium">
+            Loading events...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-500 text-lg">
+            No events found matching your search.
+          </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filtered.map((e) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pb-12">
+            {filtered.map((event) => (
               <motion.div
-                key={e.id}
+                key={event.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-3xl shadow-xl overflow-hidden"
+                className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300"
               >
                 <img
                   src={
-                    e.image ||
-                    "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800"
+                    event.image ||
+                    "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&auto=format"
                   }
-                  alt={e.name}
+                  alt={event.name}
                   className="h-56 w-full object-cover"
                 />
 
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#0B2545]">
-                    {e.name}
+                  <h3 className="text-xl font-bold text-[#0B2545] mb-4 line-clamp-2">
+                    {event.name}
                   </h3>
 
-                  <div className="mt-3 space-y-2 text-sm text-slate-600">
-                    <div className="flex gap-2">
-                      <FaCalendarAlt /> {e.event_date}
+                  <div className="space-y-3 text-gray-700 mb-6">
+                    <div className="flex items-center gap-3">
+                      <FaCalendarAlt className="text-[#FF7A3C]" size={18} />
+                      <span>{event.event_date}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <FaClock /> {e.event_time}
+                    <div className="flex items-center gap-3">
+                      <FaClock className="text-[#FF7A3C]" size={18} />
+                      <span>{event.event_time}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <FaMapMarkerAlt /> {e.location}
+                    <div className="flex items-center gap-3">
+                      <FaMapMarkerAlt className="text-[#FF7A3C]" size={18} />
+                      <span>{event.location}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <FaUsers /> {e.available_seats} seats
+                    <div className="flex items-center gap-3">
+                      <FaUsers className="text-[#FF7A3C]" size={18} />
+                      <span>
+                        {event.available_seats ?? "?"} seats left
+                      </span>
                     </div>
                   </div>
 
-                  <div className="mt-5 flex justify-between items-center">
-                    <span className="text-xl font-bold text-orange-600">
-                      ₹{e.ticket_price}
-                    </span>
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-black text-[#FF7A3C]">
+                      ₹{Number(event.ticket_price).toLocaleString()}
+                    </div>
+
                     <button
-                      onClick={() => setActiveEvent(e)}
-                      className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] px-5 py-2 rounded-full font-semibold text-[#0B2545]"
+                      onClick={() => setActiveEvent(event)}
+                      className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] px-7 py-3 rounded-full font-semibold shadow-md hover:shadow-xl hover:brightness-105 transition-all"
                     >
-                      Book Tickets
+                      Book Now
                     </button>
                   </div>
                 </div>
@@ -287,6 +422,19 @@ export default function UserEvents() {
         )}
       </div>
 
+      {/* Connect section */}
+      <section className="mt-16 py-16 bg-gradient-to-br from-[#0B2545] to-[#1e3a70] text-white text-center">
+        <div className="max-w-4xl mx-auto px-5">
+          <h2 className="text-4xl sm:text-5xl font-black mb-6">
+            Let’s <span className="text-[#FF7A3C]">Connect</span>
+          </h2>
+          <p className="text-xl opacity-90 max-w-2xl mx-auto">
+            Questions about events, bookings, or private parties? Just reach out!
+          </p>
+        </div>
+      </section>
+
+      {/* Modal */}
       {activeEvent && (
         <BookingModal
           event={activeEvent}

@@ -32,6 +32,19 @@ services:
       - mysql
     restart: always
 
+  phpmyadmin:
+    image: phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: imc_user
+      PMA_PASSWORD: imc_pass
+      MYSQL_ROOT_PASSWORD: root
+    ports: 
+      - "8080:80"
+    restart: always
+    depends_on:
+      - mysql
+
   frontend:
     build:
       context: ../Frontend/imc

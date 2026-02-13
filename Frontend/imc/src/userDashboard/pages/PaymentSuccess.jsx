@@ -37,8 +37,6 @@ export default function PaymentSuccess() {
           params: { order_id: orderId },
         });
 
-        console.log("API Response:", res.data); // keep for debugging
-
         setPaymentData(res.data);
         setLoading(false);
       } catch (err) {
@@ -54,7 +52,6 @@ export default function PaymentSuccess() {
     verifyPayment();
   }, [orderId]);
 
-  // Use nested data object
   const apiData = paymentData?.data || paymentData || {};
 
   const isSuccess =
@@ -62,23 +59,39 @@ export default function PaymentSuccess() {
     paymentData?.success === true ||
     apiData?.status === "CHARGED";
 
-  // Get amount safely (in rupees)
   const displayAmount = () => {
-    const raw = apiData.amount || apiData.effective_amount || apiData.net_amount || apiData.txnx_amount || 0;
+    const raw =
+      apiData.amount ||
+      apiData.effective_amount ||
+      apiData.net_amount ||
+      apiData.txnx_amount ||
+      0;
     return Number(raw).toLocaleString("en-IN");
+  };
+
+  const formatDate = () => {
+    const dateStr =
+      apiData["last-updated"] ||
+      apiData.date_updated ||
+      apiData["date-created"];
+    return dateStr
+      ? new Date(dateStr).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : new Date().toLocaleDateString("en-IN");
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <Loader2 className="w-12 h-12 animate-spin text-emerald-600" />
-            <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-400 animate-pulse" />
+            <Loader2 className="w-14 h-14 animate-spin text-emerald-600" />
+            <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-yellow-400 animate-pulse" />
           </div>
-          <p className="text-lg font-semibold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
-            Verifying payment...
-          </p>
+          <p className="text-lg font-semibold text-emerald-700">Verifying payment...</p>
         </div>
       </div>
     );
@@ -86,16 +99,14 @@ export default function PaymentSuccess() {
 
   if (error || !isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 to-red-50 flex items-center justify-center p-5">
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-7 max-w-sm w-full text-center border border-rose-100/60">
-          <AlertCircle className="w-14 h-14 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-rose-800 mb-3">Payment Failed</h2>
-          <p className="text-gray-700 mb-6 text-sm leading-relaxed">
-            {error || "We couldn't process your transaction"}
-          </p>
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 to-red-50 flex items-center justify-center px-4 py-8">
+        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center border border-rose-100">
+          <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-5" />
+          <h2 className="text-2xl sm:text-3xl font-bold text-rose-800 mb-4">Payment Failed</h2>
+          <p className="text-gray-700 mb-8 leading-relaxed">{error || "We couldn't process your transaction"}</p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl active:scale-[0.98]"
+            className="w-full py-4 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-semibold rounded-2xl shadow-lg transition-all text-lg"
           >
             Return to Dashboard
           </button>
@@ -105,108 +116,90 @@ export default function PaymentSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-5 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center px-4 py-8">
       <div
-        className="relative bg-white/75 backdrop-blur-xl rounded-2xl shadow-2xl p-6 max-w-md w-full border border-white/40 overflow-hidden"
+        className="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 max-w-lg w-full border border-white/50"
         style={{
-          background: "linear-gradient(145deg, rgba(255,255,255,0.8), rgba(240,255,245,0.65))",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.85), rgba(240,255,245,0.7))",
         }}
       >
-        {/* Animated gradient border */}
-        <div className="absolute inset-0 rounded-2xl pointer-events-none border-2 border-transparent bg-gradient-to-r from-emerald-400/30 via-teal-400/30 to-cyan-400/30 animate-gradient-x"></div>
+        {/* Subtle animated border */}
+        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-transparent bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-400/20 animate-gradient-x"></div>
 
-        {/* Floating particles */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute top-10 left-10 w-2 h-2 bg-emerald-300 rounded-full animate-float-particle opacity-60"></div>
-          <div className="absolute bottom-16 right-12 w-1.5 h-1.5 bg-teal-300 rounded-full animate-float-particle delay-1000 opacity-50"></div>
-        </div>
+        <div className="relative z-10 text-center space-y-6 sm:space-y-7">
 
-        <div className="relative z-10 text-center space-y-5">
-
-          {/* Success badge */}
+          {/* Success icon */}
           <div className="relative inline-flex justify-center mb-2">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-xl ring-4 ring-emerald-100/70">
-              <CheckCircle className="w-11 h-11 text-white" strokeWidth={3} />
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl ring-8 ring-emerald-100/60">
+              <CheckCircle className="w-14 h-14 sm:w-16 sm:h-16 text-white" strokeWidth={3} />
             </div>
-            <Sparkles className="absolute -top-2 -right-1 w-8 h-8 text-yellow-300 animate-pulse" />
+            <Sparkles className="absolute -top-3 -right-1 w-10 h-10 text-yellow-300 animate-pulse" />
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-700 bg-clip-text text-transparent tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-700 bg-clip-text text-transparent tracking-tight">
             Payment Confirmed
           </h1>
 
-          {/* Fixed dynamic amount */}
-          <div className="flex items-center justify-center gap-2 my-6">
-            <IndianRupee className="w-10 h-10 text-emerald-700" strokeWidth={2.5} />
-            <span className="text-6xl sm:text-7xl font-black text-emerald-900 tracking-tighter drop-shadow-sm">
+          {/* Amount - responsive scaling */}
+          <div className="flex items-center justify-center gap-2.5 my-6 sm:my-8">
+            <IndianRupee className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-700" strokeWidth={2.5} />
+            <span className="text-5xl sm:text-6xl md:text-7xl font-black text-emerald-900 tracking-tighter drop-shadow">
               {displayAmount()}
             </span>
           </div>
 
-          {/* Greeting */}
-          <div className="inline-flex items-center gap-2.5 px-5 py-2 bg-white/60 rounded-full border border-emerald-100/80 shadow-sm">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+          {/* User greeting pill */}
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/70 rounded-full border border-emerald-100 shadow-sm mx-auto">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
               <User className="w-5 h-5 text-emerald-700" />
             </div>
-            <span className="font-semibold text-gray-800 text-base">
-              {apiData.customer_name ||
-                apiData.customer_email?.split("@")[0] ||
-                "Welcome back"}
+            <span className="font-semibold text-gray-800 text-base sm:text-lg">
+              {apiData.customer_name || apiData.customer_email?.split("@")[0] || "Welcome back"}
             </span>
           </div>
 
-          {/* Details */}
-          <div className="bg-white/50 rounded-2xl p-5 text-sm border border-white/60 shadow-inner">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-left">
+          {/* Details grid – becomes stacked on very small screens */}
+          <div className="bg-white/60 rounded-2xl p-5 sm:p-6 text-sm sm:text-base border border-white/70 shadow-inner">
+            <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:gap-y-5 text-left">
               <div>
-                <p className="text-gray-500 text-xs font-medium">Order</p>
-                <p className="font-mono font-semibold text-gray-900 text-sm">{orderId}</p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium">Order</p>
+                <p className="font-mono font-semibold text-gray-900 break-all">{orderId}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs font-medium">Method</p>
-                <p className="font-semibold text-gray-900">
-                  {apiData.payment_method || "UPI / Card"}
-                </p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium">Method</p>
+                <p className="font-semibold text-gray-900">{apiData.payment_method || "UPI / Card"}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs font-medium">Date</p>
-                <p className="font-semibold text-gray-900">
-                  {apiData["last-updated"] || apiData.date_updated || apiData["date-created"]
-                    ? new Date(apiData["last-updated"] || apiData.date_updated || apiData["date-created"]).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : new Date().toLocaleDateString("en-IN")}
-                </p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium">Date</p>
+                <p className="font-semibold text-gray-900">{formatDate()}</p>
               </div>
               <div>
-                <p className="text-gray-500 text-xs font-medium">Status</p>
-                <p className="font-bold text-emerald-600">Success ✓</p>
+                <p className="text-gray-500 text-xs sm:text-sm font-medium">Status</p>
+                <p className="font-bold text-emerald-600 text-base sm:text-lg">Success ✓</p>
               </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 pt-3 sm:pt-4">
             <button
               onClick={() => navigate("/dashboard")}
-              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2"
+              className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl text-base sm:text-lg flex items-center justify-center gap-2.5"
             >
-              <Home size={17} />
+              <Home size={18} />
               Dashboard
             </button>
 
             <button
               onClick={() => navigate("/my-registrations")}
-              className="flex-1 py-3.5 bg-white border-2 border-emerald-600/80 text-emerald-700 font-semibold rounded-2xl hover:bg-emerald-50/70 transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] flex items-center justify-center gap-2"
+              className="flex-1 py-4 bg-white border-2 border-emerald-600/80 text-emerald-700 font-semibold rounded-2xl hover:bg-emerald-50 transition-all hover:shadow-md text-base sm:text-lg flex items-center justify-center gap-2.5"
             >
               My Registrations
-              <ArrowRight size={17} />
+              <ArrowRight size={18} />
             </button>
           </div>
 
-          <p className="text-xs text-gray-600 pt-2">
+          <p className="text-xs sm:text-sm text-gray-600 pt-3">
             Confirmation sent to your registered email & mobile
           </p>
         </div>
@@ -219,18 +212,10 @@ export default function PaymentSuccess() {
           50%  { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
-        @keyframes float-particle {
-          0%, 100%   { transform: translate(0, 0) scale(1); opacity: 0.6; }
-          50%        { transform: translate(20px, -30px) scale(1.4); opacity: 0.2; }
-        }
         .animate-gradient-x {
           background-size: 200% 200%;
-          animation: gradient-x 12s ease infinite;
+          animation: gradient-x 14s ease infinite;
         }
-        .animate-float-particle {
-          animation: float-particle 8s infinite ease-in-out;
-        }
-        .delay-1000 { animation-delay: 1s; }
       `}</style>
     </div>
   );
