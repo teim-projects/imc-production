@@ -303,7 +303,7 @@ export default function SingerRegistration() {
   const [showModal, setShowModal] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("idle"); // idle | pending | checking | success | failed
   const [orderId, setOrderId] = useState(null);
-  const [singerId, setSingerId] = useState(null); // For updating after payment
+  const [singerId, setSingerId] = useState(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -322,11 +322,19 @@ export default function SingerRegistration() {
     rate: "",
     gender: "",
     active: true,
-    photo: null,
+    video: null,           // ← Changed from photo to video
     agreed_terms: false,
   });
 
-  const canSubmit = form.name.trim() && form.mobile.trim() && form.genre.trim() && form.agreed_terms;
+  const MAX_VIDEO_SIZE_MB = 50;
+  const MAX_VIDEO_SIZE = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+
+  const canSubmit =
+    form.name.trim() &&
+    form.mobile.trim() &&
+    form.genre.trim() &&
+    form.video !== null &&
+    form.agreed_terms;
 
   // Poll payment status
   useEffect(() => {
@@ -346,7 +354,6 @@ export default function SingerRegistration() {
 
           if (status === "SUCCESS" || status === "CHARGED" || res.data?.success === true) {
             setPaymentStatus("success");
-            // After payment success → finalize singer in DB
             await finalizeSingerRegistration();
             setSuccess(true);
             clearInterval(interval);
@@ -360,20 +367,20 @@ export default function SingerRegistration() {
         } catch (err) {
           console.error("[POLL ERROR]", err);
         }
-      }, 5000); // 5 seconds
+      }, 5000);
     }
 
     return () => clearInterval(interval);
   }, [paymentStatus, orderId, form.mobile]);
 
-  // Save or update singer record
   const saveSinger = async (isUpdate = false) => {
     const data = new FormData();
     Object.entries(form).forEach(([key, value]) => {
       if (key === "agreed_terms") return;
       if (value === "" || value === null) return;
-      if (key === "photo" && value) {
-        data.append("photo", value);
+
+      if (key === "video" && value) {
+        data.append("video", value);          // ← backend field name = "video"
       } else {
         data.append(key, value);
       }
@@ -405,9 +412,8 @@ export default function SingerRegistration() {
     }
   };
 
-  // Finalize after payment success
   const finalizeSingerRegistration = async () => {
-    await saveSinger(true); // update with completed status
+    await saveSinger(true);
   };
 
   const handleRegistrationAndPayment = async () => {
@@ -420,20 +426,20 @@ export default function SingerRegistration() {
     setLoading(true);
 
     try {
-      // Step 1: Pre-create singer (pending)
+      // Step 1: Pre-create singer record (pending status)
       await saveSinger(false);
 
       setLoading(false);
       setPaymentLoading(true);
 
-      // Step 2: Create payment
+      // Step 2: Initiate payment
       const paymentPayload = {
-        amount: 1000, // ← change to real amount if needed
-        customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, '') || 'guest'}`,
+        amount: 1000,
+        customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, "") || "guest"}`,
         email: "singer@imc.com",
         phone: form.mobile.trim(),
         description: "IMC Singer Registration Fee",
-        return_url: `${window.location.origin}/payment-success`, // ← important!
+        return_url: `${window.location.origin}/payment-success`,
       };
 
       const paymentRes = await axios.post(PAYMENT_CREATE_API, paymentPayload);
@@ -462,7 +468,11 @@ export default function SingerRegistration() {
       console.error("Error:", err);
       let msg = "काहीतरी चूक झाली. पुन्हा प्रयत्न करा.";
       if (err.response?.data) {
-        msg = err.response.data.message || err.response.data.detail || err.response.data.error || JSON.stringify(err.response.data);
+        msg =
+          err.response.data.message ||
+          err.response.data.detail ||
+          err.response.data.error ||
+          JSON.stringify(err.response.data);
       }
       setErrorMessage(msg);
     } finally {
@@ -494,7 +504,7 @@ export default function SingerRegistration() {
       rate: "",
       gender: "",
       active: true,
-      photo: null,
+      video: null,
       agreed_terms: false,
     });
   };
@@ -528,6 +538,7 @@ export default function SingerRegistration() {
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-10">
             <p className="text-lg text-gray-800 leading-relaxed">
               Congratulations! Your singer profile is now fully registered and active.<br />
+              Your video song has been submitted for evaluation.<br />
               You are officially part of the IMC Artist Program.
             </p>
             <p className="text-base text-gray-600 mt-4">
@@ -537,7 +548,7 @@ export default function SingerRegistration() {
 
           <div className="flex flex-col sm:flex-row gap-5 justify-center">
             <button
-              onClick={() => window.location.href = "/dashboard"}
+              onClick={() => (window.location.href = "/dashboard")}
               className="px-10 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-3"
             >
               Go to Dashboard
@@ -789,7 +800,7 @@ export default function SingerRegistration() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
-                      Annual Fee(₹ per event)
+                      Annual Fee (₹ per event)
                     </label>
                     <input
                       type="text"
@@ -822,19 +833,73 @@ export default function SingerRegistration() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
                   <div className="flex flex-col">
                     <label className="block text-lg font-bold text-gray-800 mb-3">
-                      Upload Photo
+                      Upload Video Song <span className="text-red-500">*</span>
                     </label>
-                    <label className="border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center bg-gray-50 flex flex-col justify-center cursor-pointer hover:border-amber-400 transition">
-                      <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-600 text-sm mb-1">
-                        <span className="text-amber-600 font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                    <p className="text-sm text-gray-600 mb-3">
+                    
+                    </p>
+
+                    <label
+                      className={`border-2 border-dashed rounded-2xl p-6 md:p-10 text-center bg-gray-50 flex flex-col items-center justify-center cursor-pointer transition min-h-[180px] ${
+                        form.video
+                          ? "border-green-400 bg-green-50/30"
+                          : "border-gray-300 hover:border-amber-400"
+                      }`}
+                    >
+                      {form.video ? (
+                        <div className="space-y-3 w-full">
+                          <Music className="w-12 h-12 text-green-600 mx-auto" />
+                          <p className="font-medium text-green-800 break-words max-w-full">
+                            {form.video.name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {(form.video.size / (1024 * 1024)).toFixed(1)} MB
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setForm({ ...form, video: null });
+                            }}
+                            className="text-sm text-red-600 hover:text-red-800 underline mt-2"
+                          >
+                            Remove file
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-700 font-medium mb-1">
+                            <span className="text-amber-600">Click to upload</span> or drag & drop
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            MP4, MOV, WebM • Max {MAX_VIDEO_SIZE_MB}MB
+                          </p>
+                        </>
+                      )}
+
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="video/mp4,video/quicktime,video/webm,video/*"
                         className="hidden"
-                        onChange={(e) => setForm({ ...form, photo: e.target.files?.[0] || null })}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          if (!file.type.startsWith("video/")) {
+                            setErrorMessage("कृपया व्हिडिओ फाइल निवडा (MP4, MOV, WebM इ.)");
+                            return;
+                          }
+
+                          if (file.size > MAX_VIDEO_SIZE) {
+                            setErrorMessage(`व्हिडिओ फाइल ${MAX_VIDEO_SIZE_MB}MB पेक्षा मोठी आहे.`);
+                            return;
+                          }
+
+                          setForm({ ...form, video: file });
+                          setErrorMessage("");
+                        }}
                       />
                     </label>
                   </div>
@@ -866,7 +931,7 @@ export default function SingerRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -874,7 +939,7 @@ export default function SingerRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -885,7 +950,7 @@ export default function SingerRegistration() {
                 <button
                   onClick={handleRegistrationAndPayment}
                   disabled={loading || paymentLoading || !canSubmit}
-                  className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>

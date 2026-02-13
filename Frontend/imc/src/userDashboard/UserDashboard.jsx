@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Footer from "../components/footer.jsx";
 import heroVideo from "../assets/bharat.mp4";
@@ -17,80 +17,82 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import axios from "axios";
+
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const EVENTS_URL = `${BASE}/user/events/`;
+
+const api = axios.create();
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 export default function UserDashboard() {
-  const
-  
-  services = [
+  const services = [
     {
       title: "Club Membership",
-      
-    
       link: "/singer",
-      img: "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=1200&q=90",
       icon: Sparkles,
       gradient: "from-pink-600 via-purple-600 to-indigo-600",
       accent: "#FF69B4",
     },
     {
       title: "Studio Booking",
-    
       link: "/studio-booking",
-      img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=1200&q=90",
       icon: Mic2,
       gradient: "from-cyan-600 via-blue-600 to-indigo-600",
       accent: "#00CED1",
     },
     {
       title: "Singing Classes",
-     
       link: "/singing-classes",
-      img: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=1200&q=90",
       icon: Users,
       gradient: "from-emerald-600 via-teal-600 to-cyan-600",
       accent: "#00FF7F",
     },
     {
       title: "Live Shows & Karaoke",
-  
       link: "/events",
-      img: "https://images.unsplash.com/photo-1507679799987-c737218594e0?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1507679799987-c737218594e0?w=1200&q=90",
       icon: Calendar,
       gradient: "from-rose-600 via-pink-600 to-purple-600",
       accent: "#FF1493",
     },
     {
       title: "Private Events",
-
       link: "/private-booking",
-      img: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1200&q=90",
       icon: Star,
       gradient: "from-amber-600 via-orange-600 to-rose-600",
       accent: "#FFA500",
     },
     {
       title: "Photography",
-
       link: "/photography-booking",
-      img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1200&q=90",
       icon: Camera,
       gradient: "from-yellow-600 via-amber-600 to-orange-600",
       accent: "#FFD700",
     },
     {
       title: "Videography",
-      
       link: "/videography",
-      img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1200&q=90",
       icon: Camera,
       gradient: "from-orange-600 via-rose-600 to-pink-600",
       accent: "#FF4500",
     },
     {
       title: "Sound System",
-     
       link: "/sound-booking",
-      img: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&q=80",
+      img: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&q=90",
       icon: Speaker,
       gradient: "from-purple-600 via-indigo-600 to-blue-600",
       accent: "#8A2BE2",
@@ -98,105 +100,72 @@ export default function UserDashboard() {
   ];
 
   const carouselRef = useRef(null);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // ── Live Events from Backend ────────────────────────────────────────────────
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [eventsError, setEventsError] = useState(null);
+
+  const fetchEvents = async () => {
+    try {
+      setLoadingEvents(true);
+      const res = await api.get(EVENTS_URL);
+      const now = new Date();
+      // Filter future events only + limit number if needed
+      const upcoming = res.data
+        .filter((e) => new Date(e.event_date) > now)
+        .slice(0, 12); // reasonable limit
+      setEvents(upcoming || []);
+    } catch (err) {
+      console.error("Failed to load events:", err);
+      setEventsError("Could not load upcoming events.");
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
 
   useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  // ── Controlled auto-scroll (stops at end) ───────────────────────────────────
+  useEffect(() => {
     const carousel = carouselRef.current;
-    if (!carousel) return;
+    if (!carousel || events.length === 0 || isPaused) return;
 
     let animationFrame;
-    let scrollAmount = 0;
+    let scrollAmount = carousel.scrollLeft || 0;
+    const maxScroll = carousel.scrollWidth - carousel.clientWidth;
 
     const scroll = () => {
-      scrollAmount += 0.5;
-      if (carousel) {
-        carousel.scrollLeft = scrollAmount;
-        if (scrollAmount >= carousel.scrollWidth / 2) {
-          scrollAmount = 0;
-          carousel.scrollLeft = 0;
-        }
+      if (scrollAmount >= maxScroll - 1) {
+        // Reached end → stop scrolling
+        cancelAnimationFrame(animationFrame);
+        return;
       }
+
+      scrollAmount += 0.6; // smooth & slow
+      carousel.scrollLeft = scrollAmount;
       animationFrame = requestAnimationFrame(scroll);
     };
 
     animationFrame = requestAnimationFrame(scroll);
 
     return () => cancelAnimationFrame(animationFrame);
-  }, []);
+  }, [events, isPaused]);
 
   const scrollLeft = () => {
     if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: -300, behavior: "smooth" });
+      carouselRef.current.scrollBy({ left: -340, behavior: "smooth" });
     }
   };
 
   const scrollRight = () => {
     if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: 300, behavior: "smooth" });
+      carouselRef.current.scrollBy({ left: 340, behavior: "smooth" });
     }
   };
-
-  const upcomingEvents = [
-    {
-      tag: "WORKSHOP",
-      title: "Vocal Workshop with Experts",
-      date: "Mar 08, 2025",
-      time: "10:00 AM",
-      venue: "IMC Training Room",
-      price: "₹1499",
-      accent: "from-amber-600 to-orange-500",
-      bg: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800",
-    },
-    {
-      tag: "CONCERT",
-      title: "Classical Music Evening",
-      date: "Mar 01, 2025",
-      time: "6:30 PM",
-      venue: "IMC Grand Hall",
-      price: "₹799",
-      accent: "from-purple-700 to-indigo-600",
-      bg: "https://images.unsplash.com/photo-1507679799987-c737218594e0?auto=format&fit=crop&q=80&w=800",
-    },
-    {
-      tag: "KARAOKE",
-      title: "Karaoke Night Special",
-      date: "Feb 22, 2025",
-      time: "8:00 PM",
-      venue: "IMC Lounge",
-      price: "₹299",
-      accent: "from-rose-600 to-pink-500",
-      bg: "https://images.unsplash.com/photo-1511671782779-c97d3d27c1d4?auto=format&fit=crop&q=80&w=800",
-    },
-    {
-      tag: "LIVE",
-      title: "Bollywood Live Night",
-      date: "Apr 12, 2025",
-      time: "7:00 PM",
-      venue: "IMC Main Stage",
-      price: "₹999",
-      accent: "from-red-600 to-rose-500",
-      bg: "https://images.unsplash.com/photo-1540039151398-5b0d0c3e3e1d?auto=format&fit=crop&q=80&w=800",
-    },
-    {
-      tag: "FEST",
-      title: "Sufi & Folk Fest",
-      date: "May 18, 2025",
-      time: "5:00 PM",
-      venue: "IMC Open Arena",
-      price: "₹599",
-      accent: "from-teal-600 to-cyan-500",
-      bg: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&q=80&w=800",
-    },
-    {
-      tag: "OPEN MIC",
-      title: "Open Mic Night",
-      date: "Jun 10, 2025",
-      time: "9:00 PM",
-      venue: "IMC Lounge",
-      price: "Free",
-      accent: "from-green-600 to-emerald-500",
-      bg: "https://images.unsplash.com/photo-1511671782779-c97d3d27c1d4?auto=format&fit=crop&q=80&w=800",
-    },
-  ];
 
   return (
     <div className="bg-white min-h-screen">
@@ -250,9 +219,8 @@ export default function UserDashboard() {
         </motion.div>
       </section>
 
-      {/* ================= OUR SERVICES – IMPROVED ANIMATION ================= */}
+      {/* ================= OUR SERVICES ================= */}
       <section className="py-24 px-6 bg-gradient-to-br from-amber-50 via-yellow-50 to-cream-50 relative overflow-hidden">
-        {/* Subtle golden light overlay */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
           <div className="absolute inset-0 bg-gradient-radial from-amber-300/20 to-transparent" />
         </div>
@@ -287,7 +255,6 @@ export default function UserDashboard() {
                 className="group relative rounded-2xl overflow-hidden bg-white/95 backdrop-blur-md border border-amber-200/60 shadow-xl transition-all duration-500"
               >
                 <Link to={service.link} className="block h-full">
-                  {/* Image */}
                   <div className="relative h-80 overflow-hidden">
                     <img
                       src={service.img}
@@ -297,15 +264,11 @@ export default function UserDashboard() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-70 group-hover:opacity-50 transition-opacity duration-500" />
                   </div>
 
-                  {/* Content */}
                   <div className="absolute inset-0 flex flex-col justify-end p-8 text-white">
                     <h3 className="text-3xl font-bold mb-2 drop-shadow-lg group-hover:text-amber-300 transition-colors duration-400">
                       {service.title}
                     </h3>
                     <div className="w-20 h-1 bg-amber-400 rounded-full mb-4 group-hover:w-32 transition-all duration-500" />
-                    <p className="text-base leading-relaxed drop-shadow-md opacity-90 group-hover:opacity-100 transition-opacity">
-                      {service.desc}
-                    </p>
                   </div>
                 </Link>
               </motion.div>
@@ -314,7 +277,7 @@ export default function UserDashboard() {
         </div>
       </section>
 
-      {/* ================= UPCOMING EVENTS ================= */}
+      {/* ================= UPCOMING EVENTS – FIXED (no repeat, max ~3 visible, auto-scroll stops) ================= */}
       <section className="py-16 relative overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
@@ -338,76 +301,98 @@ export default function UserDashboard() {
             </p>
           </div>
 
-          <div className="relative">
+          {loadingEvents ? (
+            <div className="text-center py-10 text-white text-xl">Loading live events...</div>
+          ) : eventsError ? (
+            <div className="text-center py-10 text-red-400 text-xl">{eventsError}</div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-10 text-gray-300 text-xl">No upcoming events right now</div>
+          ) : (
             <div
-              ref={carouselRef}
-              className="flex overflow-x-auto gap-6 pb-8 snap-x snap-mandatory scroll-smooth scrollbar-hide"
+              className="relative"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
             >
-              {upcomingEvents.concat(upcomingEvents).map((event, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: 60 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ delay: (i % upcomingEvents.length) * 0.1, duration: 0.7 }}
-                  whileHover={{ scale: 1.05, y: -4 }}
-                  className="min-w-[280px] max-w-[280px] h-[420px] flex-shrink-0 snap-center group relative rounded-xl overflow-hidden shadow-xl border border-white/10 bg-black/55 backdrop-blur-lg flex flex-col"
-                >
-                  <div className="h-[140px] relative overflow-hidden flex-shrink-0">
-                    <img
-                      src={event.bg}
-                      alt={event.title}
-                      className="w-full h-full object-cover brightness-[0.4] group-hover:brightness-[0.6] transition-all duration-700 scale-105 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
+              {/* Left Arrow */}
+              <button
+                onClick={scrollLeft}
+                className="absolute -left-2 sm:left-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-lg p-3 sm:p-4 rounded-full text-white hover:bg-orange-600 transition-all shadow-lg"
+              >
+                <ChevronLeft size={28} />
+              </button>
 
-                    <div className="absolute top-2 left-2">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-white text-[10px] font-bold bg-gradient-to-r ${event.accent} shadow-sm`}
-                      >
-                        {event.tag}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4 flex flex-col flex-grow">
-                    <h3 className="text-base font-semibold text-white mb-3 line-clamp-2 leading-tight group-hover:text-orange-300 transition-colors">
-                      {event.title}
-                    </h3>
-
-                    <div className="space-y-2 text-xs text-gray-200 mb-4 flex-grow">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={12} className="text-orange-300 flex-shrink-0" />
-                        <span className="truncate">{event.date}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={12} className="text-orange-300 flex-shrink-0" />
-                        <span className="truncate">{event.time}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin size={12} className="text-orange-300 flex-shrink-0" />
-                        <span className="truncate">{event.venue}</span>
-                      </div>
+              {/* Carousel Container */}
+              <div
+                ref={carouselRef}
+                className="flex overflow-x-auto gap-5 sm:gap-6 pb-10 snap-x snap-mandatory scroll-smooth scrollbar-hide px-2 sm:px-0"
+              >
+                {events.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: 80 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.7 }}
+                    whileHover={{ scale: 1.05, y: -8 }}
+                    className="min-w-[300px] sm:min-w-[340px] max-w-[300px] sm:max-w-[340px] h-[420px] flex-shrink-0 snap-center group relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black/70 backdrop-blur-xl flex flex-col"
+                  >
+                    <div className="h-44 sm:h-48 relative overflow-hidden">
+                      <img
+                        src={
+                          event.image ||
+                          "https://images.unsplash.com/photo-1507679799987-c737218594e0?w=800"
+                        }
+                        alt={event.name}
+                        className="w-full h-full object-cover brightness-75 group-hover:brightness-100 transition-all duration-700 scale-110 group-hover:scale-125"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/10 mt-auto">
-                      <span className="text-xl font-bold text-white">
-                        {event.price}
-                      </span>
+                    <div className="p-5 flex flex-col flex-grow">
+                      <h3 className="text-lg sm:text-xl font-bold text-white mb-4 line-clamp-2 leading-tight group-hover:text-orange-300 transition-colors">
+                        {event.name || "Musical Event"}
+                      </h3>
 
-                      <Link
-                        to="/events-booking"
-                        className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-medium rounded-full shadow-md hover:shadow-lg transition-all flex items-center gap-1"
-                        style={{ textDecoration: "none" }}
-                      >
-                        Book
-                        <span className="hidden sm:inline">→</span>
-                      </Link>
+                      <div className="space-y-3 text-sm text-gray-200 flex-grow">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={16} className="text-orange-400 flex-shrink-0" />
+                          <span className="truncate">{event.event_date}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} className="text-orange-400 flex-shrink-0" />
+                          <span className="truncate">{event.event_time || "TBA"}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin size={16} className="text-orange-400 flex-shrink-0" />
+                          <span className="truncate">{event.location || "Pune"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/20">
+                        <span className="text-2xl font-bold text-white">
+                          ₹{event.ticket_price || "0"}
+                        </span>
+
+                        <Link
+                          to={`/events/${event.id}`}
+                          className="px-6 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-medium rounded-full shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                        >
+                          Book
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Right Arrow */}
+              <button
+                onClick={scrollRight}
+                className="absolute -right-2 sm:right-0 top-1/2 -translate-y-1/2 z-20 bg-black/60 backdrop-blur-lg p-3 sm:p-4 rounded-full text-white hover:bg-orange-600 transition-all shadow-lg"
+              >
+                <ChevronRight size={28} />
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -442,7 +427,6 @@ export default function UserDashboard() {
               <Link
                 to="/singer/register"
                 className="px-8 py-3 bg-orange-500 text-white rounded-full font-bold text-lg hover:bg-orange-600 transition-colors duration-200 shadow-md"
-                style={{ textDecoration: "none" }}
               >
                 Get Started Now
               </Link>
@@ -450,7 +434,6 @@ export default function UserDashboard() {
               <Link
                 to="/contact"
                 className="px-8 py-3 bg-white border-2 border-orange-500 text-orange-600 rounded-full font-bold text-lg hover:bg-orange-50 transition-colors duration-200 shadow-md"
-                style={{ textDecoration: "none" }}
               >
                 Contact Us
               </Link>

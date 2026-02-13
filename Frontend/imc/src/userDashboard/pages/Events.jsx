@@ -231,7 +231,7 @@ export default function UserEvents() {
             whileTap={{ scale: 0.98 }}
             className="inline-flex items-center gap-1.5 px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold text-sm rounded-full shadow-md hover:shadow-lg transition-all"
           >
-            Explore Events →
+            
           </motion.button>
         </section>
 

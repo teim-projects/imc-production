@@ -662,13 +662,13 @@ export default function SingingClassRegistration() {
                           key={option.key}
                           type="button"
                           onClick={() => setPaymentMethod(option.key)}
-                          className={`p-6 rounded-2xl border-4 transition-all ${
+                          className={`p-3 rounded-2xl border-4 transition-all ${
                             isSelected
                               ? "border-amber-500 bg-amber-50 shadow-lg"
-                              : "border-gray-200 hover:border-amber-300 bg-gray-50"
+                              : "border-gray-200 hover:border-amber-200 bg-gray-50"
                           }`}
                         >
-                          <Icon className={`w-12 h-12 mx-auto mb-4 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
+                          <Icon className={`w-6 h-8 mx-auto mb-4 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
                           <p className={`font-bold ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
                             {option.label}
                           </p>
@@ -706,7 +706,7 @@ export default function SingingClassRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -714,7 +714,7 @@ export default function SingingClassRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}

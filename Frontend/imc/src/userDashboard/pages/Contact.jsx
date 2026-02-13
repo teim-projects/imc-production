@@ -112,92 +112,140 @@ export default function Contact() {
         </div>
       </section>
 
-      {/* FORM + MAP - better spacing */}
-      <section className="py-16 px-5 lg:py-20">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-12">
-          {/* FORM */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="bg-white rounded-2xl shadow-xl overflow-hidden border border-orange-100"
-          >
-            <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-5 text-white flex items-center gap-3">
-              <MessageSquare className="w-5 h-5" />
-              <div>
-                <h3 className="text-xl font-bold">Send Message</h3>
-                <p className="text-sm opacity-90">Usually reply within 24 hours</p>
-              </div>
-            </div>
+{/* CONTACT SECTION */}
+<section className="py-14 px-5 lg:py-20 bg-gradient-to-b from-orange-50 to-white">
+  <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-start">
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <input
-                placeholder="Full Name *"
-                required
-                className="w-full h-11 px-4 rounded-lg border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all bg-gray-50"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-
-              <input
-                type="email"
-                placeholder="Email *"
-                required
-                className="w-full h-11 px-4 rounded-lg border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all bg-gray-50"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-
-              <input
-                type="tel"
-                placeholder="Phone (optional)"
-                className="w-full h-11 px-4 rounded-lg border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all bg-gray-50"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-
-              <textarea
-                placeholder="Your Message *"
-                rows={4}
-                required
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-all resize-none bg-gray-50"
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              />
-
-              <div className="flex justify-center pt-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`min-w-[200px] bg-orange-600 hover:bg-orange-700 text-white py-3 px-8 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md ${
-                    loading ? "opacity-70 cursor-not-allowed" : "hover:shadow-orange-500/30"
-                  }`}
-                >
-                  <Send className="w-4 h-4" />
-                  {loading ? "Sending..." : "Send Message"}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-
-          {/* MAP */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="rounded-2xl overflow-hidden shadow-xl h-[460px] lg:h-[500px] border border-orange-100"
-          >
-            <iframe
-              title="Indian Musical Club - Thergaon, Pune"
-              src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_KEY}&q=S-19%2C+Ground+floor%2C+Greens+Center%2C+Opposite+Pudumjee+Paper+Mill%2C+Aditya+Birla+Hospital+Road%2C+Thergaon%2C+Chinchwad%2C+Pune+411033&zoom=19`}
-              className="w-full h-full border-0"
-              loading="lazy"
-              allowFullScreen
-              referrerPolicy="no-referrer-when-downgrade"
-            />
-          </motion.div>
+    {/* CONTACT FORM CARD */}
+    <motion.div
+      initial={{ opacity: 0, x: -30 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      className="bg-white rounded-3xl shadow-2xl border border-orange-100 overflow-hidden"
+    >
+      {/* Compact Header */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 text-white">
+        <div className="flex items-center gap-3">
+          <MessageSquare className="w-5 h-5" />
+          <div>
+            <h3 className="text-lg font-semibold tracking-wide">
+              Get in Touch
+            </h3>
+            <p className="text-xs opacity-90">
+              We usually respond within 24 hours
+            </p>
+          </div>
         </div>
-      </section>
+      </div>
+
+      {/* FORM BODY */}
+      <form
+        onSubmit={handleSubmit}
+        className="p-7 space-y-6"
+      >
+        {/* Name + Email Row */}
+        <div className="grid sm:grid-cols-2 gap-5">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">
+              Full Name *
+            </label>
+            <input
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-600">
+              Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+            />
+          </div>
+        </div>
+
+        {/* Phone */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-600">
+            Phone (Optional)
+          </label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) =>
+              setFormData({ ...formData, phone: e.target.value })
+            }
+            className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+          />
+        </div>
+
+        {/* Message */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-600">
+            Your Message *
+          </label>
+          <textarea
+            rows={4}
+            required
+            value={formData.message}
+            onChange={(e) =>
+              setFormData({ ...formData, message: e.target.value })
+            }
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition resize-none bg-gray-50"
+          />
+        </div>
+
+        {/* Submit Button */}
+        <div className="pt-2 text-center">
+          <div className="flex justify-center">
+  <button
+    type="submit"
+    disabled={loading}
+    className={`w-[220px] h-12 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all shadow-lg ${
+      loading
+        ? "bg-orange-400 cursor-not-allowed"
+        : "bg-gradient-to-r from-orange-500 to-amber-500 hover:scale-[1.02] hover:shadow-orange-400/40"
+    }`}
+  >
+    <Send className="w-4 h-4" />
+    {loading ? "Sending..." : "Send Message"}
+  </button>
+</div>
+
+        </div>
+      </form>
+    </motion.div>
+
+    {/* GOOGLE MAP CARD */}
+    <motion.div
+      initial={{ opacity: 0, x: 30 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      className="rounded-3xl overflow-hidden shadow-2xl h-[460px] lg:h-[520px] border border-orange-100"
+    >
+      <iframe
+        title="Indian Musical Club - Thergaon, Pune"
+        src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_KEY}&q=S-19%2C+Ground+floor%2C+Greens+Center%2C+Opposite+Pudumjee+Paper+Mill%2C+Aditya+Birla+Hospital+Road%2C+Thergaon%2C+Chinchwad%2C+Pune+411033&zoom=18`}
+        className="w-full h-full border-0"
+        loading="lazy"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    </motion.div>
+  </div>
+</section>
+
 
       <Footer />
     </div>
