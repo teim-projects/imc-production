@@ -180,7 +180,7 @@ class UserEventBookingViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = UserEventBookingSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         """
