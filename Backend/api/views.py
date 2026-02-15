@@ -404,6 +404,7 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
 
     # Public can view, only authenticated users can create/update/delete
+       # Public can view, only authenticated users can create/update/delete
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     # Search + ordering for your admin table UI
@@ -919,11 +920,23 @@ from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework import generics
 
 from .models import SingingClass
 from .serializers import SingingClassSerializer
 
+# views.py
+class SingerListView(generics.ListAPIView):
+    queryset = Singer.objects.all()
+    serializer_class = SingerSerializer
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Disable pagination if no page params
+        if 'page' not in self.request.query_params:
+            self.pagination_class = None
+        return queryset
+    
 class SingingClassPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = "page_size"
