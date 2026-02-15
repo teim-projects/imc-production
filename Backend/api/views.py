@@ -404,8 +404,7 @@ class EventViewSet(viewsets.ModelViewSet):
     serializer_class = EventSerializer
 
     # Public can view, only authenticated users can create/update/delete
-       # Public can view, only authenticated users can create/update/delete
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
 
     # Search + ordering for your admin table UI
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
