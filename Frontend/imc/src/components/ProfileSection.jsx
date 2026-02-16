@@ -54,7 +54,9 @@ const ProfileSection = () => {
     return Object.keys(e).length === 0;
   };
 
-  // ------------ fetch user ------------
+  // ------------ fetch & save logic remains unchanged ------------
+  // (keeping fetchUserData, handleSave, onAvatarChange, removeAvatar, handleLogout the same)
+
   const fetchUserData = async () => {
     const token = localStorage.getItem("access");
     if (!token) {
@@ -85,7 +87,7 @@ const ProfileSection = () => {
       setUser({
         full_name: full,
         email: data.email || "",
-        mobile_no: data.mobile_no || "",                    // will persist only if backend allows it
+        mobile_no: data.mobile_no || "",
         profile_photo: data.profile_photo || data.photo || "",
       });
     } catch (err) {
@@ -96,7 +98,6 @@ const ProfileSection = () => {
     }
   };
 
-  // ------------ save ------------
   const handleSave = async (e) => {
     e.preventDefault();
     clearMessage();
@@ -121,17 +122,13 @@ const ProfileSection = () => {
         const formData = new FormData();
         formData.append("first_name", first_name);
         formData.append("last_name", last_name);
-
-        // send both keys; backend will accept whichever is wired
         formData.append("photo", avatarFile);
         formData.append("profile_photo", avatarFile);
-
-        // optional: include mobile_no only if your serializer allows it
         if (user.mobile_no?.trim()) formData.append("mobile_no", user.mobile_no.trim());
 
         res = await fetch(`${BASE}/auth/dj-rest-auth/user/`, {
           method: "PATCH",
-          headers: { ...bearer() }, // don't set Content-Type for FormData
+          headers: { ...bearer() },
           body: formData,
         });
       } else {
@@ -180,7 +177,7 @@ const ProfileSection = () => {
       if (avatarFile) {
         setAvatarFile(null);
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-        setAvatarPreview(""); // we’ll show the server image with cache-bust below
+        setAvatarPreview("");
       }
 
       notify("success", "Profile updated successfully!");
@@ -192,7 +189,6 @@ const ProfileSection = () => {
     }
   };
 
-  // ------------ avatar handlers ------------
   const onAvatarChange = (file) => {
     if (!file) return;
     if (!/^image\//.test(file.type)) {
@@ -215,7 +211,6 @@ const ProfileSection = () => {
     setAvatarPreview("");
   };
 
-  // ------------ logout ------------
   const handleLogout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
@@ -226,68 +221,65 @@ const ProfileSection = () => {
   useEffect(() => {
     fetchUserData();
     return () => { if (avatarPreview) URL.revokeObjectURL(avatarPreview); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) {
     return (
-      <div style={sx.shell}>
-        <div style={sx.card}>
-          <div style={sx.header}>
-            <div style={sx.headerTitleSkeleton} />
+      <div className="profile-shell">
+        <div className="profile-card">
+          <div className="profile-header">
+            <div className="skeleton-title" />
           </div>
-          <div style={{ padding: 20 }}>
-            <div style={sx.skelRow} />
-            <div style={sx.skelRow} />
-            <div style={sx.skelRow} />
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              <div style={sx.skelBtn} />
-              <div style={sx.skelBtn} />
-            </div>
+          <div className="profile-body">
+            <div className="skeleton-avatar" />
+            <div className="skeleton-field" />
+            <div className="skeleton-field" />
+            <div className="skeleton-field" />
+            <div className="skeleton-buttons" />
           </div>
         </div>
       </div>
     );
   }
 
-  // Show blob preview if selected; otherwise server image with cache-bust
-  const avatarSrc =
-    avatarPreview ||
-    (user.profile_photo ? `${toAbsolute(user.profile_photo)}?t=${Date.now()}` : "");
+  const avatarSrc = avatarPreview || (user.profile_photo ? `${toAbsolute(user.profile_photo)}?t=${Date.now()}` : "");
 
   return (
-    <div style={sx.shell}>
-      <div style={sx.card}>
+    <div className="profile-shell">
+      <div className="profile-card">
         {/* Header */}
-        <div style={sx.header}>
+        <div className="profile-header">
           <div>
-            <h2 style={sx.title}>👤 Profile</h2>
-            <p style={sx.subtitle}>Manage your account details</p>
+            <h2 className="profile-title">👤 Profile</h2>
+            <p className="profile-subtitle">Manage your account details</p>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="button" onClick={handleLogout} style={sx.btnDanger} title="Logout">
-              Logout
-            </button>
-          </div>
+          <button type="button" onClick={handleLogout} className="btn-danger" title="Logout">
+            Logout
+          </button>
         </div>
 
         {/* Toast */}
         {message && (
-          <div role="alert" style={{ ...sx.toast, ...(message.type === "success" ? sx.toastSuccess : sx.toastError) }}>
+          <div role="alert" className={`toast ${message.type}`}>
             {message.text}
-            <button onClick={clearMessage} style={sx.toastClose} aria-label="Close">×</button>
+            <button onClick={clearMessage} className="toast-close" aria-label="Close">×</button>
           </div>
         )}
 
-        {/* Body */}
-        <form style={sx.body} onSubmit={handleSave} noValidate>
-          {/* Avatar */}
-          <div style={sx.avatarCol}>
-            <div style={sx.avatarWrap}>
-              {avatarSrc ? <img src={avatarSrc} alt="Avatar" style={sx.avatarImg} /> : <div style={sx.avatarPlaceholder}>IMC</div>}
+        {/* Form */}
+        <form className="profile-form" onSubmit={handleSave} noValidate>
+          <div className="avatar-section">
+            <div className="avatar-wrap">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt="Avatar" className="avatar-img" />
+              ) : (
+                <div className="avatar-placeholder">IMC</div>
+              )}
             </div>
 
-            <label htmlFor="avatar" style={sx.btnLight}>Upload Photo</label>
+            <label htmlFor="avatar" className="btn-light">
+              Upload Photo
+            </label>
             <input
               id="avatar"
               type="file"
@@ -295,172 +287,344 @@ const ProfileSection = () => {
               onChange={(e) => onAvatarChange(e.target.files?.[0])}
               style={{ display: "none" }}
             />
+
             {avatarPreview && (
-              <button type="button" onClick={removeAvatar} style={{ ...sx.btnGhost, marginTop: 8 }}>
+              <button type="button" onClick={removeAvatar} className="btn-ghost">
                 Remove
               </button>
             )}
-            <p style={sx.hint}>PNG/JPG/WebP up to 3MB</p>
-            {errors.profile_photo && <span style={sx.errorText}>{errors.profile_photo}</span>}
+
+            <p className="hint">PNG / JPG / WebP • max 3 MB</p>
+            {errors.profile_photo && <span className="error-text">{errors.profile_photo}</span>}
           </div>
 
-          {/* Form fields */}
-          <div style={sx.formCol}>
-            <div style={sx.grid}>
-              <div style={sx.field}>
-                <label style={sx.label}>Full Name</label>
-                <input
-                  type="text"
-                  value={user.full_name}
-                  onChange={(e) => setUser({ ...user, full_name: e.target.value })}
-                  placeholder="Your full name"
-                  style={{ ...sx.input, ...(errors.full_name ? sx.inputError : {}) }}
-                />
-                {errors.full_name && <span style={sx.errorText}>{errors.full_name}</span>}
-              </div>
-
-              <div style={sx.field}>
-                <label style={sx.label}>Email</label>
-                <input
-                  type="email"
-                  value={user.email}
-                  readOnly
-                  style={{ ...sx.input, background: "#f3f6fb", cursor: "not-allowed" }}
-                />
-                <span style={sx.hint}>Email cannot be changed</span>
-              </div>
-
-              <div style={sx.field}>
-                <label style={sx.label}>Mobile Number</label>
-                <input
-                  type="text"
-                  value={user.mobile_no}
-                  onChange={(e) => {
-                    setUser({ ...user, mobile_no: e.target.value });
-                    if (errors.mobile_no) setErrors((x) => ({ ...x, mobile_no: null }));
-                  }}
-                  placeholder="+91 9876543210"
-                  style={{ ...sx.input, ...(errors.mobile_no ? sx.inputError : {}) }}
-                />
-                {errors.mobile_no && <span style={sx.errorText}>{errors.mobile_no}</span>}
-              </div>
+          <div className="form-fields">
+            <div className="field">
+              <label className="field-label">Full Name</label>
+              <input
+                type="text"
+                value={user.full_name}
+                onChange={(e) => setUser({ ...user, full_name: e.target.value })}
+                placeholder="Your full name"
+                className={`input ${errors.full_name ? "input-error" : ""}`}
+              />
+              {errors.full_name && <span className="error-text">{errors.full_name}</span>}
             </div>
 
-            <div style={sx.actions}>
-              <button type="submit" style={sx.btnPrimary} disabled={saving}>
+            <div className="field">
+              <label className="field-label">Email</label>
+              <input
+                type="email"
+                value={user.email}
+                readOnly
+                className="input readonly"
+              />
+              <span className="hint">Email cannot be changed</span>
+            </div>
+
+            <div className="field">
+              <label className="field-label">Mobile Number</label>
+              <input
+                type="text"
+                value={user.mobile_no}
+                onChange={(e) => {
+                  setUser({ ...user, mobile_no: e.target.value });
+                  if (errors.mobile_no) setErrors((x) => ({ ...x, mobile_no: null }));
+                }}
+                placeholder="+91 9876543210"
+                className={`input ${errors.mobile_no ? "input-error" : ""}`}
+              />
+              {errors.mobile_no && <span className="error-text">{errors.mobile_no}</span>}
+            </div>
+
+            <div className="form-actions">
+              <button type="submit" className="btn-primary" disabled={saving}>
                 {saving ? "Saving…" : "Save Changes"}
               </button>
-              <button type="button" style={sx.btnGhost} onClick={fetchUserData} disabled={saving} title="Reset to server values">
+              <button type="button" className="btn-ghost" onClick={fetchUserData} disabled={saving}>
                 Reset
               </button>
             </div>
           </div>
         </form>
       </div>
+
+      <style jsx global>{`
+        .profile-shell {
+          padding: 1.5rem 1rem;
+          min-height: 100vh;
+          display: flex;
+          justify-content: center;
+          background: #f8faff;
+        }
+
+        .profile-card {
+          width: 100%;
+          max-width: 960px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,255,255,0.88));
+          border: 1px solid rgba(10,44,86,0.14);
+          border-radius: 16px;
+          box-shadow: 0 12px 36px rgba(10,44,86,0.09);
+          overflow: hidden;
+          backdrop-filter: blur(8px);
+        }
+
+        .profile-header {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 1.2rem 1.5rem;
+          background: linear-gradient(90deg, #0a2c56, #ff6f3c 65%, #ffd23f);
+          color: white;
+        }
+
+        .profile-title {
+          margin: 0;
+          font-size: 1.45rem;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+        }
+
+        .profile-subtitle {
+          margin: 0.25rem 0 0;
+          font-size: 0.9rem;
+          opacity: 0.92;
+        }
+
+        .profile-form {
+          padding: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+
+        .avatar-section {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+
+        .avatar-wrap {
+          width: 140px;
+          height: 140px;
+          border-radius: 50%;
+          overflow: hidden;
+          border: 4px solid #ffd23f;
+          box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+          margin-bottom: 1rem;
+          background: linear-gradient(135deg, #f8faff, #eef4ff);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .avatar-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .avatar-placeholder {
+          font-size: 2.6rem;
+          font-weight: 900;
+          color: #0a2c56;
+        }
+
+        .form-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+
+        .field {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .field-label {
+          font-weight: 700;
+          margin-bottom: 0.45rem;
+          color: #0a2c56;
+          font-size: 0.95rem;
+        }
+
+        .input {
+          padding: 0.8rem 1rem;
+          border: 1px solid #d1ddea;
+          border-radius: 10px;
+          font-size: 1rem;
+          background: white;
+          transition: border-color 0.15s, box-shadow 0.15s;
+          box-shadow: inset 0 1px 4px rgba(13,38,76,0.04);
+        }
+
+        .input:focus {
+          outline: none;
+          border-color: #00b4d8;
+          box-shadow: 0 0 0 3px rgba(0,180,216,0.18);
+        }
+
+        .input-error {
+          border-color: #ff6b6b;
+          box-shadow: 0 0 0 3px rgba(255,107,107,0.16);
+        }
+
+        .readonly {
+          background: #f5f8ff;
+          color: #4b5e7a;
+          cursor: not-allowed;
+        }
+
+        .hint {
+          font-size: 0.82rem;
+          color: #6b7a90;
+          margin-top: 0.4rem;
+        }
+
+        .error-text {
+          color: #e63946;
+          font-size: 0.84rem;
+          margin-top: 0.35rem;
+        }
+
+        .form-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-top: 1.5rem;
+        }
+
+        .btn-primary,
+        .btn-light,
+        .btn-ghost,
+        .btn-danger {
+          padding: 0.75rem 1.4rem;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 0.98rem;
+          cursor: pointer;
+          transition: all 0.15s;
+          min-width: 120px;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #0077b6, #00b4d8);
+          color: white;
+          border: none;
+          box-shadow: 0 6px 14px rgba(0,123,255,0.22);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 18px rgba(0,123,255,0.28);
+        }
+
+        .btn-light {
+          background: linear-gradient(135deg, #ffd23f, #ffb703);
+          color: #0a2c56;
+          border: none;
+          margin: 0.5rem 0;
+        }
+
+        .btn-ghost {
+          background: transparent;
+          color: #0a2c56;
+          border: 1.5px solid rgba(10,44,86,0.3);
+        }
+
+        .btn-danger {
+          background: linear-gradient(135deg, #ff4d4d, #ff6f6f);
+          color: white;
+          border: none;
+        }
+
+        .toast {
+          margin: 1rem 1.5rem;
+          padding: 0.9rem 1.2rem;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
+        .toast.success {
+          background: rgba(0, 184, 148, 0.14);
+          color: #006d5b;
+          border: 1px solid rgba(0,184,148,0.3);
+        }
+
+        .toast.error {
+          background: rgba(255, 87, 87, 0.14);
+          color: #c53030;
+          border: 1px solid rgba(255,87,87,0.3);
+        }
+
+        .toast-close {
+          background: none;
+          border: none;
+          color: inherit;
+          font-size: 1.4rem;
+          cursor: pointer;
+          padding: 0 0.5rem;
+        }
+
+        /* Skeleton */
+        .skeleton-title,
+        .skeleton-avatar,
+        .skeleton-field,
+        .skeleton-buttons {
+          background: linear-gradient(90deg, #eef3fa, #f8fbff, #eef3fa);
+          background-size: 200% 100%;
+          animation: skeleton-loading 1.4s infinite;
+          border-radius: 8px;
+        }
+
+        .skeleton-title { height: 1.4rem; width: 60%; }
+        .skeleton-avatar { width: 120px; height: 120px; border-radius: 50%; margin: 0 auto 1rem; }
+        .skeleton-field { height: 3.2rem; }
+        .skeleton-buttons { height: 3rem; width: 100%; }
+
+        @keyframes skeleton-loading {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+
+        /* ── Mobile adjustments ──────────────────────────────────────── */
+        @media (max-width: 640px) {
+          .profile-shell { padding: 1rem 0.8rem; }
+          .profile-card { border-radius: 14px; }
+          .profile-header { padding: 1rem; flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+          .profile-title { font-size: 1.35rem; }
+          .profile-form { padding: 1.2rem; gap: 1.8rem; }
+          .avatar-wrap { width: 120px; height: 120px; }
+          .form-actions { flex-direction: column; }
+          .btn-primary, .btn-ghost { width: 100%; padding: 0.9rem; }
+        }
+
+        @media (min-width: 641px) {
+          .profile-form {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 2.5rem;
+          }
+          .avatar-section {
+            flex: 0 0 260px;
+            border-right: 1px dashed rgba(10,44,86,0.16);
+            padding-right: 1.5rem;
+          }
+          .form-fields {
+            flex: 1;
+            max-width: 580px;
+          }
+        }
+      `}</style>
     </div>
   );
 };
-
-/* ===================== STYLES ===================== */
-const sx = {
-  shell: { padding: "24px 16px", display: "flex", justifyContent: "center" },
-  card: {
-    width: "min(950px, 96vw)",
-    background: "linear-gradient(135deg, rgba(255,255,255,.94), rgba(255,255,255,.86))",
-    border: "1px solid rgba(10,44,86,0.15)",
-    borderRadius: 18,
-    boxShadow: "0 14px 40px rgba(10,44,86,0.10)",
-    overflow: "hidden",
-    backdropFilter: "blur(8px)",
-  },
-  header: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: 18,
-    background: "linear-gradient(90deg, #0A2C56, #FF6F3C 70%, #FFD23F)",
-    color: "#fff",
-    borderBottom: "1px solid rgba(255,255,255,.25)",
-  },
-  title: { margin: 0, fontSize: 20, letterSpacing: 0.3 },
-  subtitle: { margin: "4px 0 0", opacity: 0.9, fontSize: 13 },
-
-  body: { display: "grid", gridTemplateColumns: "260px 1fr", gap: 18, padding: 20 },
-
-  avatarCol: { display: "flex", flexDirection: "column", alignItems: "center", borderRight: "1px dashed rgba(10,44,86,.18)", paddingRight: 12 },
-  avatarWrap: {
-    height: 140, width: 140, borderRadius: "50%", overflow: "hidden",
-    border: "3px solid #FFD23F", boxShadow: "0 10px 24px rgba(0,0,0,.12)",
-    marginBottom: 12, background: "linear-gradient(135deg, #f7f9fc, #eef4ff)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  avatarImg: { height: "100%", width: "100%", objectFit: "cover", display: "block" },
-  avatarPlaceholder: { fontWeight: 800, color: "#0A2C56", fontSize: 26 },
-
-  formCol: { display: "flex", flexDirection: "column", gap: 14 },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
-  field: { display: "flex", flexDirection: "column" },
-  label: { fontWeight: 700, marginBottom: 6, color: "#0A2C56" },
-  input: {
-    background: "#fff", border: "1px solid #cfd9ea", outline: "none", borderRadius: 10,
-    padding: "10px 12px", fontSize: 14, transition: "box-shadow .15s ease, border-color .15s ease",
-    boxShadow: "0 2px 8px rgba(13,38,76,0.04) inset",
-  },
-  inputError: { borderColor: "#ff6b6b", boxShadow: "0 0 0 3px rgba(255,107,107,.18)" },
-  hint: { fontSize: 12, color: "#6b7a90", marginTop: 6 },
-
-  actions: { display: "flex", gap: 10, marginTop: 6 },
-  btnPrimary: {
-    background: "linear-gradient(135deg, #0077b6, #00b4d8)",
-    color: "#fff", border: "1px solid rgba(0,0,0,.06)",
-    padding: "10px 14px", borderRadius: 12, fontWeight: 800, cursor: "pointer",
-    boxShadow: "0 10px 20px rgba(0,123,255,.18)",
-  },
-  btnGhost: {
-    background: "transparent", color: "#0A2C56", border: "1px solid rgba(10,44,86,.25)",
-    padding: "10px 14px", borderRadius: 12, fontWeight: 700, cursor: "pointer",
-  },
-  btnLight: {
-    background: "linear-gradient(135deg, #FFD23F, #FFB703)",
-    color: "#0A2C56", border: "1px solid rgba(0,0,0,.06)",
-    padding: "8px 12px", borderRadius: 12, fontWeight: 800, cursor: "pointer", textAlign: "center",
-  },
-  btnDanger: {
-    background: "linear-gradient(135deg, #FF4D4D, #FF6F6F)",
-    color: "#fff", border: "1px solid rgba(0,0,0,.06)",
-    padding: "8px 12px", borderRadius: 10, fontWeight: 800, cursor: "pointer",
-    boxShadow: "0 8px 16px rgba(255,77,77,.25)",
-  },
-
-  toast: {
-    margin: "14px 20px 0", padding: "10px 14px", borderRadius: 12,
-    display: "flex", alignItems: "center", justifyContent: "space-between", fontWeight: 700,
-  },
-  toastSuccess: { background: "rgba(0, 184, 148, .12)", color: "#008f7a", border: "1px solid rgba(0, 184, 148, .3)" },
-  toastError: { background: "rgba(255, 87, 87, .12)", color: "#e64b4b", border: "1px solid rgba(255, 87, 87, .3)" },
-  toastClose: { background: "transparent", border: "none", color: "inherit", fontSize: 18, cursor: "pointer", marginLeft: 10 },
-
-  skelRow: {
-    height: 16, borderRadius: 6,
-    background: "linear-gradient(90deg, #eef3fa, #f6f9ff, #eef3fa)",
-    animation: "sk 1.2s infinite", marginBottom: 12, backgroundSize: "200px 100%",
-  },
-  skelBtn: {
-    height: 36, width: 110, borderRadius: 10,
-    background: "linear-gradient(90deg, #eef3fa, #f6f9ff, #eef3fa)",
-    animation: "sk 1.2s infinite", backgroundSize: "200px 100%",
-  },
-  headerTitleSkeleton: {
-    height: 20, width: 160, borderRadius: 6,
-    background: "linear-gradient(90deg, rgba(255,255,255,.4), rgba(255,255,255,.75), rgba(255,255,255,.4))",
-    animation: "sk 1.2s infinite", backgroundSize: "200px 100%",
-  },
-};
-
-// skeleton keyframes (once)
-if (typeof document !== "undefined" && !document.getElementById("sk-anim")) {
-  const style = document.createElement("style");
-  style.id = "sk-anim";
-  style.innerHTML = `@keyframes sk { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }`;
-  document.head.appendChild(style);
-}
 
 export default ProfileSection;
