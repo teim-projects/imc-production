@@ -62,12 +62,7 @@ function BookingModal({ event, onClose, onBookingCreated }) {
 
   // Determine available ticket types and their prices
   const ticketOptions = [
-    {
-      type: "general",
-      label: "General",
-      price: Number(event.ticket_price || 0),
-      available: Number(event.ticket_price) > 0,
-    },
+ 
     {
       type: "basic",
       label: "Basic",

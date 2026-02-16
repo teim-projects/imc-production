@@ -1,7 +1,15 @@
+// UserStudioRentalForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "../../components/Forms/Forms.css"; // adjust path if needed
+
+// You can keep this import if you want to separate CSS file
+// import "../../components/Forms/Forms.css";
+
+// ─────────────────────────────────────────────────────────────
+// If you prefer inline / single-file style for development/testing,
+// paste the entire CSS below into a <style> tag or dedicated file
+// ─────────────────────────────────────────────────────────────
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
@@ -102,7 +110,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   const [formData, setFormData] = useState(emptyForm);
   const [selectedRange, setSelectedRange] = useState([]);
 
-  /* Fetch data */
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -128,16 +135,12 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     fetchData();
   }, []);
 
-  // Pre-select studio if passed from card
   useEffect(() => {
     if (!initialStudio || !masters.length) return;
     if (formData.studio_id) return;
 
-    const found = masters.find(
-      (m) => String(m.id) === String(initialStudio.id)
-    ) || masters.find(
-      (m) => (m.name || "").toLowerCase() === (initialStudio.name || "").toLowerCase()
-    );
+    const found = masters.find((m) => String(m.id) === String(initialStudio.id))
+      || masters.find((m) => (m.name || "").toLowerCase() === (initialStudio.name || "").toLowerCase());
 
     if (found) {
       setFormData((prev) => ({
@@ -155,8 +158,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
   const pricePerHour = selectedStudio?.hourly_rate ?? null;
 
-  /* ── Time Slots Logic ──────────────────────────────────────── */
-
   const SLOT_STEP_MIN = 60;
   const allSlots = useMemo(() => makeSlots("08:00", "22:00", SLOT_STEP_MIN), []);
 
@@ -164,12 +165,11 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     const base = allSlots.map((s) => ({ time: s, booked: false }));
     if (!formData.date || !formData.studio_id) return base;
 
-    const master = selectedStudio;
     const taken = bookings.filter(
       (b) =>
         b.date === formData.date &&
         (String(b.studio_id || "") === String(formData.studio_id) ||
-          (b.studio_name || "").toLowerCase() === (master?.name || "").toLowerCase())
+          (b.studio_name || "").toLowerCase() === (selectedStudio?.name || "").toLowerCase())
     );
 
     return base.map((slotObj) => {
@@ -181,9 +181,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   }, [allSlots, bookings, formData.date, formData.studio_id, selectedStudio]);
 
   const computeRangeForStart = (startTime, durationHours) => {
-    const stepMin = SLOT_STEP_MIN;
-    const perSlotHr = stepMin / 60;
-    const count = Math.ceil((Number(durationHours) || 0) / perSlotHr) || 1;
+    const count = Math.ceil((Number(durationHours) || 0) / (SLOT_STEP_MIN / 60)) || 1;
     const startIndex = allSlots.indexOf(startTime);
     if (startIndex === -1) return [];
     const arr = [];
@@ -200,21 +198,16 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       setSelectedRange([]);
       return;
     }
+
     const range = computeRangeForStart(formData.time_slot, formData.duration);
     const needed = Math.ceil(Number(formData.duration || 0) / (SLOT_STEP_MIN / 60));
-    if (range.length < needed) {
-      setFormData((p) => ({ ...p, time_slot: "" }));
-      setSelectedRange([]);
-      return;
-    }
-    const conflict = range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
-    if (conflict) {
+    if (range.length < needed || range.some((t) => slotsInfo.find((s) => s.time === t)?.booked)) {
       setFormData((p) => ({ ...p, time_slot: "" }));
       setSelectedRange([]);
       return;
     }
     setSelectedRange(range);
-  }, [formData.duration, formData.date, formData.studio_id, formData.time_slot, bookings, slotsInfo]);
+  }, [formData.time_slot, formData.duration, formData.date, formData.studio_id, slotsInfo]);
 
   const canStartAt = (time) => {
     const range = computeRangeForStart(time, formData.duration);
@@ -222,8 +215,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     if (range.length < needed) return false;
     return !range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
   };
-
-  /* Handlers */
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -290,7 +281,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     setSaving(true);
     try {
       const res = await api.post(BOOKINGS_URL, payload);
-
       const totalAmount = priceToSend * Number(formData.duration || 1);
 
       navigate("/payment", {
@@ -307,69 +297,49 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     }
   };
 
-  /* ── Render ────────────────────────────────────────────────── */
-
   return (
-    <div className="pf-wrap" style={{ padding: "1.5rem", maxWidth: "1100px", margin: "0 auto" }}>
-      <div className="pf-header" style={{ marginBottom: "1.8rem" }}>
+    <div className="pf-wrap">
+      <div className="pf-header">
         <div>
-          <h2 style={{ margin: 0, fontSize: "1.6rem" }}>Studio Booking</h2>
-          <p className="pf-subtitle" style={{ marginTop: "0.5rem", fontSize: "0.95rem" }}>
+          <h2>Studio Booking</h2>
+          <p className="pf-subtitle">
             Choose your studio, date, time and enjoy professional sound quality.
           </p>
         </div>
         {onClose && (
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn secondary" onClick={onClose}>
             Close
           </button>
         )}
       </div>
 
-      {/* ── Studio Selection (no filters) ────────────────────────────── */}
       {loading ? (
-        <div className="pf-banner" style={{ textAlign: "center" }}>Loading studios...</div>
+        <div className="pf-banner pf-loading">Loading studios...</div>
       ) : masters.length === 0 ? (
-        <div className="pf-banner pf-error" style={{ textAlign: "center" }}>
-          No studios available at the moment
-        </div>
+        <div className="pf-banner pf-error">No studios available at the moment</div>
       ) : (
-        <section className="pf-card" style={{ marginBottom: "1.8rem" }}>
-          <h3 style={{ marginTop: 0 }}>Available Studios ({masters.length})</h3>
-
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: "1rem",
-            marginTop: "1rem",
-          }}>
+        <section className="pf-card">
+          <h3>Available Studios ({masters.length})</h3>
+          <div className="studio-grid">
             {masters.map((studio) => {
               const isSelected = String(studio.id) === String(formData.studio_id);
               return (
                 <div
                   key={studio.id}
-                  onClick={() => {
+                  className={`studio-card ${isSelected ? "selected" : ""}`}
+                  onClick={() =>
                     setFormData((p) => ({
                       ...p,
                       studio_id: String(studio.id),
                       studio_name: studio.name || "",
-                    }));
-                  }}
-                  style={{
-                    padding: "1rem",
-                    border: isSelected ? "2px solid #ef4444" : "1px solid #d1d5db",
-                    borderRadius: "12px",
-                    background: isSelected ? "#fef2f2" : "#fff",
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
+                    }))
+                  }
                 >
-                  <div style={{ fontWeight: 600, fontSize: "1.05rem" }}>
-                    {studio.name}
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#6b7280", marginTop: "0.3rem" }}>
+                  <div className="studio-name">{studio.name}</div>
+                  <div className="studio-location">
                     {studio.full_location || studio.location || "—"}
                   </div>
-                  <div style={{ marginTop: "0.6rem", fontWeight: 700, color: "#b91c1c" }}>
+                  <div className="studio-price">
                     {studio.hourly_rate ? `₹${studio.hourly_rate}/hr` : "Contact for price"}
                   </div>
                 </div>
@@ -380,22 +350,22 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       )}
 
       {selectedStudio && (
-        <section className="pf-card" style={{ margin: "1.6rem 0", background: "#f0fdfa" }}>
+        <section className="pf-card selected-studio-card">
           <h3>Selected Studio</h3>
-          <div className="pf-grid" style={{ gap: "1.2rem" }}>
+          <div className="pf-grid info-grid">
             <div>
               <strong>{selectedStudio.name}</strong>
-              <div style={{ color: "#6b7280", fontSize: "0.9rem", marginTop: "0.3rem" }}>
+              <div className="location-text">
                 {selectedStudio.full_location || selectedStudio.location}
               </div>
             </div>
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>Capacity</div>
+              <div className="label-small">Capacity</div>
               <strong>{selectedStudio.capacity ? `${selectedStudio.capacity} pax` : "—"}</strong>
             </div>
             <div>
-              <div style={{ color: "#6b7280", fontSize: "0.85rem" }}>Price</div>
-              <strong style={{ color: "#b91c1c" }}>
+              <div className="label-small">Price</div>
+              <strong className="price-highlight">
                 {pricePerHour ? `₹${pricePerHour}/hr` : "On request"}
               </strong>
             </div>
@@ -403,15 +373,14 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
         </section>
       )}
 
-      {error && <div className="pf-banner pf-error" style={{ whiteSpace: "pre-wrap" }}>{error}</div>}
+      {error && <div className="pf-banner pf-error">{error}</div>}
       {successMsg && <div className="pf-banner pf-success">{successMsg}</div>}
 
-      {/* ── Booking Form ──────────────────────────────────────── */}
       <form onSubmit={handleSubmit} className="pf-form">
         <section className="pf-card">
           <h3>Personal Information</h3>
           <div className="pf-grid">
-            <label className={formData.full_name ? "" : "required-highlight"}>
+            <label className={!formData.full_name.trim() ? "required" : ""}>
               Full Name *
               <input
                 name="full_name"
@@ -422,7 +391,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
               />
             </label>
 
-            <label className={formData.mobile ? "" : "required-highlight"}>
+            <label className={!formData.mobile.trim() ? "required" : ""}>
               Mobile Number *
               <input
                 name="mobile"
@@ -451,8 +420,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
                 value={formData.notes}
                 onChange={handleChange}
                 placeholder="Any special requests? (optional)"
-                rows={2}
-                style={{ resize: "vertical" }}
+                rows={3}
               />
             </label>
           </div>
@@ -460,8 +428,8 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
         <section className="pf-card">
           <h3>Booking Details</h3>
-          <div className="pf-grid">
-            <label className={!formData.date ? "required-highlight" : ""}>
+          <div className="pf-grid two-cols">
+            <label className={!formData.date ? "required" : ""}>
               Date *
               <input
                 type="date"
@@ -477,7 +445,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
               />
             </label>
 
-            <label className={!formData.duration || formData.duration < 0.5 ? "required-highlight" : ""}>
+            <label className={Number(formData.duration) < 0.5 ? "required" : ""}>
               Duration (hours) *
               <input
                 type="number"
@@ -493,62 +461,366 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
                 required
               />
             </label>
-
-            <label className={!formData.time_slot ? "required-highlight" : ""}>
-              Start Time *
-              <div className="slot-grid" style={{ marginTop: "0.5rem" }}>
-                {!formData.date || !formData.studio_id ? (
-                  <div className="muted">Select date & studio first</div>
-                ) : slotsInfo.filter((s) => !s.booked).length === 0 ? (
-                  <div className="empty">No available slots for this date</div>
-                ) : (
-                  <div className="slot-list" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {slotsInfo.map(({ time, booked }) => {
-                      const isStart = formData.time_slot === time;
-                      const inRange = selectedRange.includes(time);
-                      const valid = canStartAt(time);
-
-                      let className = "slot";
-                      if (booked) className += " booked";
-                      else if (!valid) className += " disabled-start";
-                      else if (isStart) className += " selected-start";
-                      else if (inRange) className += " selected-range";
-
-                      return (
-                        <button
-                          key={time}
-                          type="button"
-                          className={className}
-                          onClick={() => !booked && valid && onSlotClick(time)}
-                          disabled={booked || !valid}
-                          title={booked ? "Booked" : format12(time)}
-                        >
-                          {format12(time)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </label>
           </div>
 
-          <p style={{ fontSize: "0.82rem", color: "#6b7280", marginTop: "1rem", lineHeight: 1.4 }}>
-            • The full time range will be reserved based on duration<br />
-            • Gray = booked &nbsp; • Red = selected &nbsp; • Light red = range
+          <label className={`start-time-label ${!formData.time_slot ? "required" : ""}`}>
+            Start Time *
+            <div className="slot-container">
+              {!formData.date || !formData.studio_id ? (
+                <div className="placeholder-text">Select date & studio first</div>
+              ) : slotsInfo.filter((s) => !s.booked).length === 0 ? (
+                <div className="placeholder-text">No available slots for this date</div>
+              ) : (
+                <div className="slot-scroller">
+                  {slotsInfo.map(({ time, booked }) => {
+                    const isStart = formData.time_slot === time;
+                    const inRange = selectedRange.includes(time);
+                    const valid = canStartAt(time);
+
+                    let className = "slot-btn";
+                    if (booked) className += " booked";
+                    else if (!valid) className += " invalid";
+                    else if (isStart) className += " start-selected";
+                    else if (inRange) className += " range-selected";
+
+                    return (
+                      <button
+                        key={time}
+                        type="button"
+                        className={className}
+                        onClick={() => !booked && valid && onSlotClick(time)}
+                        disabled={booked || !valid}
+                        title={booked ? "Booked" : format12(time)}
+                      >
+                        {format12(time)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </label>
+
+          <p className="slot-hint">
+            • Full range is reserved based on selected duration<br />
+            • Gray = booked • Red = selected
           </p>
         </section>
 
-        <div className="pf-actions" style={{ marginTop: "2rem", gap: "1rem" }}>
-          <button type="submit" className="btn" disabled={saving || loading || !formData.studio_id}>
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="btn primary"
+            disabled={saving || loading || !formData.studio_id}
+          >
             {saving ? "Processing..." : "Proceed to Payment"}
           </button>
 
-          <button type="button" className="btn ghost" onClick={resetForm} disabled={saving}>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={resetForm}
+            disabled={saving}
+          >
             Clear Form
           </button>
         </div>
       </form>
+
+      {/* ──────────────────────────────────────────────── */}
+      {/*               CSS (recommended in Forms.css)      */}
+      {/* ──────────────────────────────────────────────── */}
+      <style>{`
+        .pf-wrap {
+          padding: 1rem;
+          max-width: 1100px;
+          margin: 0 auto;
+          font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .pf-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .pf-header h2 {
+          margin: 0;
+          font-size: 1.6rem;
+        }
+
+        .pf-subtitle {
+          margin: 0.4rem 0 0;
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+
+        .pf-card {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+          padding: 1.25rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .pf-grid {
+          display: grid;
+          gap: 1.25rem;
+        }
+
+        /* Studio cards */
+        .studio-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+          .studio-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .pf-grid.two-cols {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        @media (min-width: 1024px) {
+          .studio-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .pf-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .pf-wrap {
+            padding: 1.5rem 2rem;
+          }
+        }
+
+        .studio-card {
+          padding: 1.1rem;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .studio-card:hover {
+          border-color: #d1d5db;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .studio-card.selected {
+          border: 2px solid #ef4444;
+          background: #fef2f2;
+        }
+
+        .studio-name {
+          font-weight: 600;
+          font-size: 1.05rem;
+        }
+
+        .studio-location {
+          font-size: 0.85rem;
+          color: #6b7280;
+          margin-top: 0.3rem;
+        }
+
+        .studio-price {
+          margin-top: 0.7rem;
+          font-weight: 700;
+          color: #b91c1c;
+        }
+
+        .selected-studio-card {
+          background: #f0fdfa;
+        }
+
+        .info-grid {
+          grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 640px) {
+          .info-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+
+        .location-text {
+          color: #6b7280;
+          font-size: 0.9rem;
+          margin-top: 0.25rem;
+        }
+
+        .label-small {
+          font-size: 0.82rem;
+          color: #6b7280;
+        }
+
+        .price-highlight {
+          color: #b91c1c;
+        }
+
+        /* Form fields */
+        label {
+          display: block;
+        }
+
+        label.required::after {
+          content: " *";
+          color: #ef4444;
+        }
+
+        input, textarea {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 1rem;
+          margin-top: 0.35rem;
+          box-sizing: border-box;
+        }
+
+        textarea {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        input:focus, textarea:focus {
+          outline: none;
+          border-color: #f97316;
+          box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
+        }
+
+        /* Time slots */
+        .start-time-label {
+          display: block;
+          margin-top: 1.25rem;
+        }
+
+        .slot-container {
+          margin-top: 0.6rem;
+        }
+
+        .placeholder-text {
+          color: #9ca3af;
+          font-style: italic;
+          padding: 1rem 0;
+          text-align: center;
+        }
+
+        .slot-scroller {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          max-height: 240px;
+          overflow-y: auto;
+          padding: 0.4rem 0;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .slot-btn {
+          flex: 0 0 auto;
+          min-width: 78px;
+          padding: 0.65rem 0.5rem;
+          font-size: 0.9rem;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          background: #f9fafb;
+          cursor: pointer;
+          transition: all 0.14s;
+        }
+
+        @media (min-width: 480px) {
+          .slot-btn {
+            min-width: 86px;
+            font-size: 0.94rem;
+          }
+        }
+
+        .slot-btn.booked {
+          background: #fee2e2;
+          border-color: #fecaca;
+          color: #991b1b;
+          cursor: not-allowed;
+        }
+
+        .slot-btn.invalid {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+
+        .slot-btn.start-selected,
+        .slot-btn.range-selected {
+          background: #fee2e2;
+          border-color: #f87171;
+          color: #991b1b;
+          font-weight: 600;
+        }
+
+        /* Actions */
+        .form-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-top: 2rem;
+        }
+
+        .btn {
+          padding: 0.85rem 1.6rem;
+          font-size: 1rem;
+          border-radius: 8px;
+          cursor: pointer;
+          flex: 1 1 160px;
+          min-width: 140px;
+          border: none;
+        }
+
+        .btn.primary {
+          background: #ef4444;
+          color: white;
+        }
+
+        .btn.primary:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .btn.secondary {
+          background: #f3f4f6;
+          color: #374151;
+          border: 1px solid #d1d5db;
+        }
+
+        .btn.secondary:hover:not(:disabled) {
+          background: #e5e7eb;
+        }
+
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        /* Messages */
+        .pf-banner {
+          padding: 1rem;
+          border-radius: 8px;
+          margin: 1rem 0;
+          text-align: center;
+        }
+
+        .pf-error  { background: #fee2e2; color: #991b1b; }
+        .pf-success { background: #d1fae5; color: #065f46; }
+        .pf-loading { background: #e0f2fe; color: #1e40af; }
+
+        .slot-hint {
+          font-size: 0.82rem;
+          color: #6b7280;
+          margin-top: 1.1rem;
+          line-height: 1.5;
+        }
+      `}</style>
     </div>
   );
 };
