@@ -131,68 +131,27 @@ class PublicEventViewSet(viewsets.ReadOnlyModelViewSet):
         ctx = super().get_serializer_context()
         ctx["request"] = self.request
         return ctx
-
-
 class UserEventBookingViewSet(viewsets.ModelViewSet):
-    """
-    /user/event-bookings/
-      GET  /user/event-bookings/        -> list current user's bookings
-      POST /user/event-bookings/        -> create booking for an event
-      GET  /user/event-bookings/<id>/   -> booking detail
-      PUT/PATCH/DELETE (optional)       -> on user's own bookings
-
-    Frontend:
-      - POST from SeatSelectionModal:
-          {
-            "event": 1,
-            "customer_name": "...",
-            "contact_number": "...",
-            "email": "",
-            "ticket_type": "basic" | "premium" | "vip",
-            "number_of_tickets": 2,
-            "seat_numbers": ["basic-1-01","basic-1-02"],
-            "total_amount": "500.00",
-            "payment_method": "UPI" | "Card" | "Cash"
-          }
-
-      - GET from "My Bookings" modal:
-          returns list of objects like:
-          {
-            "id": ...,
-            "event": 1,
-            "event_detail": {
-                "id": ...,
-                "name": "...",
-                "event_date": "2025-01-01",
-                "event_time": "19:00:00",
-                "location": "...",
-                ...
-            },
-            "customer_name": "...",
-            "contact_number": "...",
-            "ticket_type": "basic",
-            "number_of_tickets": 2,
-            "seat_numbers": ["basic-1-01","basic-1-02"],
-            "total_amount": "500.00",
-            "payment_method": "UPI",
-            "created_at": "2025-01-01T10:30:00Z"
-          }
-    """
 
     serializer_class = UserEventBookingSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """
-        Only bookings of the logged-in user, newest first.
-        We also join the related event so serializer can expose event_detail.
-        """
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return EventBooking.objects.none()
+
         return (
             EventBooking.objects
-            .filter(user=self.request.user)
+            .filter(user=user)
             .select_related("event")
             .order_by("-created_at")
         )
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
     def get_serializer_context(self):
         """

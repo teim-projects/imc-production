@@ -1,5 +1,5 @@
 // src/pages/PrivateEventBooking.jsx
-// Updated form fields & placeholders to match screenshot exactly — UI/layout kept identical
+// Updated: Email and Address now side by side (2 columns in Customer Details)
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -54,7 +54,7 @@ const DURATION_OPTIONS = [
   "Multi-Day",
 ];
 
-// Policies (unchanged)
+// Policies (complete)
 const policies = [
   {
     id: "A",
@@ -225,7 +225,7 @@ export default function PrivateEventBooking() {
   const [showPoliciesModal, setShowPoliciesModal] = useState(false);
 
   const [form, setForm] = useState({
-    customer_name: "",
+    customer: "",
     contact_number: "",
     email: "",
     address: "",
@@ -240,12 +240,15 @@ export default function PrivateEventBooking() {
   });
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const validateForm = () => {
-    if (!form.customer_name.trim()) return "Customer name is required";
+    if (!form.customer.trim()) return "Customer name is required";
     if (!form.contact_number.trim()) return "Contact number is required";
     if (!form.email.trim()) return "Email is required";
     if (!form.event_type.trim()) return "Event type is required";
@@ -264,7 +267,7 @@ export default function PrivateEventBooking() {
     }
 
     const data = new FormData();
-    data.append("customer_name", form.customer_name.trim());
+    data.append("customer", form.customer.trim());
     data.append("contact_number", form.contact_number.trim());
     data.append("email", form.email.trim());
     if (form.address.trim()) data.append("address", form.address.trim());
@@ -293,7 +296,7 @@ export default function PrivateEventBooking() {
   const resetForm = () => {
     setSuccess(false);
     setForm({
-      customer_name: "",
+      customer: "",
       contact_number: "",
       email: "",
       address: "",
@@ -308,7 +311,6 @@ export default function PrivateEventBooking() {
     });
   };
 
-  // Success Page (unchanged)
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
@@ -328,7 +330,7 @@ export default function PrivateEventBooking() {
             Booking Request Sent!
           </h2>
           <p className="text-gray-600 text-lg mb-10">
-            Thank you, {form.customer_name}! We’ve received your private event request. Our team will contact you within 24 hours with a custom quote.
+            Thank you, {form.customer}! We’ve received your private event request. Our team will contact you within 24 hours with a custom quote.
           </p>
           <button
             onClick={resetForm}
@@ -341,12 +343,9 @@ export default function PrivateEventBooking() {
     );
   }
 
-  // ────────────────────────────────────────────────
-  // Main Form – fields updated to match screenshot
-  // ────────────────────────────────────────────────
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION – unchanged */}
+      {/* HERO SECTION */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-75"
@@ -359,7 +358,7 @@ export default function PrivateEventBooking() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
-              Private Event Booking
+              BOOK YOUR PRIVATE EVENT
             </h1>
             <p className="text-3xl md:text-4xl font-bold text-amber-400 mt-2 drop-shadow">
               IMC Events & Entertainment
@@ -376,7 +375,7 @@ export default function PrivateEventBooking() {
         </div>
       </section>
 
-      {/* MAIN CONTENT – layout unchanged, only inner form fields changed */}
+      {/* MAIN CONTENT */}
       <section className="relative px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* FORM */}
@@ -386,25 +385,26 @@ export default function PrivateEventBooking() {
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-3xl shadow-2xl p-8 md:p-16"
+                className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 lg:p-16"
               >
                 <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 flex items-center justify-center gap-4">
                   <Star className="w-12 h-12 text-amber-600" />
                   Book Your Private Event
                 </h2>
 
-                {/* Customer Details */}
+                {/* Customer Details – Name + Phone in row 1, Email + Address in row 2 */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Customer Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Row 1 */}
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Customer Name<span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        name="customer_name"
-                        value={form.customer_name}
+                        name="customer"
+                        value={form.customer}
                         onChange={handleChange}
                         placeholder="e.g., Rahul Verma"
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
@@ -423,6 +423,8 @@ export default function PrivateEventBooking() {
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
                     </div>
+
+                    {/* Row 2 */}
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Email<span className="text-red-500">*</span>
@@ -436,25 +438,24 @@ export default function PrivateEventBooking() {
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
                     </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <label className="block text-gray-700 font-medium mb-2">Address</label>
-                    <input
-                      type="text"
-                      name="address"
-                      value={form.address}
-                      onChange={handleChange}
-                      placeholder="Street, City"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Address</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={form.address}
+                        onChange={handleChange}
+                        placeholder="Street, City"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Event Details */}
+                {/* Event Details – 2 per row */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Event Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Event Type<span className="text-red-500">*</span>
@@ -481,7 +482,7 @@ export default function PrivateEventBooking() {
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-gray-700 font-medium mb-2">Guest Count</label>
                       <input
                         type="text"
@@ -495,10 +496,10 @@ export default function PrivateEventBooking() {
                   </div>
                 </div>
 
-                {/* Schedule */}
+                {/* Schedule – 2 per row */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Schedule</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Date<span className="text-red-500">*</span>
@@ -522,7 +523,7 @@ export default function PrivateEventBooking() {
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-gray-700 font-medium mb-2">
                         Duration (hours)<span className="text-red-500">*</span>
                       </label>
@@ -538,47 +539,17 @@ export default function PrivateEventBooking() {
                   </div>
                 </div>
 
-                {/* Payment & Notes */}
+                {/* Special Notes */}
                 <div className="mb-12">
-                  <h3 className="text-2xl font-bold text-red-600 mb-6">Payment & Notes</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <label className="block text-gray-800 font-medium mb-3">Payment Options</label>
-                      <div className="flex flex-wrap gap-4">
-                        <button
-                          type="button"
-                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
-                        >
-                          Card
-                        </button>
-                        <button
-                          type="button"
-                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
-                        >
-                          UPI
-                        </button>
-                        <button
-                          type="button"
-                          className="px-6 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-700 font-medium cursor-default"
-                        >
-                          NetBanking
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-gray-800 font-medium mb-3">Special Notes</label>
-                      <textarea
-                        name="notes"
-                        value={form.notes}
-                        onChange={handleChange}
-                        rows="5"
-                        placeholder="Any special arrangements,artist requirements, A/V setup, etc."
-                        className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
-                      />
-                    </div>
-                  </div>
+                  <h3 className="text-2xl font-bold text-red-600 mb-6">Special Notes</h3>
+                  <textarea
+                    name="notes"
+                    value={form.notes}
+                    onChange={handleChange}
+                    rows="5"
+                    placeholder="Any special arrangements,artist requirements, A/V setup, lighting preferences, etc."
+                    className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
+                  />
                 </div>
 
                 {/* Terms */}
@@ -595,7 +566,7 @@ export default function PrivateEventBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -603,7 +574,7 @@ export default function PrivateEventBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -615,7 +586,7 @@ export default function PrivateEventBooking() {
                 <button
                   onClick={submitBooking}
                   disabled={loading}
-                  className="mt-10 w-full max-w-[300px] mx-auto py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
@@ -630,7 +601,7 @@ export default function PrivateEventBooking() {
             </div>
           </div>
 
-          {/* BENEFITS SIDEBAR – unchanged */}
+          {/* BENEFITS SIDEBAR */}
           <div className="lg:col-span-1 space-y-8 mt-20">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
