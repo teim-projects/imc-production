@@ -486,13 +486,19 @@ class VideographySerializer(serializers.ModelSerializer):
 # =====================================================================
 # ===================== Authentication Serializers ====================
 # =====================================================================
+
 User = get_user_model()
+
+
+# ============================================================
+# REGISTER SERIALIZER
+# ============================================================
 
 class CustomRegisterSerializer(RegisterSerializer):
     """
     Extends dj-rest-auth RegisterSerializer to support:
     - mobile_no (validated, unique)
-    - profile_photo (optional) — also accepts `photo` key from client
+    - profile_photo (optional)
     """
     username = None  # disable username completely
 
@@ -500,8 +506,14 @@ class CustomRegisterSerializer(RegisterSerializer):
         required=False,
         allow_blank=True,
         max_length=15,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="This mobile number is already registered.")]
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="This mobile number is already registered."
+            )
+        ]
     )
+
     profile_photo = serializers.ImageField(required=False, allow_null=True)
 
     def validate_mobile_no(self, v: str):
@@ -513,30 +525,41 @@ class CustomRegisterSerializer(RegisterSerializer):
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
         data["mobile_no"] = self.validated_data.get("mobile_no", "")
-        if "profile_photo" in self.validated_data:
-            data["profile_photo"] = self.validated_data.get("profile_photo")
-        elif self.context and (req := self.context.get("request")):
-            data["profile_photo"] = req.FILES.get("photo", None)
+        data["profile_photo"] = self.validated_data.get("profile_photo")
         return data
 
     @transaction.atomic
     def save(self, request):
-        user = super().save(request)  # creates user with email/password
-        user.mobile_no = self.validated_data.get("mobile_no", "")
+        # Create user first
+        user = super().save(request)
 
+        # Save mobile
+        user.mobile_no = self.validated_data.get("mobile_no", "")
+        user.save()  # IMPORTANT: ensure PK exists before image save
+
+        # Handle profile photo safely
         photo = (
             self.validated_data.get("profile_photo")
             or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
         )
+
         if photo:
             user.profile_photo = photo
+            user.save()
 
         try:
             user.save()
         except IntegrityError:
-            raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
+            raise serializers.ValidationError({
+                "mobile_no": ["This mobile number is already registered."]
+            })
+
         return user
 
+
+# ============================================================
+# LOGIN SERIALIZER (UNCHANGED LOGIC)
+# ============================================================
 
 class CustomLoginSerializer(LoginSerializer):
     username = None
@@ -548,7 +571,9 @@ class CustomLoginSerializer(LoginSerializer):
         password = attrs.get('password')
 
         if not email_or_mobile or not password:
-            raise serializers.ValidationError("Both email/mobile and password are required.")
+            raise serializers.ValidationError(
+                "Both email/mobile and password are required."
+            )
 
         user = authenticate(username=email_or_mobile, password=password)
 
@@ -571,12 +596,29 @@ class CustomLoginSerializer(LoginSerializer):
         return attrs
 
 
+# ============================================================
+# USER DETAILS SERIALIZER (PHOTO PATCH ENABLED)
+# ============================================================
+
 class CustomUserDetailsSerializer(UserDetailsSerializer):
-    profile_photo = serializers.ImageField(read_only=True, use_url=True, allow_null=True, required=False)
+    profile_photo = serializers.ImageField(
+        read_only=False,     # allow updating photo
+        use_url=True,
+        allow_null=True,
+        required=False
+    )
 
     class Meta:
-        model = User       
-        fields = ('id', 'email', 'mobile_no', 'first_name', 'last_name', 'role', 'profile_photo')
+        model = User
+        fields = (
+            'id',
+            'email',
+            'mobile_no',
+            'first_name',
+            'last_name',
+            'role',
+            'profile_photo'
+        )
         read_only_fields = ('email',)
 
     def to_representation(self, instance):
@@ -584,6 +626,18 @@ class CustomUserDetailsSerializer(UserDetailsSerializer):
         rep['full_name'] = f"{(instance.first_name or '').strip()} {(instance.last_name or '').strip()}".strip()
         return rep
 
+    def update(self, instance, validated_data):
+        # Handle photo update properly
+        if "profile_photo" in validated_data:
+            instance.profile_photo = validated_data.get("profile_photo")
+
+        # Update other fields normally
+        for attr, value in validated_data.items():
+            if attr != "profile_photo":
+                setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 # ---------------------------------------------------------------------
 # Password Reset (request & confirm)
