@@ -16,7 +16,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import LoginSerializer, UserDetailsSerializer
+from dj_rest_auth.serializers import LoginSerializer, UserDetailsSerializer 
 
 from .models import (
     # Core / Users
@@ -488,101 +488,114 @@ class VideographySerializer(serializers.ModelSerializer):
 # =====================================================================
 User = get_user_model()
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
+from rest_framework import serializers
+
+from rest_framework.validators import UniqueValidator
+
+User = get_user_model()
+
+
+# ==========================================
+# REGISTER
+# ==========================================
 class CustomRegisterSerializer(RegisterSerializer):
-    """
-    Extends dj-rest-auth RegisterSerializer to support:
-    - mobile_no (validated, unique)
-    - profile_photo (optional) — also accepts `photo` key from client
-    """
-    username = None  # disable username completely
+    username = None
 
     mobile_no = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=15,
-        validators=[UniqueValidator(queryset=User.objects.all(), message="This mobile number is already registered.")]
+        required=True,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="Mobile already registered."
+            )
+        ]
     )
-    profile_photo = serializers.ImageField(required=False, allow_null=True)
 
-    def validate_mobile_no(self, v: str):
-        v = (v or "").strip()
-        if v == "":
-            return v
-        return _validate_phone(v)
-
-    def get_cleaned_data(self):
-        data = super().get_cleaned_data()
-        data["mobile_no"] = self.validated_data.get("mobile_no", "")
-        if "profile_photo" in self.validated_data:
-            data["profile_photo"] = self.validated_data.get("profile_photo")
-        elif self.context and (req := self.context.get("request")):
-            data["profile_photo"] = req.FILES.get("photo", None)
-        return data
+    profile_photo = serializers.ImageField(required=False)
 
     @transaction.atomic
     def save(self, request):
-        user = super().save(request)  # creates user with email/password
-        user.mobile_no = self.validated_data.get("mobile_no", "")
+        user = super().save(request)
 
-        photo = (
-            self.validated_data.get("profile_photo")
-            or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
-        )
+        user.mobile_no = self.validated_data.get("mobile_no")
+        user.save()  # SAVE FIRST TO GET PK
+
+        photo = self.validated_data.get("profile_photo")
         if photo:
             user.profile_photo = photo
-
-        try:
             user.save()
-        except IntegrityError:
-            raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
+
         return user
 
 
+# ==========================================
+# LOGIN
+# ==========================================
 class CustomLoginSerializer(LoginSerializer):
     username = None
     email_or_mobile = serializers.CharField(required=True)
-    password = serializers.CharField(style={'input_type': 'password'})
 
     def validate(self, attrs):
-        email_or_mobile = attrs.get('email_or_mobile')
-        password = attrs.get('password')
+        email_or_mobile = attrs.get("email_or_mobile")
+        password = attrs.get("password")
 
-        if not email_or_mobile or not password:
-            raise serializers.ValidationError("Both email/mobile and password are required.")
+        try:
+            if "@" in email_or_mobile:
+                user = User.objects.get(email__iexact=email_or_mobile)
+            else:
+                user = User.objects.get(mobile_no=email_or_mobile)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid credentials.")
 
-        user = authenticate(username=email_or_mobile, password=password)
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid credentials.")
 
-        if not user:
-            try:
-                if '@' in email_or_mobile:
-                    user = User.objects.get(email=email_or_mobile)
-                else:
-                    user = User.objects.get(mobile_no=email_or_mobile)
-            except User.DoesNotExist:
-                raise serializers.ValidationError("Invalid credentials.")
-
-            if not user.check_password(password):
-                raise serializers.ValidationError("Invalid credentials.")
-
-        if not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
-
-        attrs['user'] = user
+        attrs["user"] = user
         return attrs
 
 
+# ==========================================
+# USER DETAILS
+# ==========================================
 class CustomUserDetailsSerializer(UserDetailsSerializer):
-    profile_photo = serializers.ImageField(read_only=True, use_url=True, allow_null=True, required=False)
+    profile_photo = serializers.ImageField(
+        required=False,
+        allow_null=True,
+        use_url=True
+    )
+
+    full_name = serializers.SerializerMethodField()
 
     class Meta:
-        model = User       
-        fields = ('id', 'email', 'mobile_no', 'first_name', 'last_name', 'role', 'profile_photo')
-        read_only_fields = ('email',)
+        model = User
+        fields = (
+            "id",
+            "email",
+            "mobile_no",
+            "first_name",
+            "last_name",
+            "full_name",
+            "role",
+            "profile_photo",
+        )
+        read_only_fields = ("email", "role")
 
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        rep['full_name'] = f"{(instance.first_name or '').strip()} {(instance.last_name or '').strip()}".strip()
-        return rep
+    def get_full_name(self, obj):
+        return f"{obj.first_name or ''} {obj.last_name or ''}".strip()
+
+    def update(self, instance, validated_data):
+        if "profile_photo" in validated_data:
+            instance.profile_photo = validated_data["profile_photo"]
+
+        for attr, value in validated_data.items():
+            if attr != "profile_photo":
+                setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
 
 
 # ---------------------------------------------------------------------
