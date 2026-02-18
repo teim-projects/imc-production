@@ -2,30 +2,27 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singerbag.jpg"; // You can replace with sound system image
+import SingerBackground from "../../assets/singerbag.jpg";
 import {
   Loader2,
   CheckCircle,
   Calendar,
-  Clock,
-  MapPin,
-  Mic,
-  Users,
   Phone,
   Mail,
   User,
+  MapPin,
   Speaker,
-  Upload,
   ChevronDown,
   Sparkles,
   Star,
   Award,
   FileText,
+  Mic,
 } from "lucide-react";
 
 // API Configuration
-const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-const SOUND_BOOKING_API = `${API_BASE.replace(/\/$/, "")}/auth/sound-bookings/`; // Change if your endpoint is different
+const API_BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const SOUND_BOOKING_API = `${API_BASE.replace(/\/$/, "")}/auth/sound/`;
 
 const SYSTEM_TYPES = [
   "Basic PA System",
@@ -35,15 +32,6 @@ const SYSTEM_TYPES = [
   "Stage Lighting + Sound",
   "Full Event Package",
   "Custom Setup",
-];
-
-const DURATION_OPTIONS = [
-  "2 Hours",
-  "4 Hours",
-  "6 Hours",
-  "8 Hours",
-  "Full Day (10+ Hours)",
-  "Multi-Day",
 ];
 
 export default function SoundBooking() {
@@ -56,13 +44,13 @@ export default function SoundBooking() {
     email: "",
     address: "",
     system_type: "",
-    venue: "",
-    date: "",
-    time_slot: "",
-    duration: "",
-    guest_count: "",
+    event_date: "",
+    mixer_model: "",
+    price: "",
+    speakers_count: "",
+    microphones_count: "",
+    payment_method: "Cash",
     notes: "",
-    reference_images: null,
     agreed_terms: false,
   });
 
@@ -71,20 +59,12 @@ export default function SoundBooking() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setForm((prev) => ({ ...prev, reference_images: e.target.files?.[0] || null }));
-  };
-
   const validateForm = () => {
-    if (!form.customer.trim()) return "Full name is required";
+    if (!form.customer.trim()) return "Customer name is required";
     if (!form.contact_number.trim()) return "Contact number is required";
     if (!form.email.trim()) return "Email is required";
     if (!form.system_type) return "Please select system type";
-    if (!form.venue.trim()) return "Venue is required";
-    if (!form.date) return "Date is required";
-    if (!form.time_slot.trim()) return "Time slot is required";
-    if (!form.duration) return "Duration is required";
-    if (!form.guest_count || form.guest_count <= 0) return "Guest count must be greater than 0";
+    if (!form.event_date) return "Event date is required";
     if (!form.agreed_terms) return "You must agree to terms";
     return null;
   };
@@ -102,13 +82,13 @@ export default function SoundBooking() {
     data.append("email", form.email.trim());
     if (form.address.trim()) data.append("address", form.address.trim());
     data.append("system_type", form.system_type);
-    data.append("venue", form.venue.trim());
-    data.append("date", form.date);
-    data.append("time_slot", form.time_slot.trim());
-    data.append("duration", form.duration);
-    data.append("guest_count", Number(form.guest_count));
+    data.append("event_date", form.event_date);
+    if (form.mixer_model.trim()) data.append("mixer_model", form.mixer_model.trim());
+    if (form.price.trim()) data.append("price", form.price.trim());
+    if (form.speakers_count) data.append("speakers_count", Number(form.speakers_count));
+    if (form.microphones_count) data.append("microphones_count", Number(form.microphones_count));
+    data.append("payment_method", form.payment_method);
     if (form.notes.trim()) data.append("notes", form.notes.trim());
-    if (form.reference_images) data.append("reference_images", form.reference_images);
 
     try {
       setLoading(true);
@@ -132,18 +112,17 @@ export default function SoundBooking() {
       email: "",
       address: "",
       system_type: "",
-      venue: "",
-      date: "",
-      time_slot: "",
-      duration: "",
-      guest_count: "",
+      event_date: "",
+      mixer_model: "",
+      price: "",
+      speakers_count: "",
+      microphones_count: "",
+      payment_method: "Cash",
       notes: "",
-      reference_images: null,
       agreed_terms: false,
     });
   };
 
-  // Success Page
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
@@ -176,7 +155,6 @@ export default function SoundBooking() {
     );
   }
 
-  // Main Booking Form
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
       {/* HERO SECTION */}
@@ -226,76 +204,84 @@ export default function SoundBooking() {
                   Book Your Sound System
                 </h2>
 
-                {/* Personal Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <User className="inline w-5 h-5 mr-2" />
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="customer"
-                      value={form.customer}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
+                {/* Client & Contact */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-amber-700">
+                    Client & Contact
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Customer Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="customer"
+                        value={form.customer}
+                        onChange={handleChange}
+                        placeholder="e.g., Rahul Verma"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Contact Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        name="contact_number"
+                        value={form.contact_number}
+                        onChange={handleChange}
+                        placeholder="+91XXXXXXXXXX"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="customer@email.com"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
                   </div>
-                  <div>
+                  <div className="mt-8">
                     <label className="block text-gray-700 font-medium mb-3">
-                      <Phone className="inline w-5 h-5 mr-2" />
-                      Contact Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="contact_number"
-                      value={form.contact_number}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Mail className="inline w-5 h-5 mr-2" />
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <MapPin className="inline w-5 h-5 mr-2" />
-                      Address (Optional)
+                      Address
                     </label>
                     <input
                       type="text"
                       name="address"
                       value={form.address}
                       onChange={handleChange}
+                      placeholder="Street, City"
                       className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                     />
                   </div>
                 </div>
 
-                {/* Event Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      System Type <span className="text-red-500">*</span>
-                    </label>
+                {/* Setup & Schedule - two columns where possible */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-amber-700">
+                    Setup & Schedule
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="relative">
+                      <label className="block text-gray-700 font-medium mb-3">
+                        System Type <span className="text-red-500">*</span>
+                      </label>
                       <select
                         name="system_type"
                         value={form.system_type}
                         onChange={handleChange}
                         className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition"
                       >
-                        <option value="">Select System</option>
+                        <option value="">— Select —</option>
                         {SYSTEM_TYPES.map((type) => (
                           <option key={type} value={type}>
                             {type}
@@ -304,125 +290,125 @@ export default function SoundBooking() {
                       </select>
                       <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <MapPin className="inline w-5 h-5 mr-2" />
-                      Venue / Location <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="venue"
-                      value={form.venue}
-                      onChange={handleChange}
-                      placeholder="e.g. Community Hall, Andheri"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Calendar className="inline w-5 h-5 mr-2" />
-                      Event Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      value={form.date}
-                      onChange={handleChange}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Clock className="inline w-5 h-5 mr-2" />
-                      Time Slot <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="time_slot"
-                      value={form.time_slot}
-                      onChange={handleChange}
-                      placeholder="e.g. 6:00 PM - 11:00 PM"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      Duration <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        name="duration"
-                        value={form.duration}
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Event Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        name="event_date"
+                        value={form.event_date}
                         onChange={handleChange}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition"
-                      >
-                        <option value="">Select Duration</option>
-                        {DURATION_OPTIONS.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-3">
-                      <Users className="inline w-5 h-5 mr-2" />
-                      Expected Guests <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="guest_count"
-                      value={form.guest_count}
-                      onChange={handleChange}
-                      min="1"
-                      placeholder="e.g. 150"
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Mixer Model
+                      </label>
+                      <input
+                        type="text"
+                        name="mixer_model"
+                        value={form.mixer_model}
+                        onChange={handleChange}
+                        placeholder="e.g., X32 / DJM-900"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Price (₹)
+                      </label>
+                      <input
+                        type="text"
+                        name="price"
+                        value={form.price}
+                        onChange={handleChange}
+                        placeholder="e.g., 15000"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Upload & Notes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
-                  <div>
-                    <label className="block text-lg font-bold text-gray-800 mb-3">
-                      <Speaker className="inline w-6 h-6 mr-2" />
-                      Reference Images / Stage Layout (Optional)
-                    </label>
-                    <label className="border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center bg-gray-50 flex flex-col items-center cursor-pointer hover:border-amber-400 transition">
-                      <Upload className="w-12 h-12 text-gray-400 mb-4" />
-                      <p className="text-gray-600">
-                        <span className="text-amber-600 font-semibold">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">Images up to 10MB</p>
+                {/* Equipment Details - 2 columns */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-amber-700">
+                    Equipment Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Speakers Count
+                      </label>
                       <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
+                        type="number"
+                        name="speakers_count"
+                        value={form.speakers_count}
+                        onChange={handleChange}
+                        min="0"
+                        placeholder="e.g., 2"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-3">
+                        Microphones Count
+                      </label>
+                      <input
+                        type="number"
+                        name="microphones_count"
+                        value={form.microphones_count}
+                        onChange={handleChange}
+                        min="0"
+                        placeholder="e.g., 4"
+                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment & Notes */}
+                <div className="mb-12">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3 text-amber-700">
+                    Payment & Notes
+                  </h3>
+                  <div className="mb-8">
+                    <label className="block text-gray-700 font-medium mb-3">
+                      Payment Method
                     </label>
-                    {form.reference_images && (
-                      <p className="text-sm text-green-600 mt-2 text-center">
-                        ✓ {form.reference_images.name}
-                      </p>
-                    )}
+                    <div className="flex flex-wrap gap-4">
+                      {["Cash", "Card", "UPI"].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setForm((prev) => ({ ...prev, payment_method: method }))}
+                          className={`px-8 py-3 rounded-full font-medium transition ${
+                            form.payment_method === method
+                              ? "bg-amber-600 text-white shadow-lg"
+                              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          }`}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div>
                     <label className="block text-lg font-bold text-gray-800 mb-3">
                       <FileText className="inline w-6 h-6 mr-2" />
-                      Special Requests / Notes
+                      Notes
                     </label>
                     <textarea
                       name="notes"
                       value={form.notes}
                       onChange={handleChange}
                       rows="6"
-                      placeholder="Microphones needed, lighting, DJ booth, stage size, etc."
+                      placeholder="Any additional details..."
                       className="w-full px-5 py-4 bg-gray-100 rounded-2xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 resize-none"
                     />
                   </div>
@@ -448,7 +434,7 @@ export default function SoundBooking() {
                 <button
                   onClick={submitBooking}
                   disabled={loading}
-                  className="w-full max-w-md mx-auto mt-12 py-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-xl shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition flex items-center justify-center gap-4 disabled:opacity-70"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
@@ -504,6 +490,7 @@ export default function SoundBooking() {
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
+              viewport={{ once: true }}
               className="bg-white rounded-3xl p-8 shadow-xl border border-amber-100"
             >
               <Award className="w-16 h-16 text-amber-500 mx-auto mb-4" />
