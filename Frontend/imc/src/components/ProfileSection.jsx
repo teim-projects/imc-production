@@ -15,6 +15,7 @@ const ProfileSection = () => {
 
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
+  const [avatarVersion, setAvatarVersion] = useState(Date.now()); // ← new: force reload new photo
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
@@ -54,9 +55,7 @@ const ProfileSection = () => {
     return Object.keys(e).length === 0;
   };
 
-  // ------------ fetch & save logic remains unchanged ------------
-  // (keeping fetchUserData, handleSave, onAvatarChange, removeAvatar, handleLogout the same)
-
+  // ------------ fetch user ------------
   const fetchUserData = async () => {
     const token = localStorage.getItem("access");
     if (!token) {
@@ -90,6 +89,9 @@ const ProfileSection = () => {
         mobile_no: data.mobile_no || "",
         profile_photo: data.profile_photo || data.photo || "",
       });
+
+      // Reset version on fresh load
+      setAvatarVersion(Date.now());
     } catch (err) {
       console.error("Fetch user error:", err);
       notify("error", "Could not load profile. Please try again.");
@@ -98,6 +100,7 @@ const ProfileSection = () => {
     }
   };
 
+  // ------------ save ------------
   const handleSave = async (e) => {
     e.preventDefault();
     clearMessage();
@@ -174,6 +177,11 @@ const ProfileSection = () => {
         profile_photo: newPhoto,
       }));
 
+      // Critical: force new photo to load if we uploaded one
+      if (avatarFile && newPhoto) {
+        setAvatarVersion(Date.now() + 1); // small bump to ensure change
+      }
+
       if (avatarFile) {
         setAvatarFile(null);
         if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -242,7 +250,7 @@ const ProfileSection = () => {
     );
   }
 
-  const avatarSrc = avatarPreview || (user.profile_photo ? `${toAbsolute(user.profile_photo)}?t=${Date.now()}` : "");
+  const avatarSrc = avatarPreview || (user.profile_photo ? `${toAbsolute(user.profile_photo)}?v=${avatarVersion}` : "");
 
   return (
     <div className="profile-shell">
@@ -546,7 +554,7 @@ const ProfileSection = () => {
           padding: 0.9rem 1.2rem;
           border-radius: 10px;
           display: flex;
-          align-items: center;
+          alignItems: center;
           justify-content: space-between;
           font-weight: 600;
           font-size: 0.95rem;
