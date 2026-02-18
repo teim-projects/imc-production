@@ -125,7 +125,7 @@ const ProfileSection = () => {
         const formData = new FormData();
         formData.append("first_name", first_name);
         formData.append("last_name", last_name);
-        formData.append("photo", avatarFile);
+        // Removed: formData.append("photo", avatarFile);
         formData.append("profile_photo", avatarFile);
         if (user.mobile_no?.trim()) formData.append("mobile_no", user.mobile_no.trim());
 
@@ -554,7 +554,7 @@ const ProfileSection = () => {
           padding: 0.9rem 1.2rem;
           border-radius: 10px;
           display: flex;
-          alignItems: center;
+          align-items: center;
           justify-content: space-between;
           font-weight: 600;
           font-size: 0.95rem;
