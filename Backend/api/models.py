@@ -817,7 +817,7 @@ from django.core.validators import FileExtensionValidator
 
 
 # --------------------------------------------------
-# VIDEO UPLOAD HELPERS  ✅ (REPLACED PHOTO)
+# VIDEO UPLOAD HELPERS
 # --------------------------------------------------
 def singer_video_upload_to(instance, filename):
     ext = filename.split('.')[-1] if '.' in filename else 'mp4'
@@ -830,7 +830,7 @@ def singer_video_upload_to(instance, filename):
 # --------------------------------------------------
 class Singer(models.Model):
 
-    # ✅ URL-SAFE STRING PRIMARY KEY
+    # URL-SAFE STRING PRIMARY KEY
     # Example: IMC-SM-001
     id = models.CharField(
         max_length=20,
@@ -866,7 +866,6 @@ class Singer(models.Model):
         default=""
     )
 
-    # ✅ NEW FIELD (THIS FIXES YOUR ISSUE)
     payment_method = models.CharField(
         max_length=20,
         choices=[
@@ -879,7 +878,6 @@ class Singer(models.Model):
 
     active = models.BooleanField(default=True)
 
-    # ✅ VIDEO FIELD (PHOTO REMOVED)
     video = models.FileField(
         upload_to=singer_video_upload_to,
         null=True,
@@ -891,12 +889,12 @@ class Singer(models.Model):
         ],
     )
 
-    # ✅ AUTO DATE FIELDS
     created_at = models.DateField(editable=False)
     updated_at = models.DateField(editable=False)
 
     class Meta:
-        ordering = ['-created_at']
+        # ✅ THIS FIXES ORDER TO 1,2,3,4
+        ordering = ['id']   # Ascending string works because IDs are zero padded (001,002,003)
         verbose_name = "Singer"
         verbose_name_plural = "Singers"
 
@@ -905,7 +903,6 @@ class Singer(models.Model):
     # --------------------------------------------------
     def save(self, *args, **kwargs):
 
-        # 🔐 Generate ID only for NEW records
         if not self.id:
             with transaction.atomic():
                 ids = (
@@ -924,7 +921,6 @@ class Singer(models.Model):
 
                 self.id = f"IMC-SM-{max_num + 1:03d}"
 
-        # 📅 Auto dates
         if not self.created_at:
             self.created_at = date.today()
 

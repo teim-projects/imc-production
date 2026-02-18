@@ -598,6 +598,9 @@ class SoundViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(qs, many=True).data)
+    
+
+    
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -630,7 +633,9 @@ class SingerViewSet(viewsets.ModelViewSet):
     /api/auth/singer/
     """
 
-    queryset = Singer.objects.all().order_by("-created_at")
+    # ✅ FIXED ORDER → 1,2,3,4 (Ascending ID)
+    queryset = Singer.objects.all().order_by("id")
+
     serializer_class = SingerSerializer
     permission_classes = [SingerPermission]
 
@@ -663,15 +668,13 @@ class SingerViewSet(viewsets.ModelViewSet):
         except Singer.DoesNotExist:
             raise NotFound("Singer not found")
 
-        # 🔥 allow full update with or without video
         serializer = self.get_serializer(
             instance,
             data=request.data,
-            partial=False  # PUT = full update
+            partial=False
         )
         serializer.is_valid(raise_exception=True)
 
-        # 🔁 Replace old video if new one is sent
         if "video" in request.FILES and instance.video:
             instance.video.delete(save=False)
 
@@ -694,11 +697,10 @@ class SingerViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(
             instance,
             data=request.data,
-            partial=True  # PATCH = partial update
+            partial=True
         )
         serializer.is_valid(raise_exception=True)
 
-        # 🔁 Replace old video only if new one uploaded
         if "video" in request.FILES and instance.video:
             instance.video.delete(save=False)
 
@@ -718,15 +720,16 @@ class SingerViewSet(viewsets.ModelViewSet):
         except Singer.DoesNotExist:
             raise NotFound("Singer not found")
 
-        # 🗑️ delete video from storage
         if singer.video:
             singer.video.delete(save=False)
 
         singer.delete()
+
         return Response(
             {"success": True, "message": "Singer deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
+
 
 
 # api/views.py (replace or add)
