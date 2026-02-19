@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:8000"; // ← use env variable in production
+const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
