@@ -10,9 +10,11 @@ import {
   IndianRupee,
   User,
   Sparkles,
+  Calendar,
+  CreditCard,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const API_BASE = "http://localhost:8000"; // ← use env variable in production
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -85,13 +87,13 @@ export default function PaymentSuccess() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-cream-50 flex items-center justify-center px-4">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <Loader2 className="w-14 h-14 animate-spin text-emerald-600" />
-            <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-yellow-400 animate-pulse" />
+            <Loader2 className="w-12 h-12 animate-spin text-amber-700" />
+            <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-500 animate-pulse" />
           </div>
-          <p className="text-lg font-semibold text-emerald-700">Verifying payment...</p>
+          <p className="text-lg font-semibold text-amber-800">Verifying payment...</p>
         </div>
       </div>
     );
@@ -99,14 +101,16 @@ export default function PaymentSuccess() {
 
   if (error || !isSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 to-red-50 flex items-center justify-center px-4 py-8">
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center border border-rose-100">
-          <AlertCircle className="w-16 h-16 text-rose-500 mx-auto mb-5" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-rose-800 mb-4">Payment Failed</h2>
-          <p className="text-gray-700 mb-8 leading-relaxed">{error || "We couldn't process your transaction"}</p>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-50 flex items-center justify-center px-4 py-8">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center border border-red-200">
+          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-5" />
+          <h2 className="text-2xl sm:text-3xl font-bold text-red-800 mb-4">Payment Failed</h2>
+          <p className="text-gray-700 mb-6 leading-relaxed">
+            {error || "We couldn't process your transaction."}
+          </p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full py-4 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-semibold rounded-2xl shadow-lg transition-all text-lg"
+            className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold rounded-xl shadow-lg transition-all text-base"
           >
             Return to Dashboard
           </button>
@@ -116,91 +120,103 @@ export default function PaymentSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-cream-50 flex items-center justify-center px-4 py-6 sm:py-8">
       <div
-        className="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-8 max-w-lg w-full border border-white/50"
+        className="relative bg-gradient-to-b from-cream-50 to-amber-50/60 backdrop-blur-xl rounded-2xl shadow-xl p-6 max-w-sm sm:max-w-md w-full border border-amber-200/40"
         style={{
-          background: "linear-gradient(145deg, rgba(255,255,255,0.85), rgba(240,255,245,0.7))",
+          background: "linear-gradient(135deg, rgba(255,251,235,0.95), rgba(255,245,220,0.90))",
         }}
       >
-        {/* Subtle animated border */}
-        <div className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-transparent bg-gradient-to-r from-emerald-400/20 via-teal-400/20 to-cyan-400/20 animate-gradient-x"></div>
+        {/* Subtle glow */}
+        <div className="absolute inset-0 rounded-2xl pointer-events-none bg-gradient-to-br from-amber-300/5 via-yellow-300/5 to-amber-300/5 animate-gradient-x"></div>
 
-        <div className="relative z-10 text-center space-y-6 sm:space-y-7">
+        <div className="relative z-10 text-center space-y-5">
 
           {/* Success icon */}
-          <div className="relative inline-flex justify-center mb-2">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl ring-8 ring-emerald-100/60">
-              <CheckCircle className="w-14 h-14 sm:w-16 sm:h-16 text-white" strokeWidth={3} />
+          <div className="relative inline-flex justify-center mb-3">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 flex items-center justify-center shadow-md ring-4 ring-amber-200/30">
+              <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
             </div>
-            <Sparkles className="absolute -top-3 -right-1 w-10 h-10 text-yellow-300 animate-pulse" />
+            <Sparkles className="absolute -top-3 -right-3 w-6 h-6 text-yellow-400 animate-pulse" />
           </div>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold bg-gradient-to-r from-emerald-700 via-teal-600 to-teal-700 bg-clip-text text-transparent tracking-tight">
-            Payment Confirmed
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-800 bg-clip-text text-transparent">
+            Payment Successful!
           </h1>
 
-          {/* Amount - responsive scaling */}
-          <div className="flex items-center justify-center gap-2.5 my-6 sm:my-8">
-            <IndianRupee className="w-10 h-10 sm:w-12 sm:h-12 text-emerald-700" strokeWidth={2.5} />
-            <span className="text-5xl sm:text-6xl md:text-7xl font-black text-emerald-900 tracking-tighter drop-shadow">
+          <div className="flex items-center justify-center gap-2 my-5">
+            <IndianRupee className="w-8 h-8 text-amber-800" strokeWidth={2.5} />
+            <span className="text-5xl sm:text-6xl font-black text-amber-900 tracking-tighter">
               {displayAmount()}
             </span>
           </div>
 
-          {/* User greeting pill */}
-          <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/70 rounded-full border border-emerald-100 shadow-sm mx-auto">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
-              <User className="w-5 h-5 text-emerald-700" />
+          {/* Greeting pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 rounded-full border border-amber-300 shadow-sm mx-auto">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
+              <User className="w-4 h-4 text-amber-800" />
             </div>
-            <span className="font-semibold text-gray-800 text-base sm:text-lg">
-              {apiData.customer_name || apiData.customer_email?.split("@")[0] || "Welcome back"}
+            <span className="font-bold text-amber-900 text-sm">
+              {apiData.customer_name || apiData.customer_email?.split("@")[0] || "Thank You!"}
             </span>
           </div>
 
-          {/* Details grid – becomes stacked on very small screens */}
-          <div className="bg-white/60 rounded-2xl p-5 sm:p-6 text-sm sm:text-base border border-white/70 shadow-inner">
-            <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:gap-y-5 text-left">
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-medium">Order</p>
-                <p className="font-mono font-semibold text-gray-900 break-all">{orderId}</p>
+          {/* Blue-themed detail cards (4 small cards) */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
+              <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-blue-700 text-xs font-medium">Order ID</p>
+                <p className="font-mono font-semibold text-blue-900 text-xs break-all">{orderId}</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-medium">Method</p>
-                <p className="font-semibold text-gray-900">{apiData.payment_method || "UPI / Card"}</p>
+            </div>
+
+            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
+              <Calendar className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-blue-700 text-xs font-medium">Date</p>
+                <p className="font-semibold text-blue-900 text-xs">{formatDate()}</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-medium">Date</p>
-                <p className="font-semibold text-gray-900">{formatDate()}</p>
+            </div>
+
+            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
+              <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-blue-700 text-xs font-medium">Method</p>
+                <p className="font-semibold text-blue-900 text-xs">{apiData.payment_method || "UPI / Card"}</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs sm:text-sm font-medium">Status</p>
-                <p className="font-bold text-emerald-600 text-base sm:text-lg">Success ✓</p>
+            </div>
+
+            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="text-blue-700 text-xs font-medium">Status</p>
+                <p className="font-bold text-green-600 text-sm">Success ✓</p>
               </div>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-3 sm:pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <button
               onClick={() => navigate("/dashboard")}
-              className="flex-1 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-2xl shadow-lg transition-all hover:shadow-xl text-base sm:text-lg flex items-center justify-center gap-2.5"
+              className="flex-1 py-3 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 hover:from-amber-700 hover:via-yellow-700 hover:to-amber-800 text-white font-medium rounded-xl shadow-md transition-all hover:shadow-lg text-sm flex items-center justify-center gap-2"
             >
-              <Home size={18} />
+              <Home size={16} />
               Dashboard
             </button>
 
             <button
               onClick={() => navigate("/my-registrations")}
-              className="flex-1 py-4 bg-white border-2 border-emerald-600/80 text-emerald-700 font-semibold rounded-2xl hover:bg-emerald-50 transition-all hover:shadow-md text-base sm:text-lg flex items-center justify-center gap-2.5"
+              className="flex-1 py-3 bg-white border-2 border-amber-600 text-amber-800 font-medium rounded-xl hover:bg-amber-50 transition-all hover:shadow-md text-sm flex items-center justify-center gap-2"
             >
               My Registrations
-              <ArrowRight size={18} />
+              <ArrowRight size={16} />
             </button>
           </div>
 
-          <p className="text-xs sm:text-sm text-gray-600 pt-3">
-            Confirmation sent to your registered email & mobile
+          <p className="text-xs text-amber-800 pt-3">
+            Receipt sent to email & mobile
           </p>
         </div>
       </div>
@@ -214,7 +230,7 @@ export default function PaymentSuccess() {
         }
         .animate-gradient-x {
           background-size: 200% 200%;
-          animation: gradient-x 14s ease infinite;
+          animation: gradient-x 16s ease infinite;
         }
       `}</style>
     </div>
