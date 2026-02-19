@@ -131,16 +131,20 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = 'none' 
 
 
-# rest framework settings JWT 
 REST_FRAMEWORK = {
- 
+
+    # Pagination
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+
+    # Authentication
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 
-    
 }
+
+
 
 # dj-rest-auth settings
 
@@ -149,6 +153,7 @@ REST_AUTH = {
     'LOGIN_SERIALIZER': 'api.serializers.CustomLoginSerializer',
     'USER_DETAILS_SERIALIZER': 'api.serializers.CustomUserDetailsSerializer',
     'PASSWORD_RESET_USE_SITES_DOMAIN': True,
+   
 
     'USE_JWT' : True,
     'JWT_AUTH_COOKIE': 'access',
