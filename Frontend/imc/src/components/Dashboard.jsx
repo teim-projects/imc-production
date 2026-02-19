@@ -413,7 +413,7 @@ export default function Dashboard() {
               className="mt-4"
             >
               {/* header bar above form */}
-              <div className="flex items-center justify-between mb-6">
+              {/* <div className="flex items-center justify-between mb-6">
                 <div>
                   <h1 className="text-3xl font-black text-slate-900">
                     {prettyTitle(activeForm)}
@@ -423,7 +423,7 @@ export default function Dashboard() {
                   </p>
                 </div>
                 
-              </div>
+              </div> */}
 
               {/* form container */}
               <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 md:p-8 lg:p-10">

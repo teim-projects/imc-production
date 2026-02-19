@@ -59,7 +59,7 @@ export default function UserDashboard() {
     },
     {
       title: "Live Shows & Karaoke",
-      link: "/events",
+      link: "/events-booking",
       img: "https://images.unsplash.com/photo-1507679799987-c737218594e0?w=1200&q=90",
       icon: Calendar,
       gradient: "from-rose-600 via-pink-600 to-purple-600",

@@ -261,9 +261,7 @@ const ProfileSection = () => {
             <h2 className="profile-title">👤 Profile</h2>
             <p className="profile-subtitle">Manage your account details</p>
           </div>
-          <button type="button" onClick={handleLogout} className="btn-danger" title="Logout">
-            Logout
-          </button>
+          
         </div>
 
         {/* Toast */}

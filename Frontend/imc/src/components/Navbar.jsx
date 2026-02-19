@@ -147,13 +147,7 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Global animation */}
-      <style jsx global>{`
-        @keyframes rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {/* Global animation → REMOVED completely */}
 
       {/* ==================== NAVBAR ==================== */}
       <nav style={styles.navbar}>
@@ -215,7 +209,7 @@ const Navbar = () => {
                     style={styles.avatarButton}
                     aria-label="User menu"
                   >
-                    <span style={styles.halo} />
+                    {/* halo removed */}
                     <span style={styles.avatarCircle}>
                       {showPhoto ? (
                         <img
@@ -385,18 +379,7 @@ const Navbar = () => {
                     <FontAwesomeIcon icon={faTicketAlt} fixedWidth /> My Bookings
                   </Link>
 
-                  {!isAdmin && (
-                    <Link
-                      to="/settings"
-                      style={{
-                        ...styles.sidebarFooterLink,
-                        ...(isActive("/settings") ? styles.sidebarActive : {}),
-                      }}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <FontAwesomeIcon icon={faGear} fixedWidth /> Settings
-                    </Link>
-                  )}
+              
 
                   <button
                     onClick={handleLogout}
@@ -493,13 +476,8 @@ const styles = {
     background: "transparent",
     cursor: "pointer",
   },
-  halo: {
-    position: "absolute",
-    inset: -6,
-    borderRadius: "50%",
-    background: "conic-gradient(#ffd23f,#ff8a3c,#0a2c56,#ffd23f)",
-    animation: "rotate 8s linear infinite",
-  },
+  // halo style removed (no more spinning background)
+
   avatarCircle: {
     height: "100%",
     width: "100%",

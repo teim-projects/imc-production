@@ -204,7 +204,7 @@ function Sidebar({ openModal, openSubModal, currentKey = null }) {
         onMouseLeave={() => setIsHovered(false)}
       >
         <div className="sidebar-header" onClick={goHome}>
-          <h2 className="sidebar-title">IMC</h2>
+          
         </div>
 
         <ul className="sidebar-menu">
