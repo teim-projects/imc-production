@@ -14,7 +14,7 @@ import {
 
 /* ===================== CONFIG ===================== */
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
