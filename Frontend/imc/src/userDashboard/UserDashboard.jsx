@@ -108,22 +108,34 @@ export default function UserDashboard() {
   const [eventsError, setEventsError] = useState(null);
 
   const fetchEvents = async () => {
-    try {
-      setLoadingEvents(true);
-      const res = await api.get(EVENTS_URL);
-      const now = new Date();
-      // Filter future events only + limit number if needed
-      const upcoming = res.data
-        .filter((e) => new Date(e.event_date) > now)
-        .slice(0, 12); // reasonable limit
-      setEvents(upcoming || []);
-    } catch (err) {
-      console.error("Failed to load events:", err);
-      setEventsError("Could not load upcoming events.");
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
+  try {
+    setLoadingEvents(true);
+
+    const token = localStorage.getItem("access");
+
+    const res = await api.get(EVENTS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const now = new Date();
+
+    // 👇 handle paginated & non-paginated both
+    const eventArray = res.data.results || res.data;
+
+    const upcoming = eventArray
+      ?.filter((e) => new Date(e.event_date) > now)
+      .slice(0, 12);
+
+    setEvents(upcoming || []);
+  } catch (err) {
+    console.error("Failed to load events:", err);
+    setEventsError("Could not load upcoming events.");
+  } finally {
+    setLoadingEvents(false);
+  }
+};
 
   useEffect(() => {
     fetchEvents();

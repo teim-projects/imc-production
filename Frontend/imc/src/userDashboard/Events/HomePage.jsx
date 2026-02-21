@@ -10,7 +10,8 @@ import {
   FaClock,
   FaMapMarkerAlt,
   FaSearch,
-  FaChair,
+  FaUsers,
+  FaTicketAlt,
   FaTimes,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,8 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../../components/footer";
 
 /* ===================== API CONFIG ===================== */
-const BASE =
-  import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
@@ -46,52 +46,74 @@ const COLORS = {
   orange: "#FF7A3C",
 };
 
-/* ===================== SEAT LAYOUT ===================== */
-const SEAT_LAYOUT = {
-  vip: { label: "VIP", rows: 2, cols: 8 },
-  premium: { label: "Premium", rows: 3, cols: 10 },
-  basic: { label: "Basic", rows: 3, cols: 10 },
-};
-
 /* ======================================================
-   SEAT SELECTION MODAL (unchanged)
+   FORM BOOKING MODAL – with Basic / Premium / VIP options
 ====================================================== */
-function SeatSelectionModal({ event, onClose, onBookingCreated }) {
-  // ... (exact same code as before - no changes needed)
-  const [tier, setTier] = useState("basic");
-  const [seats, setSeats] = useState([]);
+function BookingModal({ event, onClose, onBookingCreated }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [tickets, setTickets] = useState(1);
+  const [ticketType, setTicketType] = useState("general"); // "general", "basic", "premium", "vip"
   const [payment, setPayment] = useState("UPI");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   if (!event) return null;
 
-  const priceMap = {
-    vip: Number(event.vip_price || event.ticket_price || 0),
-    premium: Number(event.premium_price || event.ticket_price || 0),
-    basic: Number(event.basic_price || event.ticket_price || 0),
-  };
+  // Determine available ticket types and their prices
+  const ticketOptions = [
+ 
+    {
+      type: "basic",
+      label: "Basic",
+      price: Number(event.basic_price || 0),
+      available: Number(event.basic_price) > 0,
+    },
+    {
+      type: "premium",
+      label: "Premium",
+      price: Number(event.premium_price || 0),
+      available: Number(event.premium_price) > 0,
+    },
+    {
+      type: "vip",
+      label: "VIP",
+      price: Number(event.vip_price || 0),
+      available: Number(event.vip_price) > 0,
+    },
+  ].filter((opt) => opt.available && opt.price > 0);
 
-  const bookedSeats = new Set(event.booked_seats || []);
-  const mySeats = new Set(event.user_booked_seats || []);
+  // Default to first available option if none selected
+  useEffect(() => {
+    if (ticketOptions.length > 0 && !ticketOptions.some((opt) => opt.type === ticketType)) {
+      setTicketType(ticketOptions[0].type);
+    }
+  }, [event, ticketType]);
 
-  const toggleSeat = (seatId) => {
-    if (bookedSeats.has(seatId)) return;
-    setSeats((prev) =>
-      prev.includes(seatId)
-        ? prev.filter((s) => s !== seatId)
-        : [...prev, seatId]
-    );
-  };
-
-  const total = seats.length * priceMap[tier];
+  const selectedOption = ticketOptions.find((opt) => opt.type === ticketType) || ticketOptions[0] || {};
+  const pricePerTicket = selectedOption.price || 0;
+  const total = tickets * pricePerTicket;
 
   const submitBooking = async () => {
     setError("");
-    if (!name || !phone || seats.length === 0) {
-      setError("Please enter details and select seats");
+
+    if (!name.trim() || !phone.trim()) {
+      setError("Name and phone number are required");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(phone.trim())) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    if (tickets < 1) {
+      setError("Please select at least 1 ticket");
+      return;
+    }
+
+    if (!selectedOption.type) {
+      setError("Please select a ticket type");
       return;
     }
 
@@ -99,144 +121,197 @@ function SeatSelectionModal({ event, onClose, onBookingCreated }) {
       setLoading(true);
       await api.post(BOOKINGS_URL, {
         event: event.id,
-        customer_name: name,
-        contact_number: phone,
-        ticket_type: tier,
-        seat_numbers: seats,
-        number_of_tickets: seats.length,
+        customer_name: name.trim(),
+        contact_number: phone.trim(),
+        ticket_type: selectedOption.type === "general" ? null : selectedOption.type, // or send "basic"/"premium"/"vip"
+        number_of_tickets: tickets,
         total_amount: total,
         payment_method: payment,
       });
       onBookingCreated();
       onClose();
-    } catch {
+    } catch (err) {
+      console.error(err);
       setError("Booking failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderSeats = (key) => {
-    const layout = SEAT_LAYOUT[key];
-    return [...Array(layout.rows)].map((_, r) => (
-      <div key={r} className="flex justify-center gap-2 mb-2">
-        {[...Array(layout.cols)].map((_, c) => {
-          const num = `${c + 1}`.padStart(2, "0");
-          const seatId = `${key}-${r + 1}-${num}`;
-
-          const isBooked = bookedSeats.has(seatId);
-          const isMine = mySeats.has(seatId);
-          const isSelected = seats.includes(seatId);
-
-          let cls =
-            "bg-white border text-[#0B2545] hover:border-[#FF7A3C]";
-          if (isMine)
-            cls = "bg-[#0B2545] text-[#FFD447] cursor-not-allowed";
-          else if (isBooked)
-            cls = "bg-gray-200 text-gray-400 cursor-not-allowed";
-          else if (isSelected)
-            cls = "bg-gradient-to-r from-[#FFD447] to-[#FF7A3C]";
-
-          return (
-            <button
-              key={seatId}
-              onClick={() => toggleSeat(seatId)}
-              disabled={isBooked}
-              className={`w-10 h-10 rounded-xl text-xs font-bold border ${cls}`}
-            >
-              {num}
-            </button>
-          );
-        })}
-      </div>
-    ));
-  };
-
-  return (
-    <AnimatePresence>
+return (
+  <AnimatePresence>
+    <motion.div
+      className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
       <motion.div
-        className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh]"
+        initial={{ y: 60, scale: 0.95 }}
+        animate={{ y: 0, scale: 1 }}
+        transition={{ duration: 0.3 }}
       >
-        <motion.div
-          initial={{ y: 40 }}
-          animate={{ y: 0 }}
-          className="bg-white rounded-3xl w-full max-w-5xl shadow-2xl overflow-hidden"
-        >
-          <div className="flex justify-between items-center p-6 bg-[#0B2545] text-white">
-            <h3 className="text-lg font-bold">{event.name}</h3>
-            <button onClick={onClose}>
-              <FaTimes />
-            </button>
-          </div>
+        {/* HEADER */}
+        <div className="flex justify-between items-center p-6 border-b">
+          <h3 className="text-xl font-bold text-[#0B2545] mt-5">
+            {event.name}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-600 hover:text-[#0B2545]"
+            disabled={loading}
+          >
+            <FaTimes size={22} />
+          </button>
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-6 p-6">
-            <div className="md:col-span-2">
-              {Object.keys(SEAT_LAYOUT).map((k) => (
-                <div key={k} className="mb-6">
-                  <div className="flex justify-between mb-2">
-                    <h4 className="font-semibold">
-                      {SEAT_LAYOUT[k].label} – ₹{priceMap[k]}
-                    </h4>
-                    <button
-                      onClick={() => {
-                        setTier(k);
-                        setSeats([]);
-                      }}
-                      className={`text-xs px-3 py-1 rounded-full ${
-                        tier === k ? "bg-green-500 text-white" : "border"
-                      }`}
-                    >
-                      {tier === k ? "Selected" : "Select"}
-                    </button>
-                  </div>
-                  {renderSeats(k)}
-                </div>
-              ))}
-            </div>
+        {/* SCROLLABLE BODY */}
+        <div className="overflow-y-auto p-6 space-y-5">
 
-            <div className="bg-[#0B2545] text-white rounded-2xl p-5">
-              <h4 className="font-semibold mb-4">Booking Summary</h4>
+          {/* Full Name + Phone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Full Name *
+              </label>
               <input
-                placeholder="Your Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full mb-3 p-2 rounded-xl text-black"
+                placeholder="Your full name"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
+                disabled={loading}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Phone Number * (10 digits)
+              </label>
               <input
-                placeholder="Phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full mb-3 p-2 rounded-xl text-black"
+                onChange={(e) =>
+                  setPhone(e.target.value.replace(/\D/g, ""))
+                }
+                placeholder="9876543210"
+                maxLength={10}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
+                disabled={loading}
               />
+            </div>
+          </div>
+
+          {/* Ticket Type */}
+          {ticketOptions.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ticket Type
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {ticketOptions.map((opt) => (
+                  <label
+                    key={opt.type}
+                    className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
+                      ticketType === opt.type
+                        ? "border-[#FF7A3C] bg-[#FFD447]/10"
+                        : "border-gray-300 hover:border-[#FF7A3C]/50"
+                    }`}
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {opt.label}
+                      </div>
+                      <div className="text-sm text-[#FF7A3C] font-bold">
+                        ₹{opt.price.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+
+                    <input
+                      type="radio"
+                      name="ticketType"
+                      checked={ticketType === opt.type}
+                      onChange={() => setTicketType(opt.type)}
+                      className="w-5 h-5 accent-[#FF7A3C]"
+                      disabled={loading}
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tickets + Payment */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Number of Tickets
+              </label>
+              <select
+                value={tickets}
+                onChange={(e) =>
+                  setTickets(Number(e.target.value))
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
+                disabled={loading}
+              >
+                {[1,2,3,4,5,6,7,8,9,10].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n > 1 ? "tickets" : "ticket"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Payment Method
+              </label>
               <select
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
-                className="w-full mb-3 p-2 rounded-xl text-black"
-              >
-                <option>UPI</option>
-                <option>Card</option>
-                <option>Cash</option>
-              </select>
-              <div className="text-lg font-bold text-[#FFD447] mb-4">
-                Total ₹{total}
-              </div>
-              {error && <div className="text-xs text-red-300 mb-2">{error}</div>}
-              <button
-                onClick={submitBooking}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-bold py-3 rounded-xl"
               >
-                {loading ? "Booking..." : "Confirm Booking"}
-              </button>
+                <option value="UPI">UPI</option>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash at Venue</option>
+              </select>
             </div>
           </div>
-        </motion.div>
+
+          {/* Total */}
+          <div className="pt-2 flex justify-between items-center text-xl font-bold">
+            <span className="text-gray-800">Total:</span>
+            <span className="text-[#FF7A3C]">
+              ₹{total.toLocaleString("en-IN")}
+            </span>
+          </div>
+
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={submitBooking}
+            disabled={loading}
+            className={`w-full py-3.5 rounded-xl font-bold text-lg transition-all shadow-md ${
+              loading
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] hover:brightness-105 hover:shadow-lg"
+            }`}
+          >
+            {loading ? "Processing..." : "Confirm Booking"}
+          </button>
+
+        </div>
       </motion.div>
-    </AnimatePresence>
-  );
+    </motion.div>
+  </AnimatePresence>
+);
+
 }
 
 /* ======================================================
@@ -248,12 +323,33 @@ export default function UserEvents() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = async () => {
+ const fetchEvents = async () => {
+  try {
     setLoading(true);
-    const res = await api.get(EVENTS_URL);
-    setEvents(Array.isArray(res.data) ? res.data : []);
+
+    const token = localStorage.getItem("access");
+
+    const res = await api.get(EVENTS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // Handle paginated (res.data.results) and non-paginated (res.data)
+    const eventArray = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data?.results)
+      ? res.data.results
+      : [];
+
+    setEvents(eventArray);
+  } catch (error) {
+    console.error("Failed to load events:", error);
+    setEvents([]);
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   useEffect(() => {
     fetchEvents();
@@ -267,7 +363,7 @@ export default function UserEvents() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero Section (Reduced Height) */}
+      {/* Hero Section */}
       <section
         className="relative bg-cover bg-center py-24 md:py-32 text-center text-white"
         style={{
@@ -286,15 +382,9 @@ export default function UserEvents() {
             <span className="text-[#FFD447] drop-shadow-lg">At IMC Music Club</span>
           </h1>
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 opacity-90">
-            Experience unforgettable nights of music, energy, and entertainment. Book your seats now!
+            Experience unforgettable nights of music, energy, and entertainment. Book your tickets now!
           </p>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-black text-lg py-4 px-10 rounded-full shadow-2xl"
-          >
-            Explore Events →
-          </motion.button>
+          
         </motion.div>
       </section>
 
@@ -305,13 +395,13 @@ export default function UserEvents() {
             🎟️ Events & Shows
           </h1>
 
-          <div className="relative mb-6 max-w-md">
-            <FaSearch className="absolute left-3 top-3 text-gray-400" />
+          <div className="relative mb-8 max-w-lg mx-auto">
+            <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
-              placeholder="Search events..."
+              placeholder="Search events by name or location..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 py-2 rounded-full border shadow-sm focus:outline-none focus:ring-2 focus:ring-[#FFD447]"
+              className="w-full pl-12 pr-5 py-3.5 rounded-full border border-gray-300 focus:border-[#FF7A3C] focus:ring-2 focus:ring-[#FFD447]/30 outline-none shadow-sm"
             />
           </div>
 
@@ -327,31 +417,31 @@ export default function UserEvents() {
                   whileHover={{ y: -10 }}
                   className="bg-white rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition duration-300"
                 >
-                  <div className="p-6">
-                    <h3 className="font-bold text-xl text-[#0B2545] mb-2">{e.name}</h3>
-                    <p className="text-sm text-gray-600 flex items-center gap-2 mb-4">
-                      <FaMapMarkerAlt className="text-[#FF7A3C]" /> {e.location}
-                    </p>
+                  <div className="p-7">
+                    <h3 className="font-bold text-2xl text-[#0B2545] mb-4">{e.name}</h3>
 
-                    <div className="space-y-3 text-[#0B2545]">
+                    <div className="space-y-3 text-[#0B2545] mb-6">
                       <div className="flex gap-3 items-center">
-                        <FaCalendarAlt className="text-[#FF7A3C]" /> {e.event_date}
+                        <FaMapMarkerAlt className="text-[#FF7A3C] text-xl" /> {e.location}
                       </div>
                       <div className="flex gap-3 items-center">
-                        <FaClock className="text-[#FF7A3C]" /> {e.event_time}
+                        <FaCalendarAlt className="text-[#FF7A3C] text-xl" /> {e.event_date}
                       </div>
                       <div className="flex gap-3 items-center">
-                        <FaChair className="text-[#FF7A3C]" /> {e.available_seats} seats available
+                        <FaClock className="text-[#FF7A3C] text-xl" /> {e.event_time}
+                      </div>
+                      <div className="flex gap-3 items-center">
+                        <FaUsers className="text-[#FF7A3C] text-xl" /> {e.available_seats || "?"} spots left
                       </div>
                     </div>
 
-                    <div className="mt-6 flex justify-between items-center">
+                    <div className="flex justify-between items-center">
                       <span className="font-black text-3xl text-[#FF7A3C]">
-                        ₹{e.ticket_price}
+                        ₹{Number(e.ticket_price || 0).toLocaleString("en-IN")}
                       </span>
                       <button
                         onClick={() => setActiveEvent(e)}
-                        className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] px-6 py-3 rounded-full font-bold text-[#0B2545] shadow-lg hover:shadow-xl transition"
+                        className="bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] px-8 py-3.5 rounded-full font-bold text-[#0B2545] shadow-lg hover:shadow-xl transition"
                       >
                         Book Now
                       </button>
@@ -364,12 +454,12 @@ export default function UserEvents() {
         </div>
       </div>
 
-      {/* Reusable Footer Component */}
+      {/* Footer */}
       <Footer />
 
       {/* Booking Modal */}
       {activeEvent && (
-        <SeatSelectionModal
+        <BookingModal
           event={activeEvent}
           onClose={() => setActiveEvent(null)}
           onBookingCreated={fetchEvents}

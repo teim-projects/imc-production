@@ -176,17 +176,33 @@ export default function UserEvents() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = async () => {
+ const fetchEvents = async () => {
+  try {
     setLoading(true);
-    try {
-      const res = await api.get(EVENTS_URL);
-      setEvents(res.data || []);
-    } catch (err) {
-      console.error("Failed to load events", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    const token = localStorage.getItem("access");
+
+    const res = await api.get(EVENTS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // Handle paginated (res.data.results) and non-paginated (res.data)
+    const eventArray = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data?.results)
+      ? res.data.results
+      : [];
+
+    setEvents(eventArray);
+  } catch (error) {
+    console.error("Failed to load events:", error);
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchEvents();
