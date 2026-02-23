@@ -1,5 +1,4 @@
 // src/pages/PrivateEventBooking.jsx
-// Updated: Email and Address now side by side (2 columns in Customer Details)
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
@@ -345,7 +344,7 @@ export default function PrivateEventBooking() {
 
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* HERO SECTION */}
+      {/* HERO SECTION - Updated heading with your requested style */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-75"
@@ -357,12 +356,16 @@ export default function PrivateEventBooking() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+            <h1
+              className="text-4xl md:text-5xl font-black text-white drop-shadow-lg tracking-wide"
+              style={{
+                fontFamily: '"Algerian", "Castellar", Georgia, "Times New Roman", serif',
+                textShadow: "4px 4px 16px rgba(0,0,0,0.8)",
+                letterSpacing: "0.05em",
+              }}
+            >
               BOOK YOUR PRIVATE EVENT
             </h1>
-            <p className="text-3xl md:text-4xl font-bold text-amber-400 mt-2 drop-shadow">
-              IMC Events & Entertainment
-            </p>
           </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -370,7 +373,7 @@ export default function PrivateEventBooking() {
             transition={{ delay: 0.3 }}
             className="text-lg text-white/90 mt-4 max-w-2xl"
           >
-            Professional singers, photography, videography, and sound for your special occasion
+            {/* You can add subtitle here if needed */}
           </motion.p>
         </div>
       </section>
@@ -387,16 +390,19 @@ export default function PrivateEventBooking() {
                 viewport={{ once: true }}
                 className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 lg:p-16"
               >
-                <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 flex items-center justify-center gap-4">
-                  <Star className="w-12 h-12 text-amber-600" />
-                  Book Your Private Event
-                </h2>
+                {/* Form heading with tight star */}
+                <div className="text-center mb-12">
+                  <div className="inline-flex items-center justify-center text-3xl md:text-4xl font-bold text-gray-900">
+                    <span className="text-5xl text-orange-500 mr-0">⭐</span>
+                    Book Your Private Event
+                  </div>
+              
+                </div>
 
-                {/* Customer Details – Name + Phone in row 1, Email + Address in row 2 */}
+                {/* Customer Details */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Customer Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Row 1 */}
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Customer Name<span className="text-red-500">*</span>
@@ -424,7 +430,6 @@ export default function PrivateEventBooking() {
                       />
                     </div>
 
-                    {/* Row 2 */}
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
                         Email<span className="text-red-500">*</span>
@@ -452,7 +457,7 @@ export default function PrivateEventBooking() {
                   </div>
                 </div>
 
-                {/* Event Details – 2 per row */}
+                {/* Event Details */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Event Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -496,7 +501,7 @@ export default function PrivateEventBooking() {
                   </div>
                 </div>
 
-                {/* Schedule – 2 per row */}
+                {/* Schedule */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Schedule</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -574,7 +579,7 @@ export default function PrivateEventBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -582,21 +587,39 @@ export default function PrivateEventBooking() {
                   </label>
                 </div>
 
-                {/* Submit */}
-                <button
-                  onClick={submitBooking}
-                  disabled={loading}
-                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="animate-spin w-5 h-5" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Submit Booking Request"
-                  )}
-                </button>
+                {/* Submit Button */}
+                <div className="mt-10 flex justify-center">
+                  <button
+                    onClick={submitBooking}
+                    disabled={loading}
+                    className="
+                      group relative
+                      inline-flex items-center justify-between
+                      gap-3
+                      px-8 py-3.5
+                      bg-gradient-to-r from-amber-500 to-orange-600
+                      text-white font-semibold text-base
+                      rounded-full
+                      shadow-md hover:shadow-xl
+                      transform hover:-translate-y-0.5 active:scale-98
+                      transition-all duration-200
+                      disabled:opacity-60 disabled:cursor-not-allowed
+                      min-w-[260px] sm:min-w-[280px]
+                      overflow-hidden
+                    "
+                  >
+                    <span className="flex-1 text-center">
+                      {loading ? "Submitting..." : "Submit Booking Request"}
+                    </span>
+                    {loading ? (
+                      <Loader2 className="animate-spin w-5 h-5 flex-shrink-0" />
+                    ) : (
+                      <span className="text-lg font-bold group-hover:translate-x-1 transition-transform">
+                        →
+                      </span>
+                    )}
+                  </button>
+                </div>
               </motion.div>
             </div>
           </div>
