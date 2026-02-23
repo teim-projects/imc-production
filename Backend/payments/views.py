@@ -64,11 +64,11 @@ def payment_return(request):
     order_id = request.POST.get("order_id")
 
     if not order_id:
-        return redirect("http://localhost:5173/payment-success?status=failed")
+        return redirect("https://www.imcpune.in/payment-success?status=failed")
 
     # 🔥 IMPORTANT: redirect to React page
     return redirect(
-        f"http://localhost:5173/payment-success?order_id={order_id}"
+        f"https://www.imcpune.in/payment-success?order_id={order_id}"
     )
 
 
