@@ -91,4 +91,3 @@ volumes:
   media_volume:
   certbot_www:
   certbot_certs:
-  frontend_build:
