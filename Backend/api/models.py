@@ -810,14 +810,15 @@ SoundSetup = Sound
 import os
 import uuid
 import re
-from datetime import date
+from datetime import timedelta
 from django.db import models, transaction
 from django.db.models import Q
 from django.core.validators import FileExtensionValidator
+from django.utils import timezone
 
 
 # --------------------------------------------------
-# VIDEO UPLOAD HELPERS
+# VIDEO UPLOAD HELPER
 # --------------------------------------------------
 def singer_video_upload_to(instance, filename):
     ext = filename.split('.')[-1] if '.' in filename else 'mp4'
@@ -830,8 +831,6 @@ def singer_video_upload_to(instance, filename):
 # --------------------------------------------------
 class Singer(models.Model):
 
-    # URL-SAFE STRING PRIMARY KEY
-    # Example: IMC-SM-001
     id = models.CharField(
         max_length=20,
         primary_key=True,
@@ -889,20 +888,21 @@ class Singer(models.Model):
         ],
     )
 
-    created_at = models.DateField(editable=False)
-    updated_at = models.DateField(editable=False)
+    # ✅ Expiry field
+    video_expiry_date = models.DateTimeField(null=True, blank=True)
+
+    # ✅ Timezone-safe fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        # ✅ THIS FIXES ORDER TO 1,2,3,4
-        ordering = ['id']   # Ascending string works because IDs are zero padded (001,002,003)
+        ordering = ['id']
         verbose_name = "Singer"
         verbose_name_plural = "Singers"
 
-    # --------------------------------------------------
-    # AUTO ID + DATE LOGIC (UNCHANGED)
-    # --------------------------------------------------
     def save(self, *args, **kwargs):
 
+        # AUTO GENERATE ID
         if not self.id:
             with transaction.atomic():
                 ids = (
@@ -921,10 +921,9 @@ class Singer(models.Model):
 
                 self.id = f"IMC-SM-{max_num + 1:03d}"
 
-        if not self.created_at:
-            self.created_at = date.today()
-
-        self.updated_at = date.today()
+        # ✅ AUTO SET VIDEO EXPIRY (15 DAYS)
+        if self.video and not self.video_expiry_date:
+            self.video_expiry_date = timezone.now() + timedelta(days=15)
 
         super().save(*args, **kwargs)
 
