@@ -11,21 +11,28 @@ from django.utils import timezone
 # ===============  UTIL / LEGACY MIGRATION HOOK  =============
 # ============================================================
 
-def upload_image_to(instance, filename):
-    """
-    Legacy helper retained so older migrations that reference
-    api.models.upload_image_to continue to work.
-    """
-    return f"uploads/{filename}"
-
-def user_profile_path(instance, filename):
-    # e.g. media/profiles/42/avatar.png
-    uid = instance.pk or "tmp"
-    return f"profiles/{uid}/{filename}"
+import os
+import uuid
+from django.db import models
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 
 
 # ============================================================
-# ===============  CUSTOM USER MODEL SECTION  ================
+# IMAGE PATH FUNCTION (FIXED)
+# ============================================================
+
+def user_profile_path(instance, filename):
+    """
+    Store image inside:
+    media/profiles/<user_id>/<unique_name>.ext
+    """
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return f"profiles/{instance.pk}/{filename}"
+
+
+# ============================================================
+# CUSTOM USER MANAGER
 # ============================================================
 
 class CustomUserManager(BaseUserManager):
@@ -38,10 +45,12 @@ class CustomUserManager(BaseUserManager):
             extra_fields["email"] = email
 
         user = self.model(mobile_no=mobile_no, **extra_fields)
+
         if password:
             user.set_password(password)
         else:
             user.set_unusable_password()
+
         user.save(using=self._db)
         return user
 
@@ -50,12 +59,19 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("role", "admin")
+
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
+
         if extra_fields.get("is_superuser") is not True:
             raise ValueError("Superuser must have is_superuser=True.")
+
         return self.create_user(email, mobile_no, password, **extra_fields)
 
+
+# ============================================================
+# CUSTOM USER MODEL
+# ============================================================
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
@@ -71,8 +87,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=100, blank=True)
     role = models.CharField(max_length=50, choices=ROLE_CHOICES, default="customer")
 
-    # Use a deterministic folder per user
-    profile_photo = models.ImageField(upload_to=user_profile_path, blank=True, null=True)
+    profile_photo = models.ImageField(
+        upload_to=user_profile_path,
+        blank=True,
+        null=True
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -798,7 +817,7 @@ from django.core.validators import FileExtensionValidator
 
 
 # --------------------------------------------------
-# VIDEO UPLOAD HELPERS  ✅ (REPLACED PHOTO)
+# VIDEO UPLOAD HELPERS
 # --------------------------------------------------
 def singer_video_upload_to(instance, filename):
     ext = filename.split('.')[-1] if '.' in filename else 'mp4'
@@ -811,7 +830,7 @@ def singer_video_upload_to(instance, filename):
 # --------------------------------------------------
 class Singer(models.Model):
 
-    # ✅ URL-SAFE STRING PRIMARY KEY
+    # URL-SAFE STRING PRIMARY KEY
     # Example: IMC-SM-001
     id = models.CharField(
         max_length=20,
@@ -847,7 +866,6 @@ class Singer(models.Model):
         default=""
     )
 
-    # ✅ NEW FIELD (THIS FIXES YOUR ISSUE)
     payment_method = models.CharField(
         max_length=20,
         choices=[
@@ -860,7 +878,6 @@ class Singer(models.Model):
 
     active = models.BooleanField(default=True)
 
-    # ✅ VIDEO FIELD (PHOTO REMOVED)
     video = models.FileField(
         upload_to=singer_video_upload_to,
         null=True,
@@ -872,12 +889,12 @@ class Singer(models.Model):
         ],
     )
 
-    # ✅ AUTO DATE FIELDS
     created_at = models.DateField(editable=False)
     updated_at = models.DateField(editable=False)
 
     class Meta:
-        ordering = ['-created_at']
+        # ✅ THIS FIXES ORDER TO 1,2,3,4
+        ordering = ['id']   # Ascending string works because IDs are zero padded (001,002,003)
         verbose_name = "Singer"
         verbose_name_plural = "Singers"
 
@@ -886,7 +903,6 @@ class Singer(models.Model):
     # --------------------------------------------------
     def save(self, *args, **kwargs):
 
-        # 🔐 Generate ID only for NEW records
         if not self.id:
             with transaction.atomic():
                 ids = (
@@ -905,7 +921,6 @@ class Singer(models.Model):
 
                 self.id = f"IMC-SM-{max_num + 1:03d}"
 
-        # 📅 Auto dates
         if not self.created_at:
             self.created_at = date.today()
 

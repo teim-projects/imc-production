@@ -4,14 +4,14 @@ import axios from "axios";
 import { Download } from "lucide-react";
 import "./Forms.css";
 
-// Fixed import path
+// Lazy-loaded Annual Fee Page
 const AnnualFeePage = lazy(() => import("../../userDashboard/pages/AnnualFeePage"));
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://localhost:8000/api";
 const API_URL = `${BASE.replace(/\/$/, "")}/auth/singer/`;
 const FEE_API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
 
-// Axios instance for Singer endpoints
+// Axios instance with auth
 const api = axios.create({ baseURL: API_URL });
 api.interceptors.request.use((cfg) => {
   const token = localStorage.getItem("access");
@@ -42,18 +42,12 @@ const fmtCurrency = (x) => {
 
 const formatDateDDMMYYYY = (dateStr) => {
   if (!dateStr || dateStr === "0000-00-00" || dateStr.trim() === "") return "—";
-
   try {
     let parts = dateStr.split(/[-/]/);
     let day, month, year;
-
-    if (parts[0].length === 4) {
-      [year, month, day] = parts;
-    } else if (parts[2]?.length === 4) {
-      [day, month, year] = parts;
-    } else {
-      return "—";
-    }
+    if (parts[0].length === 4) [year, month, day] = parts;
+    else if (parts[2]?.length === 4) [day, month, year] = parts;
+    else return "—";
 
     day = String(day).padStart(2, "0");
     month = String(month).padStart(2, "0");
@@ -79,6 +73,7 @@ const safeImageUrl = (url) => {
   }
 };
 
+// MAIN COMPONENT
 export default function SingerFormPage({ initialMode = "list" }) {
   const emptyInitial = {
     name: "",
@@ -110,26 +105,36 @@ export default function SingerFormPage({ initialMode = "list" }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [searchText, setSearchText] = useState("");
-
   const [sortOption, setSortOption] = useState("id_desc");
 
+  // Pagination - STRICTLY 10 per page
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const pageSize = 10;
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
   const accessToken = localStorage.getItem("access");
 
-  // Helper for payment chip styling
+  // Function to get payment method chip class
   const getPaymentChipClass = (method) => {
     switch (method?.trim()) {
-      case "Cash": return "chip-success";
-      case "UPI":  return "chip-info";
-      case "Card": return "chip-warning";
-      default:     return "chip-muted";
+      case "Cash":
+        return "chip-success";
+      case "UPI":
+        return "chip-info";
+      case "Card":
+        return "chip-warning";
+      default:
+        return "chip-muted";
     }
   };
 
+  // Reset page to 1 when search or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText, sortOption]);
+
+  // Fetch singers
   useEffect(() => {
     if (!accessToken) {
       setError("You are not logged in. Please login to manage singers.");
@@ -155,7 +160,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
       const res = await api.get("", { params });
 
       let results = res.data.results || res.data || [];
-      const count = res.data.count || results.length;
+      let count = res.data.count || results.length;
 
       if (sortOption === "name") {
         results = [...results].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -181,28 +186,15 @@ export default function SingerFormPage({ initialMode = "list" }) {
       alert("No data to export");
       return;
     }
-
     if (loadingList) {
       alert("Please wait until loading finishes");
       return;
     }
 
     const headers = [
-      "Sr No",
-      "ID",
-      "Name",
-      "Birth Date",
-      "Mobile",
-      "Profession",
-      "Education",
-      "Achievement",
-      "Favourite Singer",
-      "Reference",
-      "Genre",
-      "City",
-      "Annual Fee (₹)",
-      "Payment Method",
-      "Status",
+      "Sr No", "ID", "Name", "Birth Date", "Mobile", "Profession",
+      "Education", "Achievement", "Favourite Singer", "Reference",
+      "Genre", "City", "Annual Fee (₹)", "Payment Method", "Status",
     ];
 
     const csvRows = [
@@ -232,7 +224,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
     const csvContent = csvRows.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
     link.href = url;
     link.setAttribute("download", `singers_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -285,9 +276,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
   const startAdd = () => {
     setForm(emptyInitial);
-    if (preview && preview.startsWith("blob:")) {
-      URL.revokeObjectURL(preview);
-    }
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
     setPreview(null);
     setEditingId(null);
     setMode("form");
@@ -309,9 +298,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
     const file = e.target.files?.[0] || null;
     setForm((f) => ({ ...f, video: file }));
 
-    if (preview && preview.startsWith("blob:")) {
-      URL.revokeObjectURL(preview);
-    }
+    if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
 
     if (file) {
       setPreview(URL.createObjectURL(file));
@@ -347,7 +334,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
         const encodedId = encodeURIComponent(editingId);
 
         if (form.video instanceof File) {
-          // New video uploaded → use FormData
           const formData = new FormData();
           formData.append("name", form.name);
           formData.append("city", form.city || "");
@@ -377,7 +363,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
             headers: { "Content-Type": "multipart/form-data" },
           });
         } else {
-          // No new video file → JSON PATCH
           const payload = {
             name: form.name,
             city: form.city || "",
@@ -406,7 +391,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
         }
         alert("Singer updated successfully.");
       } else {
-        // CREATE
         const formData = new FormData();
 
         formData.append("name", form.name);
@@ -441,9 +425,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
       await fetchSingers();
 
       setForm(emptyInitial);
-      if (preview && preview.startsWith("blob:")) {
-        URL.revokeObjectURL(preview);
-      }
+      if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
       setPreview(null);
       setEditingId(null);
       setMode("list");
@@ -861,10 +843,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
                 <select
                   value={sortOption}
-                  onChange={(e) => {
-                    setSortOption(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSortOption(e.target.value)}
                   className="sort-select"
                 >
                   <option value="id_desc">Newest first</option>
@@ -971,7 +950,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>{s.city || "—"}</td>
                       <td>₹ {fmtCurrency(s.rate || "1000")}</td>
 
-                      {/* IMPROVED PAYMENT DISPLAY */}
+                      {/* Payment chip - using the defined function */}
                       <td>
                         <span className={`chip ${getPaymentChipClass(s.payment_method)}`}>
                           {s.payment_method || "Cash"}
@@ -1000,24 +979,26 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
           {/* Pagination */}
           {!loadingList && totalCount > 0 && (
-            <div className="pagination">
+            <div className="pagination" style={{ marginTop: "24px", display: "flex", justifyContent: "center", alignItems: "center", gap: "16px" }}>
               <button
                 className="btn ghost"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                disabled={currentPage === 1 || loadingList}
               >
                 ← Previous
               </button>
 
-              <span>
+              <span style={{ fontWeight: 600 }}>
                 Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
-                <small style={{ marginLeft: 12 }}>({totalCount} total)</small>
+                <small style={{ marginLeft: 12, color: "#6b7280" }}>
+                  ({totalCount} total singers)
+                </small>
               </span>
 
               <button
                 className="btn ghost"
                 onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={currentPage >= totalPages}
+                disabled={currentPage >= totalPages || loadingList}
               >
                 Next →
               </button>

@@ -1,5 +1,5 @@
 // SingingClassRegistration.jsx
-// Updated — Added Policies Modal + Payment Flow (same pattern as other forms)
+// Updated — Added Policies Modal + Payment Flow + Improved Mobile Responsiveness in Form
 
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -127,7 +127,7 @@ By enrolling and making payment, the student/guardian confirms acceptance of all
 ];
 
 // ────────────────────────────────────────────────
-// Policies Modal (same design as other pages)
+// Policies Modal
 // ────────────────────────────────────────────────
 function PoliciesModal({ onClose }) {
   const [activeTab, setActiveTab] = useState("A");
@@ -202,7 +202,7 @@ export default function SingingClassRegistration() {
   const [showPaymentPage, setShowPaymentPage] = useState(false);
   const [batches, setBatches] = useState([]);
   const [batchesLoading, setBatchesLoading] = useState(true);
-  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added for modal
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
 
   const [form, setForm] = useState({
     first_name: "",
@@ -276,7 +276,6 @@ export default function SingingClassRegistration() {
     return null;
   };
 
-  // ─── Create student record first (pending payment) ───
   const createStudent = async () => {
     const payload = {
       first_name: form.first_name.trim(),
@@ -303,7 +302,6 @@ export default function SingingClassRegistration() {
     throw new Error("Student creation failed");
   };
 
-  // ─── Initiate payment ───
   const initiatePayment = async (studentId) => {
     const amount = Number(form.fee) || 0;
     if (amount <= 0) throw new Error("Invalid fee amount");
@@ -326,7 +324,6 @@ export default function SingingClassRegistration() {
       return;
     }
 
-    // Rare instant success case
     if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
       setSuccess(true);
       return;
@@ -345,13 +342,8 @@ export default function SingingClassRegistration() {
     setLoading(true);
 
     try {
-      // Step 1: Create student record (pending)
       const studentId = await createStudent();
-
-      // Step 2: Start payment
       await initiatePayment(studentId);
-
-      // If we reach here → instant success (very rare)
       setSuccess(true);
     } catch (err) {
       console.error("Enrollment/Payment error:", err);
@@ -413,10 +405,12 @@ export default function SingingClassRegistration() {
     );
   }
 
-  // Main Registration Form
+  // ────────────────────────────────────────────────
+  // MAIN REGISTRATION FORM (with improved mobile view)
+  // ────────────────────────────────────────────────
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
-      {/* Hero - Algerian font applied here */}
+      {/* Hero */}
       <section className="relative h-96 md:h-[28rem] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat brightness-75"
@@ -461,25 +455,25 @@ export default function SingingClassRegistration() {
       </section>
 
       {/* Form Section */}
-      <section className="relative px-6 pb-32">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <section className="relative px-4 sm:px-6 pb-20 sm:pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           <div className="lg:col-span-2">
-            <div className="sticky top-20 -mt-20 lg:-mt-32">
+            <div className="sticky top-4 sm:top-20 -mt-4 lg:-mt-32">
               <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-3xl shadow-2xl p-8 md:p-16"
+                className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 md:p-12 lg:p-16"
               >
-                <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-gray-900 flex items-center justify-center gap-4">
-                  <Music className="w-12 h-12 text-amber-600" />
+                <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-10 md:mb-12 text-gray-900 flex items-center justify-center gap-4">
+                  <Music className="w-10 h-10 md:w-12 md:h-12 text-amber-600" />
                   Enroll Now
                 </h2>
 
                 {/* Student Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                       First Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -487,11 +481,12 @@ export default function SingingClassRegistration() {
                       name="first_name"
                       value={form.first_name}
                       onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                      placeholder="Enter first name"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                       Last Name <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -499,11 +494,12 @@ export default function SingingClassRegistration() {
                       name="last_name"
                       value={form.last_name}
                       onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                      placeholder="Enter last name"
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                       Phone Number <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -512,28 +508,30 @@ export default function SingingClassRegistration() {
                         name="phone"
                         value={form.phone}
                         onChange={handleChange}
-                        className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                        placeholder="Enter 10-digit number"
                       />
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                      <Phone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-gray-700 font-medium mb-3">Email (optional)</label>
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">Email (optional)</label>
                     <input
                       type="email"
                       name="email"
                       value={form.email}
                       onChange={handleChange}
-                      className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                      placeholder="example@email.com"
                     />
                   </div>
                 </div>
 
                 {/* Address */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-medium mb-3">
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                     <MapPin className="inline w-5 h-5 mr-2" />
-                    Address (optional)
+                    Address 
                   </label>
                   <input
                     type="text"
@@ -541,7 +539,7 @@ export default function SingingClassRegistration() {
                     placeholder="Street Address / Locality"
                     value={form.address1}
                     onChange={handleChange}
-                    className="w-full h-12 px-5 mb-4 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                    className="w-full h-12 sm:h-13 px-4 sm:px-5 mb-3 sm:mb-4 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                   />
                   <input
                     type="text"
@@ -549,16 +547,16 @@ export default function SingingClassRegistration() {
                     placeholder="Apartment, building, etc."
                     value={form.address2}
                     onChange={handleChange}
-                    className="w-full h-12 px-5 mb-4 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                    className="w-full h-12 sm:h-13 px-4 sm:px-5 mb-3 sm:mb-4 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                   />
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     <input
                       type="text"
                       name="city"
                       placeholder="City"
                       value={form.city}
                       onChange={handleChange}
-                      className="h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
                     <input
                       type="text"
@@ -566,7 +564,7 @@ export default function SingingClassRegistration() {
                       placeholder="State"
                       value={form.state}
                       onChange={handleChange}
-                      className="h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
                     <input
                       type="text"
@@ -574,14 +572,14 @@ export default function SingingClassRegistration() {
                       placeholder="PIN Code"
                       value={form.postal_code}
                       onChange={handleChange}
-                      className="h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
                   </div>
                 </div>
 
                 {/* Batch Selection */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-medium mb-3">
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                     Select Batch <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -590,7 +588,7 @@ export default function SingingClassRegistration() {
                       value={form.batch}
                       onChange={handleChange}
                       disabled={batchesLoading}
-                      className="w-full h-14 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition text-gray-700"
+                      className="w-full h-13 sm:h-14 px-4 sm:px-5 pr-10 sm:pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition text-gray-700 text-base"
                     >
                       <option value="">
                         {batchesLoading ? "Loading batches..." : "-- Choose a Batch --"}
@@ -602,17 +600,17 @@ export default function SingingClassRegistration() {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-400 pointer-events-none" />
                   </div>
 
                   {selectedBatch && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-2xl"
+                      className="mt-5 sm:mt-6 p-5 sm:p-6 bg-amber-50 border border-amber-200 rounded-2xl text-sm sm:text-base"
                     >
-                      <p className="font-semibold text-amber-900 mb-2">Selected Batch Details</p>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
+                      <p className="font-semibold text-amber-900 mb-3">Selected Batch Details</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <p><strong>Class:</strong> {selectedBatch.class_name}</p>
                         <p><strong>Day & Time:</strong> {selectedBatch.day} {selectedBatch.time_slot}</p>
                         <p><strong>Teacher:</strong> {selectedBatch.trainer_name || "To be assigned"}</p>
@@ -626,8 +624,8 @@ export default function SingingClassRegistration() {
                 </div>
 
                 {/* Monthly Fee */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-medium mb-3">
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                     Monthly Fee (₹) <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -637,9 +635,9 @@ export default function SingingClassRegistration() {
                       value={form.fee}
                       onChange={handleChange}
                       min="0"
-                      className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                      className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
-                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
+                    
                   </div>
                   {selectedBatch?.class_fee && (
                     <p className="text-sm text-emerald-600 mt-2">
@@ -649,11 +647,11 @@ export default function SingingClassRegistration() {
                 </div>
 
                 {/* Payment Method Selection */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-bold mb-4">
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-bold mb-4 md:mb-5">
                     Choose Payment Method <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                     {PAYMENT_OPTIONS.map((option) => {
                       const Icon = option.icon;
                       const isSelected = form.payment_method === option.key;
@@ -662,14 +660,14 @@ export default function SingingClassRegistration() {
                           key={option.key}
                           type="button"
                           onClick={() => setPaymentMethod(option.key)}
-                          className={`p-3 rounded-2xl border-4 transition-all ${
+                          className={`p-4 sm:p-5 rounded-2xl border-4 transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[110px] sm:min-h-[130px] ${
                             isSelected
                               ? "border-amber-500 bg-amber-50 shadow-lg"
-                              : "border-gray-200 hover:border-amber-200 bg-gray-50"
+                              : "border-gray-200 hover:border-amber-200 bg-gray-50 hover:shadow"
                           }`}
                         >
-                          <Icon className={`w-6 h-8 mx-auto mb-4 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
-                          <p className={`font-bold ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
+                          <Icon className={`w-7 h-7 sm:w-8 sm:h-8 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
+                          <p className={`font-bold text-center text-sm sm:text-base ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
                             {option.label}
                           </p>
                         </button>
@@ -679,34 +677,34 @@ export default function SingingClassRegistration() {
                 </div>
 
                 {/* Reference */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-medium mb-3">Reference By (optional)</label>
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-medium mb-2 md:mb-3">Reference By (optional)</label>
                   <input
                     type="text"
                     name="reference_by"
                     value={form.reference_by}
                     onChange={handleChange}
                     placeholder="Referred by friend, social media, etc."
-                    className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                    className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                   />
                 </div>
 
-                {/* Terms with modal trigger */}
-                <div className="flex items-start gap-4 mt-12">
+                {/* Terms */}
+                <div className="flex items-start gap-3 sm:gap-4 mt-10 md:mt-12">
                   <input
                     type="checkbox"
                     id="terms"
                     name="agreed_terms"
                     checked={form.agreed_terms}
                     onChange={handleChange}
-                    className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 rounded focus:ring-amber-500 mt-1 flex-shrink-0"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed select-none">
+                  <label htmlFor="terms" className="text-gray-700 text-base sm:text-lg leading-relaxed select-none">
                     I agree to the{" "}
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors "
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -714,7 +712,7 @@ export default function SingingClassRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors "
                     >
                       Privacy Policy
                     </button>{" "}
@@ -722,7 +720,7 @@ export default function SingingClassRegistration() {
                   </label>
                 </div>
 
-                {/* Proceed to Payment Button */}
+                {/* Submit Button */}
                 <button
                   onClick={handleEnrollClick}
                   disabled={loading || batchesLoading}
@@ -730,7 +728,7 @@ export default function SingingClassRegistration() {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-4 h-4" />
+                      <Loader2 className="animate-spin w-5 h-5 sm:w-6 sm:h-6" />
                       Processing...
                     </>
                   ) : (
@@ -742,7 +740,7 @@ export default function SingingClassRegistration() {
           </div>
 
           {/* Sidebar Benefits */}
-          <div className="lg:col-span-1 space-y-8 mt-20">
+          <div className="lg:col-span-1 space-y-8 mt-12 lg:mt-20">
             <motion.div
               initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}

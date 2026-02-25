@@ -396,7 +396,6 @@ export default function VideographyForm() {
                         placeholder="e.g. 75000"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                     </div>
                   </div>
                 </div>
@@ -415,7 +414,6 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -430,7 +428,6 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -460,7 +457,6 @@ export default function VideographyForm() {
                         placeholder="City / Venue"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                     </div>
                   </div>
                 </div>

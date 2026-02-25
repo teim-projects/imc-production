@@ -820,7 +820,7 @@ export default function PhotographyBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -828,7 +828,7 @@ export default function PhotographyBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 underline transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -839,7 +839,7 @@ export default function PhotographyBooking() {
                 <button
                   onClick={handleBookingAndPayment}
                   disabled={loading || paymentLoading || !form.agreed_terms}
-                  className="mt-10 w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
@@ -854,7 +854,7 @@ export default function PhotographyBooking() {
                   ) : (
                     <>
                       <CreditCard className="w-6 h-6" />
-                      Confirm Booking & Pay
+                      Confirm Booking 
                     </>
                   )}
                 </button>

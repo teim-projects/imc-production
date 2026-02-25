@@ -59,7 +59,7 @@ export default function SingingClassManagement() {
     class: "Class Management",
     teachers: "Teachers Management",
     batch: "Batch Management",
-    students: "Students Management",
+    // students: "Students Management",
   };
 
   // === CLASS LOGIC ===

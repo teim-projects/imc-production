@@ -13,9 +13,9 @@ import {
 
 /* ===================== API ===================== */
 
-const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
 
-const EVENTS_URL = `${BASE}/user/events/`;
+const EVENTS_URL = `${BASE}/auth/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
 
 /* ===================== AXIOS ===================== */
@@ -176,17 +176,33 @@ export default function UserEvents() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchEvents = async () => {
+ const fetchEvents = async () => {
+  try {
     setLoading(true);
-    try {
-      const res = await api.get(EVENTS_URL);
-      setEvents(res.data || []);
-    } catch (err) {
-      console.error("Failed to load events", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    const token = localStorage.getItem("access");
+
+    const res = await api.get(EVENTS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    // Handle paginated (res.data.results) and non-paginated (res.data)
+    const eventArray = Array.isArray(res.data)
+      ? res.data
+      : Array.isArray(res.data?.results)
+      ? res.data.results
+      : [];
+
+    setEvents(eventArray);
+  } catch (error) {
+    console.error("Failed to load events:", error);
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchEvents();

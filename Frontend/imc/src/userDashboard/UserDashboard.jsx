@@ -59,7 +59,7 @@ export default function UserDashboard() {
     },
     {
       title: "Live Shows & Karaoke",
-      link: "/events",
+      link: "/events-booking",
       img: "https://images.unsplash.com/photo-1507679799987-c737218594e0?w=1200&q=90",
       icon: Calendar,
       gradient: "from-rose-600 via-pink-600 to-purple-600",
@@ -108,22 +108,34 @@ export default function UserDashboard() {
   const [eventsError, setEventsError] = useState(null);
 
   const fetchEvents = async () => {
-    try {
-      setLoadingEvents(true);
-      const res = await api.get(EVENTS_URL);
-      const now = new Date();
-      // Filter future events only + limit number if needed
-      const upcoming = res.data
-        .filter((e) => new Date(e.event_date) > now)
-        .slice(0, 12); // reasonable limit
-      setEvents(upcoming || []);
-    } catch (err) {
-      console.error("Failed to load events:", err);
-      setEventsError("Could not load upcoming events.");
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
+  try {
+    setLoadingEvents(true);
+
+    const token = localStorage.getItem("access");
+
+    const res = await api.get(EVENTS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const now = new Date();
+
+    // 👇 handle paginated & non-paginated both
+    const eventArray = res.data.results || res.data;
+
+    const upcoming = eventArray
+      ?.filter((e) => new Date(e.event_date) > now)
+      .slice(0, 12);
+
+    setEvents(upcoming || []);
+  } catch (err) {
+    console.error("Failed to load events:", err);
+    setEventsError("Could not load upcoming events.");
+  } finally {
+    setLoadingEvents(false);
+  }
+};
 
   useEffect(() => {
     fetchEvents();
