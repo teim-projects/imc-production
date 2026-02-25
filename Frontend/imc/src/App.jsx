@@ -84,6 +84,50 @@ function AnnualFeeWrapper() {
   return <AnnualFeePage singerId={id} />;
 }
 
+/* ================= SCROLL FIX (Enhanced Version) ================= */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  React.useEffect(() => {
+    const forceScrollToTop = () => {
+      // Target window / document
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+
+      // Target common scroll containers in React apps
+      const selectors = ['#root', '.app-main', 'main', 'body', 'html'];
+      selectors.forEach((sel) => {
+        const el = document.querySelector(sel);
+        if (el) {
+          el.scrollTop = 0;
+        }
+      });
+    };
+
+    // Run immediately
+    forceScrollToTop();
+
+    // Run again after short delay (content/images start loading)
+    const t1 = setTimeout(forceScrollToTop, 50);
+
+    // Run again after medium delay (most images/content loaded)
+    const t2 = setTimeout(forceScrollToTop, 150);
+
+    // Safety net for slow networks / heavy pages
+    const t3 = setTimeout(forceScrollToTop, 400);
+
+    // Cleanup
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [pathname]);
+
+  return null;
+}
+
 function Layout() {
   const location = useLocation();
 
@@ -103,6 +147,8 @@ function Layout() {
 
   return (
     <>
+      <ScrollToTop />   {/* Enhanced scroll fix – placed at the very top */}
+
       {/* ✅ Show navbar only when needed */}
       {!hideNavbar && <Navbar />}
 
