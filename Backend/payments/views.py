@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .utils import get_headers
 from .models import Payment
 
-BASE_URL = "https://smartgateway.hdfcuat.bank.in"  # SANDBOX
+BASE_URL = "https://smartgateway.hdfcuat.bank.in"
 
 
 def generate_order_id():
@@ -15,7 +15,7 @@ def generate_order_id():
 
 
 # ==============================
-# 1️⃣ CREATE PAYMENT LINK
+# 1️⃣ CREATE PAYMENT
 # ==============================
 @csrf_exempt
 def create_payment(request):
@@ -49,8 +49,8 @@ def create_payment(request):
 
     data = res.json()
 
-    # 🔥 Get real session status if available
-    session_status = data.get("status") or data.get("order_status") or "INITIATED"
+    # Save real session status (usually NEW)
+    session_status = data.get("status", "NEW")
 
     Payment.objects.update_or_create(
         order_id=order_id,
@@ -58,7 +58,7 @@ def create_payment(request):
             "txn_id": data.get("txn_id"),
             "txn_uuid": data.get("txn_uuid"),
             "amount": amount,
-            "status": session_status,   # ✅ dynamic
+            "status": session_status,
             "payment_method": data.get("payment_method"),
             "payer_vpa": data.get("payer_vpa"),
             "raw_response": data
@@ -70,7 +70,53 @@ def create_payment(request):
 
 
 # ==============================
-# 2️⃣ RETURN URL
+# 2️⃣ VERIFY & UPDATE (CORE LOGIC)
+# ==============================
+def verify_and_update(order_id):
+    res = requests.get(
+        f"{BASE_URL}/orders/{order_id}",
+        headers=get_headers("imc_user_101"),
+        timeout=30
+    )
+
+    data = res.json()
+
+    status_value = data.get("status", "FAILED")
+
+    txn_id = data.get("txn_id") or data.get("txn_detail", {}).get("txn_id")
+    txn_uuid = data.get("txn_uuid")
+    payment_method = data.get("payment_method")
+    payer_vpa = data.get("payer_vpa")
+    amount = float(data.get("amount", 0))
+
+    payment = Payment.objects.filter(order_id=order_id).first()
+
+    if payment:
+        payment.txn_id = txn_id
+        payment.txn_uuid = txn_uuid
+        payment.amount = amount
+        payment.status = status_value
+        payment.payment_method = payment_method
+        payment.payer_vpa = payer_vpa
+        payment.raw_response = data
+        payment.save()
+    else:
+        Payment.objects.create(
+            order_id=order_id,
+            txn_id=txn_id,
+            txn_uuid=txn_uuid,
+            amount=amount,
+            status=status_value,
+            payment_method=payment_method,
+            payer_vpa=payer_vpa,
+            raw_response=data
+        )
+
+    return status_value
+
+
+# ==============================
+# 3️⃣ RETURN URL (AUTO UPDATE DB)
 # ==============================
 @csrf_exempt
 def payment_return(request):
@@ -82,76 +128,16 @@ def payment_return(request):
     if not order_id:
         return redirect("https://www.imcpune.in/payment-success?status=failed")
 
+    # 🔥 Automatically update database when returning from HDFC
+    verify_and_update(order_id)
+
     return redirect(
         f"https://www.imcpune.in/payment-success?order_id={order_id}"
     )
 
 
 # ==============================
-# 3️⃣ VERIFY & UPDATE PAYMENT
-# ==============================
-def verify_payment(order_id):
-    try:
-        res = requests.get(
-            f"{BASE_URL}/orders/{order_id}",
-            headers=get_headers("imc_user_101"),
-            timeout=30
-        )
-
-        data = res.json()
-
-        status_value = data.get("status", "FAILED")
-
-        txn_id = data.get("txn_id") or data.get("txn_detail", {}).get("txn_id")
-        txn_uuid = data.get("txn_uuid")
-        payment_method = data.get("payment_method")
-        payer_vpa = data.get("payer_vpa")
-        amount = float(data.get("amount", 0))
-
-        payment = Payment.objects.filter(order_id=order_id).first()
-
-        if payment:
-            payment.txn_id = txn_id
-            payment.txn_uuid = txn_uuid
-            payment.amount = amount
-            payment.status = status_value
-            payment.payment_method = payment_method
-            payment.payer_vpa = payer_vpa
-            payment.raw_response = data
-            payment.save()
-        else:
-            Payment.objects.create(
-                order_id=order_id,
-                txn_id=txn_id,
-                txn_uuid=txn_uuid,
-                amount=amount,
-                status=status_value,
-                payment_method=payment_method,
-                payer_vpa=payer_vpa,
-                raw_response=data
-            )
-
-        success = status_value == "CHARGED"
-
-        return JsonResponse({
-            "success": success,
-            "order_id": order_id,
-            "gateway_status": status_value,
-            "message": f"Payment status: {status_value}",
-            "data": data
-        })
-
-    except Exception as e:
-        print("Verify Error:", str(e))
-        return JsonResponse({
-            "success": False,
-            "message": "Error verifying payment",
-            "error": str(e)
-        }, status=500)
-
-
-# ==============================
-# 4️⃣ CHECK STATUS
+# 4️⃣ CHECK STATUS (Manual API)
 # ==============================
 @csrf_exempt
 def check_status(request):
@@ -160,7 +146,14 @@ def check_status(request):
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
-    return verify_payment(order_id)
+    status_value = verify_and_update(order_id)
+
+    return JsonResponse({
+        "success": status_value == "CHARGED",
+        "order_id": order_id,
+        "gateway_status": status_value,
+        "message": f"Payment status: {status_value}"
+    })
 
 
 # ==============================
