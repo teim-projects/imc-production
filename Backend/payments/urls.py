@@ -1,14 +1,9 @@
 from django.urls import path
-from .views import (
-    create_payment,
-    payment_return,
-    check_status,
-    refund_payment,
-)
+from . import views
 
 urlpatterns = [
-    path("create-payment/", create_payment),
-    path("payment/return/", payment_return),
-    path("status/", check_status),
-    path("refund/", refund_payment),
+    path("create-payment/", views.create_payment),
+    path("payment/return/", views.payment_return),
+    path("check_status/", views.check_status),
+    path("refund/", views.refund_payment),
 ]
