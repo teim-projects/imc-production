@@ -22,14 +22,14 @@ def create_payment(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
-    body = json.loads(request.body) if request.body else {}
-    amount = body.get("amount", 1.00)
+    body = json.loads(request.body or "{}")
+    amount = float(body.get("amount", 1.00))
 
     order_id = generate_order_id()
 
     payload = {
         "order_id": order_id,
-        "amount": f"{float(amount):.2f}",
+        "amount": f"{amount:.2f}",
         "customer_id": "imc_user_101",
         "customer_email": "user@imc.com",
         "customer_phone": "9999999999",
@@ -49,29 +49,26 @@ def create_payment(request):
 
     data = res.json()
 
-    # ✅ SAVE INITIATED PAYMENT
-    try:
-        Payment.objects.update_or_create(
-            order_id=order_id,
-            defaults={
-                "txn_id": "",
-                "txn_uuid": "",
-                "amount": float(amount),
-                "status": "INITIATED",
-                "payment_method": "",
-                "payer_vpa": "",
-                "raw_response": data
-            }
-        )
-    except Exception as e:
-        print("DB Save Error (create_payment):", str(e))
+    # SAVE INITIATED PAYMENT
+    Payment.objects.update_or_create(
+        order_id=order_id,
+        defaults={
+            "txn_id": "",
+            "txn_uuid": "",
+            "amount": amount,
+            "status": "INITIATED",
+            "payment_method": "",
+            "payer_vpa": "",
+            "raw_response": data
+        }
+    )
 
     data["order_id"] = order_id
     return JsonResponse(data, safe=False)
 
 
 # ==============================
-# 2️⃣ RETURN URL (Gateway → Backend)
+# 2️⃣ RETURN URL
 # ==============================
 @csrf_exempt
 def payment_return(request):
@@ -89,7 +86,7 @@ def payment_return(request):
 
 
 # ==============================
-# 3️⃣ VERIFY PAYMENT STATUS (DYNAMIC)
+# 3️⃣ VERIFY & UPDATE PAYMENT
 # ==============================
 def verify_payment(order_id):
     try:
@@ -101,46 +98,45 @@ def verify_payment(order_id):
 
         data = res.json()
 
-        # 🔥 DYNAMIC STATUS FROM HDFC
         status_value = data.get("status", "FAILED")
 
-        txn_id = data.get("txn_id")
+        txn_id = data.get("txn_id") or data.get("txn_detail", {}).get("txn_id")
         txn_uuid = data.get("txn_uuid")
-        payment_method = data.get("payment_method_type")
+        payment_method = data.get("payment_method")
         payer_vpa = data.get("payer_vpa")
         amount = float(data.get("amount", 0))
 
-        # ✅ UPDATE DATABASE DYNAMICALLY
-        Payment.objects.update_or_create(
-            order_id=order_id,
-            defaults={
-                "txn_id": txn_id,
-                "txn_uuid": txn_uuid,
-                "amount": amount,
-                "status": status_value,
-                "payment_method": payment_method,
-                "payer_vpa": payer_vpa,
-                "raw_response": data
-            }
-        )
+        # 🔥 FORCE UPDATE EXISTING ROW
+        payment = Payment.objects.filter(order_id=order_id).first()
 
-        # ✅ Dynamic Success Logic
-        success = status_value == "CHARGED"
-
-        if status_value == "CHARGED":
-            message = "Payment Successful"
-        elif status_value in ["PENDING", "PENDING_VBV"]:
-            message = "Payment Pending. Approve in UPI app."
-        elif status_value == "CANCELLED":
-            message = "Payment Cancelled"
+        if payment:
+            payment.txn_id = txn_id
+            payment.txn_uuid = txn_uuid
+            payment.amount = amount
+            payment.status = status_value
+            payment.payment_method = payment_method
+            payment.payer_vpa = payer_vpa
+            payment.raw_response = data
+            payment.save()
         else:
-            message = "Payment Failed"
+            Payment.objects.create(
+                order_id=order_id,
+                txn_id=txn_id,
+                txn_uuid=txn_uuid,
+                amount=amount,
+                status=status_value,
+                payment_method=payment_method,
+                payer_vpa=payer_vpa,
+                raw_response=data
+            )
+
+        success = status_value == "CHARGED"
 
         return JsonResponse({
             "success": success,
             "order_id": order_id,
             "gateway_status": status_value,
-            "message": message,
+            "message": f"Payment status: {status_value}",
             "data": data
         })
 
@@ -154,7 +150,7 @@ def verify_payment(order_id):
 
 
 # ==============================
-# 4️⃣ CHECK STATUS (Frontend Calls This)
+# 4️⃣ CHECK STATUS
 # ==============================
 @csrf_exempt
 def check_status(request):
