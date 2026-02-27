@@ -5,7 +5,7 @@ from django.http import JsonResponse, HttpResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from .utils import get_headers
-from .models import Payment   # ✅ ADDED
+from .models import Payment
 
 BASE_URL = "https://smartgateway.hdfcuat.bank.in"  # SANDBOX
 
@@ -49,7 +49,7 @@ def create_payment(request):
 
     data = res.json()
 
-    # ✅ SAVE INITIATED PAYMENT IN DATABASE
+    # ✅ SAVE INITIATED PAYMENT
     try:
         Payment.objects.update_or_create(
             order_id=order_id,
@@ -59,7 +59,8 @@ def create_payment(request):
                 "amount": float(amount),
                 "status": "INITIATED",
                 "payment_method": "",
-                "payer_vpa": ""
+                "payer_vpa": "",
+                "raw_response": data
             }
         )
     except Exception as e:
@@ -71,7 +72,6 @@ def create_payment(request):
 
 # ==============================
 # 2️⃣ RETURN URL (Gateway → Backend)
-# 👉 REDIRECT TO REACT
 # ==============================
 @csrf_exempt
 def payment_return(request):
@@ -89,59 +89,77 @@ def payment_return(request):
 
 
 # ==============================
-# 3️⃣ VERIFY PAYMENT STATUS
+# 3️⃣ VERIFY PAYMENT STATUS (DYNAMIC)
 # ==============================
 def verify_payment(order_id):
-    res = requests.get(
-        f"{BASE_URL}/orders/{order_id}",
-        headers=get_headers("imc_user_101"),
-        timeout=30
-    )
-
-    data = res.json()
-    status_value = data.get("status")
-
-    # ✅ UPDATE DATABASE AFTER VERIFY
     try:
+        res = requests.get(
+            f"{BASE_URL}/orders/{order_id}",
+            headers=get_headers("imc_user_101"),
+            timeout=30
+        )
+
+        data = res.json()
+
+        # 🔥 DYNAMIC STATUS FROM HDFC
+        status_value = data.get("status", "FAILED")
+
+        txn_id = data.get("txn_id")
+        txn_uuid = data.get("txn_uuid")
+        payment_method = data.get("payment_method_type")
+        payer_vpa = data.get("payer_vpa")
+        amount = float(data.get("amount", 0))
+
+        # ✅ UPDATE DATABASE DYNAMICALLY
         Payment.objects.update_or_create(
             order_id=order_id,
             defaults={
-                "txn_id": data.get("txn_id", ""),
-                "txn_uuid": data.get("txn_uuid", ""),
-                "amount": float(data.get("amount", 0)),
+                "txn_id": txn_id,
+                "txn_uuid": txn_uuid,
+                "amount": amount,
                 "status": status_value,
-                "payment_method": data.get("payment_method_type", ""),
-                "payer_vpa": data.get("payer_vpa", "")
+                "payment_method": payment_method,
+                "payer_vpa": payer_vpa,
+                "raw_response": data
             }
         )
+
+        # ✅ Dynamic Success Logic
+        success = status_value == "CHARGED"
+
+        if status_value == "CHARGED":
+            message = "Payment Successful"
+        elif status_value in ["PENDING", "PENDING_VBV"]:
+            message = "Payment Pending. Approve in UPI app."
+        elif status_value == "CANCELLED":
+            message = "Payment Cancelled"
+        else:
+            message = "Payment Failed"
+
+        return JsonResponse({
+            "success": success,
+            "order_id": order_id,
+            "gateway_status": status_value,
+            "message": message,
+            "data": data
+        })
+
     except Exception as e:
-        print("DB Update Error (verify_payment):", str(e))
-
-    if status_value == "CHARGED":
-        success = True
-        message = "Payment Successful"
-    elif status_value in ["PENDING", "PENDING_VBV"]:
-        success = False
-        message = "Payment Pending. Approve in UPI app."
-    else:
-        success = False
-        message = "Payment Failed / Cancelled"
-
-    return JsonResponse({
-        "success": success,
-        "order_id": order_id,
-        "gateway_status": status_value,
-        "message": message,
-        "data": data
-    })
+        print("Verify Error:", str(e))
+        return JsonResponse({
+            "success": False,
+            "message": "Error verifying payment",
+            "error": str(e)
+        }, status=500)
 
 
 # ==============================
-# 4️⃣ CHECK STATUS (Frontend Polling)
+# 4️⃣ CHECK STATUS (Frontend Calls This)
 # ==============================
 @csrf_exempt
 def check_status(request):
     order_id = request.GET.get("order_id")
+
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
@@ -154,6 +172,7 @@ def check_status(request):
 @csrf_exempt
 def refund_payment(request):
     order_id = request.GET.get("order_id")
+
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
