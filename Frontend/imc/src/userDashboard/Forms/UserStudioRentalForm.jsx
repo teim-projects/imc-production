@@ -14,6 +14,7 @@ import axios from "axios";
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
+const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
 
 const api = axios.create();
 api.interceptors.request.use((config) => {
@@ -249,17 +250,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     return null;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setSuccessMsg("");
-
-    const v = validate();
-    if (v) {
-      setError(v);
-      return;
-    }
-
+  const createBooking = async () => {
     const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
 
     const payload = {
@@ -278,20 +269,71 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       notes: formData.notes || "",
     };
 
-    setSaving(true);
-    try {
-      const res = await api.post(BOOKINGS_URL, payload);
-      const totalAmount = priceToSend * Number(formData.duration || 1);
+    const res = await api.post(BOOKINGS_URL, payload);
+    if (res.status === 201 || res.status === 200) {
+      return res.data.id || res.data.pk || res.data._id || res.data.booking_id;
+    }
+    throw new Error("Booking creation failed");
+  };
 
-      navigate("/payment", {
-        state: {
-          booking: res.data,
-          studio: selectedStudio,
-          amount: totalAmount,
-        },
-      });
+  const initiatePayment = async (bookingId) => {
+    const totalAmount = (pricePerHour || 0) * Number(formData.duration || 1);
+    if (totalAmount <= 0) throw new Error("Invalid amount");
+
+    const payload = {
+      amount: totalAmount * 100,           // many gateways expect paise / smallest unit
+      customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
+      email: formData.email.trim() || "booking@studio.com",
+      phone: formData.mobile.trim(),
+      description: `Studio Booking - ${selectedStudio?.name || "Selected Studio"} on ${formData.date} ${formData.time_slot}`,
+      return_url: `${window.location.origin}/payment-callback?type=studio-booking&mobile=${formData.mobile.trim()}&booking_id=${bookingId}`,
+    };
+
+    const paymentRes = await api.post(PAYMENT_CREATE_API, payload);
+    const pData = paymentRes.data;
+
+    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      return;
+    }
+
+    // Fallback - if no redirect (some gateways show popup or success immediately)
+    if (pData?.success === true || String(pData?.status || "").toUpperCase().includes("SUCCESS")) {
+      setSuccessMsg("Payment initiated successfully! Redirecting shortly...");
+      setTimeout(() => navigate("/booking-success"), 2500);
+      return;
+    }
+
+    throw new Error("Payment initiation failed - no redirect URL received");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMsg("");
+
+    const v = validate();
+    if (v) {
+      setError(v);
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const bookingId = await createBooking();
+      await initiatePayment(bookingId);
+      // If we reach here without redirect, show success (but usually redirect happens)
+      setSuccessMsg("Booking & payment processed!");
     } catch (err) {
-      setError(humanizeErr(err));
+      console.error("Booking/Payment error:", err);
+      setError(
+        err.response?.data?.detail ||
+        err.message ||
+        "Something went wrong. Please try again."
+      );
     } finally {
       setSaving(false);
     }
