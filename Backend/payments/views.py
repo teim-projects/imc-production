@@ -49,16 +49,18 @@ def create_payment(request):
 
     data = res.json()
 
-    # SAVE INITIATED PAYMENT
+    # 🔥 Get real session status if available
+    session_status = data.get("status") or data.get("order_status") or "INITIATED"
+
     Payment.objects.update_or_create(
         order_id=order_id,
         defaults={
-            "txn_id": "",
-            "txn_uuid": "",
+            "txn_id": data.get("txn_id"),
+            "txn_uuid": data.get("txn_uuid"),
             "amount": amount,
-            "status": "INITIATED",
-            "payment_method": "",
-            "payer_vpa": "",
+            "status": session_status,   # ✅ dynamic
+            "payment_method": data.get("payment_method"),
+            "payer_vpa": data.get("payer_vpa"),
             "raw_response": data
         }
     )
@@ -106,7 +108,6 @@ def verify_payment(order_id):
         payer_vpa = data.get("payer_vpa")
         amount = float(data.get("amount", 0))
 
-        # 🔥 FORCE UPDATE EXISTING ROW
         payment = Payment.objects.filter(order_id=order_id).first()
 
         if payment:
