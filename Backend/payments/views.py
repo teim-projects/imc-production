@@ -4,33 +4,32 @@ import requests
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
-from .models import Payment
 from .utils import get_headers
+from .models import Payment   # ✅ ADDED
 
-BASE_URL = "https://smartgateway.hdfcuat.bank.in"
+BASE_URL = "https://smartgateway.hdfcuat.bank.in"  # SANDBOX
 
 
 def generate_order_id():
     return f"IMC{uuid.uuid4().hex[:16]}"
 
 
-# ======================================================
-# 1️⃣ CREATE PAYMENT (React calls this)
-# ======================================================
+# ==============================
+# 1️⃣ CREATE PAYMENT LINK
+# ==============================
 @csrf_exempt
 def create_payment(request):
-
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
-    body = json.loads(request.body or "{}")
-    amount = float(body.get("amount", 1.00))
+    body = json.loads(request.body) if request.body else {}
+    amount = body.get("amount", 1.00)
 
     order_id = generate_order_id()
 
     payload = {
         "order_id": order_id,
-        "amount": f"{amount:.2f}",
+        "amount": f"{float(amount):.2f}",
         "customer_id": "imc_user_101",
         "customer_email": "user@imc.com",
         "customer_phone": "9999999999",
@@ -50,26 +49,32 @@ def create_payment(request):
 
     data = res.json()
 
-    # 🔥 SAVE INITIATED PAYMENT
-    Payment.objects.update_or_create(
-        order_id=order_id,
-        defaults={
-            "amount": amount,
-            "status": "INITIATED",
-            "raw_response": data
-        }
-    )
+    # ✅ SAVE INITIATED PAYMENT IN DATABASE
+    try:
+        Payment.objects.update_or_create(
+            order_id=order_id,
+            defaults={
+                "txn_id": "",
+                "txn_uuid": "",
+                "amount": float(amount),
+                "status": "INITIATED",
+                "payment_method": "",
+                "payer_vpa": ""
+            }
+        )
+    except Exception as e:
+        print("DB Save Error (create_payment):", str(e))
 
     data["order_id"] = order_id
     return JsonResponse(data, safe=False)
 
 
-# ======================================================
+# ==============================
 # 2️⃣ RETURN URL (Gateway → Backend)
-# ======================================================
+# 👉 REDIRECT TO REACT
+# ==============================
 @csrf_exempt
 def payment_return(request):
-
     if request.method != "POST":
         return HttpResponse("Invalid Method", status=405)
 
@@ -83,11 +88,10 @@ def payment_return(request):
     )
 
 
-# ======================================================
-# 3️⃣ VERIFY & SAVE PAYMENT STATUS
-# ======================================================
-def verify_and_update_payment(order_id):
-
+# ==============================
+# 3️⃣ VERIFY PAYMENT STATUS
+# ==============================
+def verify_payment(order_id):
     res = requests.get(
         f"{BASE_URL}/orders/{order_id}",
         headers=get_headers("imc_user_101"),
@@ -95,54 +99,33 @@ def verify_and_update_payment(order_id):
     )
 
     data = res.json()
-    gateway_status = data.get("status")
-
-    txn_id = data.get("txn_id")
-    txn_uuid = data.get("txn_uuid")
-    payment_method = data.get("payment_method_type")
-    payer_vpa = data.get("payer_vpa")
-    amount = float(data.get("amount", 0))
-
-    # 🔥 UPDATE DATABASE
-    Payment.objects.update_or_create(
-        order_id=order_id,
-        defaults={
-            "txn_id": txn_id,
-            "txn_uuid": txn_uuid,
-            "amount": amount,
-            "status": gateway_status,
-            "payment_method": payment_method,
-            "payer_vpa": payer_vpa,
-            "raw_response": data
-        }
-    )
-
-    return data
-
-
-# ======================================================
-# 4️⃣ CHECK STATUS (React Success Page Calls This)
-# ======================================================
-@csrf_exempt
-def check_status(request):
-
-    order_id = request.GET.get("order_id")
-    if not order_id:
-        return JsonResponse({"error": "order_id required"}, status=400)
-
-    data = verify_and_update_payment(order_id)
-
     status_value = data.get("status")
+
+    # ✅ UPDATE DATABASE AFTER VERIFY
+    try:
+        Payment.objects.update_or_create(
+            order_id=order_id,
+            defaults={
+                "txn_id": data.get("txn_id", ""),
+                "txn_uuid": data.get("txn_uuid", ""),
+                "amount": float(data.get("amount", 0)),
+                "status": status_value,
+                "payment_method": data.get("payment_method_type", ""),
+                "payer_vpa": data.get("payer_vpa", "")
+            }
+        )
+    except Exception as e:
+        print("DB Update Error (verify_payment):", str(e))
 
     if status_value == "CHARGED":
         success = True
         message = "Payment Successful"
     elif status_value in ["PENDING", "PENDING_VBV"]:
         success = False
-        message = "Payment Pending"
+        message = "Payment Pending. Approve in UPI app."
     else:
         success = False
-        message = "Payment Failed"
+        message = "Payment Failed / Cancelled"
 
     return JsonResponse({
         "success": success,
@@ -153,12 +136,23 @@ def check_status(request):
     })
 
 
-# ======================================================
+# ==============================
+# 4️⃣ CHECK STATUS (Frontend Polling)
+# ==============================
+@csrf_exempt
+def check_status(request):
+    order_id = request.GET.get("order_id")
+    if not order_id:
+        return JsonResponse({"error": "order_id required"}, status=400)
+
+    return verify_payment(order_id)
+
+
+# ==============================
 # 5️⃣ REFUND PAYMENT
-# ======================================================
+# ==============================
 @csrf_exempt
 def refund_payment(request):
-
     order_id = request.GET.get("order_id")
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)

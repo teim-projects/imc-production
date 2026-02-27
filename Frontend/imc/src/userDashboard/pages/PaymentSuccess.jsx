@@ -35,7 +35,7 @@ export default function PaymentSuccess() {
 
     const verifyPayment = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/payments/status/`, {
+        const res = await axios.get(`${API_BASE}/api/payments/check_status/`, {
           params: { order_id: orderId },
         });
 
