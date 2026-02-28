@@ -20,7 +20,6 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Handle different possible query param names for order ID
   const orderId =
     searchParams.get("order_id") ||
     searchParams.get("OrderId") ||
@@ -45,6 +44,11 @@ export default function PaymentSuccess() {
         });
 
         setPaymentData(res.data);
+        
+        // ← Debug: open browser console (F12) to see exact backend response
+        console.log("Backend Payment Response:", res.data);
+        console.log("All keys in response:", Object.keys(res.data).join(", "));
+
         setLoading(false);
       } catch (err) {
         console.error("Payment verification failed:", err);
@@ -60,29 +64,88 @@ export default function PaymentSuccess() {
     verifyPayment();
   }, [orderId]);
 
-  // Normalize data access (handles different possible response structures)
   const apiData = paymentData?.data || paymentData || {};
 
-  // Flexible success condition
   const isSuccess =
     apiData.status === "CHARGED" ||
     apiData.gateway_status === "CHARGED" ||
     apiData.success === true ||
-    apiData.payment_status === "success";
+    apiData.payment_status === "success" ||
+    apiData.status?.toUpperCase() === "SUCCESS";
 
-  // Safe amount formatting
-  const displayAmount = () => {
-    const raw =
+  // Super flexible amount extraction
+  const getRawAmount = () => {
+    if (!apiData) return 0;
+
+    // Direct top-level keys (most common)
+    let raw =
       apiData.amount ||
+      apiData.order_amount ||
+      apiData.paid_amount ||
+      apiData.transaction_amount ||
+      apiData.amount_paid ||
+      apiData.total_amount ||
       apiData.effective_amount ||
       apiData.net_amount ||
       apiData.txn_amount ||
-      apiData.total_amount ||
+      apiData.cf_order_amount ||
+      apiData.real_amount ||
+      apiData.pay_amount ||
+      apiData.final_amount ||
       0;
-    return Number(raw).toLocaleString("en-IN");
+
+    // Nested common structures
+    if (raw === 0) {
+      if (apiData.order) {
+        raw =
+          apiData.order.amount ||
+          apiData.order.order_amount ||
+          apiData.order.paid_amount ||
+          apiData.order.total_amount ||
+          apiData.order.amount_paid ||
+          0;
+      }
+      if (apiData.payment) {
+        raw = apiData.payment.amount || apiData.payment.paid_amount || 0;
+      }
+      if (apiData.transaction) {
+        raw = apiData.transaction.amount || 0;
+      }
+      if (apiData.data) {
+        raw = apiData.data.amount || apiData.data.order_amount || 0;
+      }
+    }
+
+    // Last resort: search any key containing "amount"
+    if (raw === 0) {
+      for (const key in apiData) {
+        if (typeof apiData[key] === "number" && key.toLowerCase().includes("amount")) {
+          raw = apiData[key];
+          break;
+        }
+      }
+    }
+
+    return raw;
   };
 
-  // Flexible date parsing
+  const displayAmount = () => {
+    const raw = getRawAmount();
+    const num = Number(raw);
+
+    if (isNaN(num) || num <= 0) {
+      return "Free";
+    }
+
+    return num.toLocaleString("en-IN");
+  };
+
+  const showRupee = () => {
+    const raw = getRawAmount();
+    const num = Number(raw);
+    return !isNaN(num) && num > 0;
+  };
+
   const formatDate = () => {
     const dateStr =
       apiData.date_updated ||
@@ -90,7 +153,8 @@ export default function PaymentSuccess() {
       apiData["last-updated"] ||
       apiData.date_created ||
       apiData["date-created"] ||
-      apiData.created_at;
+      apiData.created_at ||
+      apiData.payment_date;
 
     return dateStr
       ? new Date(dateStr).toLocaleDateString("en-IN", {
@@ -140,11 +204,9 @@ export default function PaymentSuccess() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 flex items-center justify-center px-4 py-6 sm:py-10">
       <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-10 max-w-md sm:max-w-lg w-full border border-amber-200/60 overflow-hidden">
-        {/* Subtle background glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-amber-100/30 via-yellow-100/20 to-amber-50/10 pointer-events-none" />
 
         <div className="relative z-10 text-center space-y-6">
-          {/* Success icon with ring */}
           <div className="relative inline-flex justify-center mb-2">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg ring-8 ring-amber-200/40">
               <CheckCircle className="w-14 h-14 text-white" strokeWidth={3} />
@@ -157,13 +219,15 @@ export default function PaymentSuccess() {
           </h1>
 
           <div className="flex items-center justify-center gap-3 my-6">
-            <IndianRupee className="w-10 h-10 text-amber-800" strokeWidth={2.5} />
+            {showRupee() && (
+              <IndianRupee className="w-10 h-10 text-amber-800" strokeWidth={2.5} />
+            )}
             <span className="text-5xl sm:text-6xl font-black text-amber-900 tracking-tight">
               {displayAmount()}
             </span>
           </div>
 
-          {/* Greeting / user pill */}
+          {/* Greeting pill */}
           <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/80 rounded-full border border-amber-300 shadow-sm mx-auto">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
               <User className="w-5 h-5 text-amber-800" />
@@ -180,7 +244,7 @@ export default function PaymentSuccess() {
             <DetailCard
               icon={CreditCard}
               label="Method"
-              value={apiData.payment_method || apiData.gateway || "UPI / Card"}
+              value={apiData.payment_method || apiData.gateway || apiData.mode || "UPI / Card"}
             />
             <DetailCard
               icon={CheckCircle}
@@ -191,7 +255,6 @@ export default function PaymentSuccess() {
             />
           </div>
 
-          {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <button
               onClick={() => navigate("/dashboard")}
@@ -219,7 +282,6 @@ export default function PaymentSuccess() {
   );
 }
 
-// Reusable small card component
 function DetailCard({ icon: Icon, label, value, isMono = false, color = "", bold = false }) {
   return (
     <div className="bg-white/80 rounded-xl p-4 border border-blue-100 shadow-sm flex items-start gap-3">
