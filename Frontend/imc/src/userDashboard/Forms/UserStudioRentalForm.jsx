@@ -281,7 +281,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     if (totalAmount <= 0) throw new Error("Invalid amount");
 
     const payload = {
-      amount: totalAmount * 100,           // many gateways expect paise / smallest unit
+      amount: totalAmount ,           // many gateways expect paise / smallest unit
       customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
       email: formData.email.trim() || "booking@studio.com",
       phone: formData.mobile.trim(),
