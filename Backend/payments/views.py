@@ -4,13 +4,15 @@ import requests
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 from .utils import get_headers
 from .models import Payment
 
 BASE_URL = "https://smartgateway.hdfcuat.bank.in"
 
 
+# =====================================================
+# GENERATE ORDER ID
+# =====================================================
 def generate_order_id():
     return f"IMC{uuid.uuid4().hex[:16]}"
 
@@ -20,6 +22,7 @@ def generate_order_id():
 # =====================================================
 @csrf_exempt
 def create_payment(request):
+
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
@@ -61,24 +64,34 @@ def create_payment(request):
         )
 
         data["order_id"] = order_id
-        return JsonResponse(data, safe=False)
+        return JsonResponse(data)
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
 
 # =====================================================
-# 2️⃣ RETURN URL (AUTO VERIFY)
+# 2️⃣ RETURN URL (FIXED VERSION)
 # =====================================================
 @csrf_exempt
 def payment_return(request):
 
-    order_id = request.POST.get("order_id")
+    # Handle both POST & GET
+    order_id = (
+        request.POST.get("order_id") or
+        request.GET.get("order_id") or
+        request.POST.get("id") or
+        request.GET.get("id")
+    )
+
+    print("POST DATA:", request.POST)
+    print("GET DATA:", request.GET)
+    print("ORDER ID FOUND:", order_id)
 
     if not order_id:
         return redirect("https://www.imcpune.in/payment-success?status=failed")
 
-    # 🔥 Verify payment after redirect
+    # Verify payment immediately
     verify_payment(order_id)
 
     return redirect(
@@ -87,7 +100,7 @@ def payment_return(request):
 
 
 # =====================================================
-# 3️⃣ VERIFY PAYMENT (CORE LOGIC)
+# 3️⃣ VERIFY PAYMENT (CORE)
 # =====================================================
 def verify_payment(order_id):
     try:
@@ -114,6 +127,7 @@ def verify_payment(order_id):
             }
         )
 
+        print("UPDATED STATUS:", status_value)
         return status_value
 
     except Exception as e:
@@ -122,10 +136,11 @@ def verify_payment(order_id):
 
 
 # =====================================================
-# 4️⃣ CHECK STATUS (MANUAL API)
+# 4️⃣ MANUAL STATUS CHECK API
 # =====================================================
 @csrf_exempt
 def check_status(request):
+
     order_id = request.GET.get("order_id")
 
     if not order_id:
@@ -140,10 +155,11 @@ def check_status(request):
 
 
 # =====================================================
-# 5️⃣ WEBHOOK (MOST IMPORTANT)
+# 5️⃣ WEBHOOK (IMPORTANT)
 # =====================================================
 @csrf_exempt
 def payment_webhook(request):
+
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
@@ -152,6 +168,8 @@ def payment_webhook(request):
 
         order_id = data.get("order_id")
         status_value = data.get("status")
+
+        print("WEBHOOK RECEIVED:", data)
 
         if order_id:
             Payment.objects.update_or_create(
@@ -178,6 +196,7 @@ def payment_webhook(request):
 # =====================================================
 @csrf_exempt
 def refund_payment(request):
+
     order_id = request.GET.get("order_id")
 
     if not order_id:
@@ -196,13 +215,7 @@ def refund_payment(request):
             timeout=30
         )
 
-        return JsonResponse(res.json(), safe=False)
+        return JsonResponse(res.json())
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
-
-
-
-
-
-localhost:8000

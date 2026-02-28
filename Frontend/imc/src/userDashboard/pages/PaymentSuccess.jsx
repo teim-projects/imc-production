@@ -14,13 +14,18 @@ import {
   CreditCard,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:8000"; // ← use env variable in production
+const API_BASE = "https://www.imcpune.in";
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const orderId = searchParams.get("order_id") || searchParams.get("OrderId");
+  // Handle different possible query param names for order ID
+  const orderId =
+    searchParams.get("order_id") ||
+    searchParams.get("OrderId") ||
+    searchParams.get("id") ||
+    searchParams.get("OrderID");
 
   const [loading, setLoading] = useState(true);
   const [paymentData, setPaymentData] = useState(null);
@@ -28,14 +33,14 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     if (!orderId) {
-      setError("Order ID is missing from URL");
+      setError("Order ID is missing from URL. Please try again or contact support.");
       setLoading(false);
       return;
     }
 
     const verifyPayment = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/api/payments/check_status/`, {
+        const res = await axios.get(`${API_BASE}/api/payments/check-status/`, {
           params: { order_id: orderId },
         });
 
@@ -43,10 +48,11 @@ export default function PaymentSuccess() {
         setLoading(false);
       } catch (err) {
         console.error("Payment verification failed:", err);
-        setError(
+        const errorMsg =
           err.response?.data?.message ||
-            "Failed to verify payment status. Please contact support."
-        );
+          err.response?.data?.error ||
+          "Failed to verify payment. Please contact support.";
+        setError(errorMsg);
         setLoading(false);
       }
     };
@@ -54,46 +60,60 @@ export default function PaymentSuccess() {
     verifyPayment();
   }, [orderId]);
 
+  // Normalize data access (handles different possible response structures)
   const apiData = paymentData?.data || paymentData || {};
 
+  // Flexible success condition
   const isSuccess =
-    paymentData?.gateway_status === "CHARGED" ||
-    paymentData?.success === true ||
-    apiData?.status === "CHARGED";
+    apiData.status === "CHARGED" ||
+    apiData.gateway_status === "CHARGED" ||
+    apiData.success === true ||
+    apiData.payment_status === "success";
 
+  // Safe amount formatting
   const displayAmount = () => {
     const raw =
       apiData.amount ||
       apiData.effective_amount ||
       apiData.net_amount ||
-      apiData.txnx_amount ||
+      apiData.txn_amount ||
+      apiData.total_amount ||
       0;
     return Number(raw).toLocaleString("en-IN");
   };
 
+  // Flexible date parsing
   const formatDate = () => {
     const dateStr =
-      apiData["last-updated"] ||
       apiData.date_updated ||
-      apiData["date-created"];
+      apiData["date-updated"] ||
+      apiData["last-updated"] ||
+      apiData.date_created ||
+      apiData["date-created"] ||
+      apiData.created_at;
+
     return dateStr
       ? new Date(dateStr).toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
           year: "numeric",
         })
-      : new Date().toLocaleDateString("en-IN");
+      : new Date().toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-cream-50 flex items-center justify-center px-4">
-        <div className="flex flex-col items-center gap-4">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-5">
           <div className="relative">
-            <Loader2 className="w-12 h-12 animate-spin text-amber-700" />
-            <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-500 animate-pulse" />
+            <Loader2 className="w-14 h-14 animate-spin text-amber-700" />
+            <Sparkles className="absolute -top-1 -right-1 w-6 h-6 text-yellow-500 animate-pulse" />
           </div>
-          <p className="text-lg font-semibold text-amber-800">Verifying payment...</p>
+          <p className="text-lg font-semibold text-amber-800">Verifying your payment...</p>
         </div>
       </div>
     );
@@ -102,15 +122,13 @@ export default function PaymentSuccess() {
   if (error || !isSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-50 flex items-center justify-center px-4 py-8">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl p-6 sm:p-8 max-w-md w-full text-center border border-red-200">
-          <AlertCircle className="w-16 h-16 text-red-600 mx-auto mb-5" />
-          <h2 className="text-2xl sm:text-3xl font-bold text-red-800 mb-4">Payment Failed</h2>
-          <p className="text-gray-700 mb-6 leading-relaxed">
-            {error || "We couldn't process your transaction."}
-          </p>
+        <div className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-6 sm:p-10 max-w-md w-full text-center border border-red-100">
+          <AlertCircle className="w-20 h-20 text-red-600 mx-auto mb-6" />
+          <h2 className="text-3xl font-bold text-red-800 mb-4">Payment Failed</h2>
+          <p className="text-gray-700 mb-8 leading-relaxed">{error || "Transaction could not be verified."}</p>
           <button
             onClick={() => navigate("/dashboard")}
-            className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold rounded-xl shadow-lg transition-all text-base"
+            className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold rounded-xl shadow-lg transition-all"
           >
             Return to Dashboard
           </button>
@@ -120,119 +138,102 @@ export default function PaymentSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-cream-50 flex items-center justify-center px-4 py-6 sm:py-8">
-      <div
-        className="relative bg-gradient-to-b from-cream-50 to-amber-50/60 backdrop-blur-xl rounded-2xl shadow-xl p-6 max-w-sm sm:max-w-md w-full border border-amber-200/40"
-        style={{
-          background: "linear-gradient(135deg, rgba(255,251,235,0.95), rgba(255,245,220,0.90))",
-        }}
-      >
-        {/* Subtle glow */}
-        <div className="absolute inset-0 rounded-2xl pointer-events-none bg-gradient-to-br from-amber-300/5 via-yellow-300/5 to-amber-300/5 animate-gradient-x"></div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-yellow-50 to-amber-100 flex items-center justify-center px-4 py-6 sm:py-10">
+      <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-6 sm:p-10 max-w-md sm:max-w-lg w-full border border-amber-200/60 overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-100/30 via-yellow-100/20 to-amber-50/10 pointer-events-none" />
 
-        <div className="relative z-10 text-center space-y-5">
-
-          {/* Success icon */}
-          <div className="relative inline-flex justify-center mb-3">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 flex items-center justify-center shadow-md ring-4 ring-amber-200/30">
-              <CheckCircle className="w-12 h-12 text-white" strokeWidth={3} />
+        <div className="relative z-10 text-center space-y-6">
+          {/* Success icon with ring */}
+          <div className="relative inline-flex justify-center mb-2">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg ring-8 ring-amber-200/40">
+              <CheckCircle className="w-14 h-14 text-white" strokeWidth={3} />
             </div>
-            <Sparkles className="absolute -top-3 -right-3 w-6 h-6 text-yellow-400 animate-pulse" />
+            <Sparkles className="absolute -top-2 -right-2 w-8 h-8 text-yellow-400 animate-pulse" />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-800 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-800 bg-clip-text text-transparent">
             Payment Successful!
           </h1>
 
-          <div className="flex items-center justify-center gap-2 my-5">
-            <IndianRupee className="w-8 h-8 text-amber-800" strokeWidth={2.5} />
-            <span className="text-5xl sm:text-6xl font-black text-amber-900 tracking-tighter">
+          <div className="flex items-center justify-center gap-3 my-6">
+            <IndianRupee className="w-10 h-10 text-amber-800" strokeWidth={2.5} />
+            <span className="text-5xl sm:text-6xl font-black text-amber-900 tracking-tight">
               {displayAmount()}
             </span>
           </div>
 
-          {/* Greeting pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 rounded-full border border-amber-300 shadow-sm mx-auto">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
-              <User className="w-4 h-4 text-amber-800" />
+          {/* Greeting / user pill */}
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-white/80 rounded-full border border-amber-300 shadow-sm mx-auto">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
+              <User className="w-5 h-5 text-amber-800" />
             </div>
-            <span className="font-bold text-amber-900 text-sm">
+            <span className="font-bold text-amber-900">
               {apiData.customer_name || apiData.customer_email?.split("@")[0] || "Thank You!"}
             </span>
           </div>
 
-          {/* Blue-themed detail cards (4 small cards) */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-left">
-                <p className="text-blue-700 text-xs font-medium">Order ID</p>
-                <p className="font-mono font-semibold text-blue-900 text-xs break-all">{orderId}</p>
-              </div>
-            </div>
-
-            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-left">
-                <p className="text-blue-700 text-xs font-medium">Date</p>
-                <p className="font-semibold text-blue-900 text-xs">{formatDate()}</p>
-              </div>
-            </div>
-
-            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-left">
-                <p className="text-blue-700 text-xs font-medium">Method</p>
-                <p className="font-semibold text-blue-900 text-xs">{apiData.payment_method || "UPI / Card"}</p>
-              </div>
-            </div>
-
-            <div className="bg-white/90 rounded-lg p-3 border border-blue-200 shadow-sm flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-              <div className="text-left">
-                <p className="text-blue-700 text-xs font-medium">Status</p>
-                <p className="font-bold text-green-600 text-sm">Success ✓</p>
-              </div>
-            </div>
+          {/* Details grid */}
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 mt-6">
+            <DetailCard icon={CreditCard} label="Order ID" value={orderId} isMono />
+            <DetailCard icon={Calendar} label="Date" value={formatDate()} />
+            <DetailCard
+              icon={CreditCard}
+              label="Method"
+              value={apiData.payment_method || apiData.gateway || "UPI / Card"}
+            />
+            <DetailCard
+              icon={CheckCircle}
+              label="Status"
+              value="Success ✓"
+              color="text-green-600"
+              bold
+            />
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <button
               onClick={() => navigate("/dashboard")}
-              className="flex-1 py-3 bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 hover:from-amber-700 hover:via-yellow-700 hover:to-amber-800 text-white font-medium rounded-xl shadow-md transition-all hover:shadow-lg text-sm flex items-center justify-center gap-2"
+              className="flex-1 py-4 bg-gradient-to-r from-amber-600 via-amber-700 to-yellow-700 hover:brightness-110 text-white font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
             >
-              <Home size={16} />
-              Dashboard
+              <Home size={18} />
+              Go to Dashboard
             </button>
 
             <button
               onClick={() => navigate("/my-registrations")}
-              className="flex-1 py-3 bg-white border-2 border-amber-600 text-amber-800 font-medium rounded-xl hover:bg-amber-50 transition-all hover:shadow-md text-sm flex items-center justify-center gap-2"
+              className="flex-1 py-4 border-2 border-amber-600 text-amber-800 font-semibold rounded-xl hover:bg-amber-50 transition-all flex items-center justify-center gap-2"
             >
               My Registrations
-              <ArrowRight size={16} />
+              <ArrowRight size={18} />
             </button>
           </div>
 
-          <p className="text-xs text-amber-800 pt-3">
-            Receipt sent to email & mobile
+          <p className="text-sm text-amber-800/80 pt-4">
+            Receipt has been sent to your email & registered mobile
           </p>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Animations */}
-      <style>{`
-        @keyframes gradient-x {
-          0%   { background-position: 0% 50%; }
-          50%  { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient-x {
-          background-size: 200% 200%;
-          animation: gradient-x 16s ease infinite;
-        }
-      `}</style>
+// Reusable small card component
+function DetailCard({ icon: Icon, label, value, isMono = false, color = "", bold = false }) {
+  return (
+    <div className="bg-white/80 rounded-xl p-4 border border-blue-100 shadow-sm flex items-start gap-3">
+      <Icon className={`w-6 h-6 text-blue-600 mt-0.5 flex-shrink-0 ${color}`} />
+      <div className="text-left">
+        <p className="text-blue-700 text-xs font-medium uppercase tracking-wide">{label}</p>
+        <p
+          className={`text-blue-900 text-sm ${isMono ? "font-mono break-all" : ""} ${
+            bold ? "font-bold" : "font-semibold"
+          }`}
+        >
+          {value}
+        </p>
+      </div>
     </div>
   );
 }
