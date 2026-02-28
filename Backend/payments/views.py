@@ -71,12 +71,11 @@ def create_payment(request):
 
 
 # =====================================================
-# 2️⃣ RETURN URL (FIXED VERSION)
+# 2️⃣ RETURN URL
 # =====================================================
 @csrf_exempt
 def payment_return(request):
 
-    # Handle both POST & GET
     order_id = (
         request.POST.get("order_id") or
         request.GET.get("order_id") or
@@ -84,14 +83,9 @@ def payment_return(request):
         request.GET.get("id")
     )
 
-    print("POST DATA:", request.POST)
-    print("GET DATA:", request.GET)
-    print("ORDER ID FOUND:", order_id)
-
     if not order_id:
         return redirect("https://www.imcpune.in/payment-success?status=failed")
 
-    # Verify payment immediately
     verify_payment(order_id)
 
     return redirect(
@@ -100,9 +94,10 @@ def payment_return(request):
 
 
 # =====================================================
-# 3️⃣ VERIFY PAYMENT (CORE)
+# 3️⃣ VERIFY PAYMENT
 # =====================================================
 def verify_payment(order_id):
+
     try:
         res = requests.get(
             f"{BASE_URL}/orders/{order_id}",
@@ -111,7 +106,6 @@ def verify_payment(order_id):
         )
 
         data = res.json()
-
         status_value = data.get("status", "FAILED")
 
         Payment.objects.update_or_create(
@@ -127,7 +121,6 @@ def verify_payment(order_id):
             }
         )
 
-        print("UPDATED STATUS:", status_value)
         return status_value
 
     except Exception as e:
@@ -136,7 +129,7 @@ def verify_payment(order_id):
 
 
 # =====================================================
-# 4️⃣ MANUAL STATUS CHECK API
+# 4️⃣ FULL STATUS CHECK (UPDATED)
 # =====================================================
 @csrf_exempt
 def check_status(request):
@@ -146,16 +139,29 @@ def check_status(request):
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
-    status_value = verify_payment(order_id)
+    # Always verify first (ensures latest status)
+    verify_payment(order_id)
+
+    payment = Payment.objects.filter(order_id=order_id).first()
+
+    if not payment:
+        return JsonResponse({"error": "Payment not found"}, status=404)
 
     return JsonResponse({
-        "order_id": order_id,
-        "status": status_value
+        "success": payment.status == "CHARGED",
+        "order_id": payment.order_id,
+        "status": payment.status,
+        "txn_id": payment.txn_id,
+        "txn_uuid": payment.txn_uuid,
+        "amount": payment.amount,
+        "payment_method": payment.payment_method,
+        "payer_vpa": payment.payer_vpa,
+        "raw_response": payment.raw_response
     })
 
 
 # =====================================================
-# 5️⃣ WEBHOOK (IMPORTANT)
+# 5️⃣ WEBHOOK
 # =====================================================
 @csrf_exempt
 def payment_webhook(request):
@@ -168,8 +174,6 @@ def payment_webhook(request):
 
         order_id = data.get("order_id")
         status_value = data.get("status")
-
-        print("WEBHOOK RECEIVED:", data)
 
         if order_id:
             Payment.objects.update_or_create(
