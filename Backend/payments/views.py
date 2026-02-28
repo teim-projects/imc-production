@@ -36,7 +36,7 @@ def create_payment(request):
         "customer_phone": "9999999999",
         "payment_page_client_id": "hdfcmaster",
         "action": "paymentPage",
-        "return_url": "https://localhost:8000/api/payments/payment/return/",
+        "return_url": "https://www.imcpune.in/api/payments/payment/return/",
         "currency": "INR",
         "description": "IMC Membership Fee"
     }
