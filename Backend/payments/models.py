@@ -24,16 +24,9 @@ class Payment(models.Model):
         default="INITIATED"
     )
 
-    payment_type = models.CharField(
-        max_length=100,
-        default="IMC Service"
-    )
+    payment_type = models.CharField(max_length=100)
 
-    reference_id = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True
-    )
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
 
     payment_method = models.CharField(max_length=50, blank=True, null=True)
 
@@ -46,4 +39,4 @@ class Payment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.order_id} - {self.status}"
+        return f"{self.order_id} - {self.payment_type} - {self.status}"

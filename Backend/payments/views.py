@@ -21,7 +21,7 @@ def generate_order_id():
 
 
 # =====================================================
-# 1️⃣ CREATE PAYMENT
+# CREATE PAYMENT
 # =====================================================
 @csrf_exempt
 def create_payment(request):
@@ -29,18 +29,24 @@ def create_payment(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
+    # Parse JSON
     try:
         body = json.loads(request.body or "{}")
-    except:
+    except Exception:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    # Amount validation
     try:
-        amount = float(body.get("amount", 1))
-    except:
+        amount = float(body.get("amount"))
+    except Exception:
         return JsonResponse({"error": "Invalid amount"}, status=400)
 
-    payment_type = body.get("payment_type") or "IMC Service"
+    # Service validation
+    payment_type = body.get("payment_type")
     reference_id = body.get("reference_id")
+
+    if not payment_type:
+        return JsonResponse({"error": "payment_type is required"}, status=400)
 
     order_id = generate_order_id()
 
@@ -68,15 +74,13 @@ def create_payment(request):
 
         data = response.json()
 
-        Payment.objects.update_or_create(
+        Payment.objects.create(
             order_id=order_id,
-            defaults={
-                "amount": amount,
-                "status": data.get("status", "INITIATED"),
-                "raw_response": data,
-                "payment_type": payment_type,
-                "reference_id": reference_id
-            }
+            amount=amount,
+            payment_type=payment_type,
+            reference_id=reference_id,
+            status=data.get("status", "INITIATED"),
+            raw_response=data
         )
 
         return JsonResponse({
@@ -92,7 +96,7 @@ def create_payment(request):
 
 
 # =====================================================
-# 2️⃣ RETURN URL
+# RETURN URL
 # =====================================================
 @csrf_exempt
 def payment_return(request):
@@ -115,21 +119,19 @@ def payment_return(request):
 
 
 # =====================================================
-# 3️⃣ VERIFY PAYMENT
+# VERIFY PAYMENT
 # =====================================================
 def verify_payment(order_id):
 
     try:
 
-        res = requests.get(
+        response = requests.get(
             f"{BASE_URL}/orders/{order_id}",
             headers=get_headers("imc_user_101"),
             timeout=30
         )
 
-        data = res.json()
-
-        status_value = data.get("status", "FAILED")
+        data = response.json()
 
         payment = Payment.objects.filter(order_id=order_id).first()
 
@@ -137,25 +139,20 @@ def verify_payment(order_id):
 
             payment.txn_id = data.get("txn_id")
             payment.txn_uuid = data.get("txn_uuid")
+            payment.status = data.get("status")
             payment.amount = float(data.get("amount", 0))
-            payment.status = status_value
             payment.payment_method = data.get("payment_method")
             payment.payer_vpa = data.get("payer_vpa")
             payment.raw_response = data
 
             payment.save()
 
-        return status_value
-
     except Exception as e:
-
         print("Verify Error:", str(e))
-
-        return "FAILED"
 
 
 # =====================================================
-# 4️⃣ STATUS CHECK API
+# CHECK STATUS
 # =====================================================
 @csrf_exempt
 def check_status(request):
@@ -187,7 +184,7 @@ def check_status(request):
 
 
 # =====================================================
-# 5️⃣ PAYMENT WEBHOOK
+# PAYMENT WEBHOOK
 # =====================================================
 @csrf_exempt
 def payment_webhook(request):
@@ -218,12 +215,11 @@ def payment_webhook(request):
         return JsonResponse({"message": "Webhook processed"})
 
     except Exception as e:
-
         return JsonResponse({"error": str(e)}, status=500)
 
 
 # =====================================================
-# 6️⃣ REFUND PAYMENT
+# REFUND PAYMENT
 # =====================================================
 @csrf_exempt
 def refund_payment(request):
@@ -250,5 +246,4 @@ def refund_payment(request):
         return JsonResponse(res.json())
 
     except Exception as e:
-
         return JsonResponse({"error": str(e)}, status=500)
