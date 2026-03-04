@@ -3,9 +3,14 @@ import axios from "axios";
 export default function PaymentPage() {
 
   const payNow = async () => {
+
     const res = await axios.post(
       "http://localhost:8000/api/payments/create-payment/",
-      { amount: 1 }
+      {
+        amount: 1,
+        payment_type: "singing_classes",   // NEW
+        reference_id: 1                    // NEW (service id)
+      }
     );
 
     window.location.href = res.data.payment_links.web;
@@ -15,6 +20,7 @@ export default function PaymentPage() {
     <div style={styles.card}>
       <h2>IMC Membership</h2>
       <p>Amount: ₹1.00</p>
+
       <button onClick={payNow} style={styles.btn}>
         Pay Now
       </button>
@@ -31,6 +37,7 @@ const styles = {
     borderRadius: 10,
     boxShadow: "0 0 10px rgba(0,0,0,0.1)"
   },
+
   btn: {
     background: "#28a745",
     color: "white",
