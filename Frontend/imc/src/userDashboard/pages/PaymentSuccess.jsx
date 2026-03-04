@@ -56,7 +56,7 @@ export default function PaymentSuccess() {
         const token = localStorage.getItem("access");
         const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-        const res = await axios.get(`${API_BASE}/api/payments/check-status/`, {
+        const res = await axios.get(`${API_BASE}/payments/check-status/`, {
           params: { order_id: orderId },
           ...config,
         });
