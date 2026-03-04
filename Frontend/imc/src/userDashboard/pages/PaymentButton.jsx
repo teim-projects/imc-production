@@ -39,7 +39,7 @@ export default function PaymentPage() {
   return (
     <div style={styles.card}>
 
-      <h2>Select Service</h2>
+      <h2>IMC Service Payment</h2>
 
       <select
         value={service}
@@ -78,19 +78,16 @@ const styles = {
     borderRadius: 12,
     boxShadow: "0 0 10px rgba(0,0,0,0.1)"
   },
-
   select: {
     width: "100%",
     padding: 10,
     marginTop: 15
   },
-
   input: {
     width: "100%",
     padding: 10,
     marginTop: 15
   },
-
   btn: {
     background: "#28a745",
     color: "white",
