@@ -30,7 +30,7 @@ def create_payment(request):
 
     amount = float(body.get("amount", 1.00))
 
-    # NEW FIELDS
+    # SERVICE DATA FROM FRONTEND
     payment_type = body.get("payment_type")
     reference_id = body.get("reference_id")
 
@@ -46,7 +46,9 @@ def create_payment(request):
         "action": "paymentPage",
         "return_url": "https://www.imcpune.in/api/payments/payment/return/",
         "currency": "INR",
-        "description": "IMC Membership Fee"
+
+        # REAL SERVICE NAME WILL SHOW IN GATEWAY
+        "description": payment_type or "IMC Payment"
     }
 
     try:
@@ -65,8 +67,6 @@ def create_payment(request):
                 "amount": amount,
                 "status": data.get("status", "INITIATED"),
                 "raw_response": data,
-
-                # NEW DATA SAVE
                 "payment_type": payment_type,
                 "reference_id": reference_id
             }
@@ -74,6 +74,7 @@ def create_payment(request):
 
         data["order_id"] = order_id
         data["payment_type"] = payment_type
+        data["reference_id"] = reference_id
 
         return JsonResponse(data)
 
@@ -119,18 +120,17 @@ def verify_payment(order_id):
         data = res.json()
         status_value = data.get("status", "FAILED")
 
-        Payment.objects.update_or_create(
-            order_id=order_id,
-            defaults={
-                "txn_id": data.get("txn_id"),
-                "txn_uuid": data.get("txn_uuid"),
-                "amount": float(data.get("amount", 0)),
-                "status": status_value,
-                "payment_method": data.get("payment_method"),
-                "payer_vpa": data.get("payer_vpa"),
-                "raw_response": data
-            }
-        )
+        payment = Payment.objects.filter(order_id=order_id).first()
+
+        if payment:
+            payment.txn_id = data.get("txn_id")
+            payment.txn_uuid = data.get("txn_uuid")
+            payment.amount = float(data.get("amount", 0))
+            payment.status = status_value
+            payment.payment_method = data.get("payment_method")
+            payment.payer_vpa = data.get("payer_vpa")
+            payment.raw_response = data
+            payment.save()
 
         return status_value
 
@@ -140,7 +140,7 @@ def verify_payment(order_id):
 
 
 # =====================================================
-# 4️⃣ FULL STATUS CHECK (UPDATED)
+# 4️⃣ FULL STATUS CHECK
 # =====================================================
 @csrf_exempt
 def check_status(request):
@@ -150,7 +150,6 @@ def check_status(request):
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
-    # Always verify first (ensures latest status)
     verify_payment(order_id)
 
     payment = Payment.objects.filter(order_id=order_id).first()
@@ -188,19 +187,17 @@ def payment_webhook(request):
         order_id = data.get("order_id")
         status_value = data.get("status")
 
-        if order_id:
-            Payment.objects.update_or_create(
-                order_id=order_id,
-                defaults={
-                    "txn_id": data.get("txn_id"),
-                    "txn_uuid": data.get("txn_uuid"),
-                    "amount": float(data.get("amount", 0)),
-                    "status": status_value,
-                    "payment_method": data.get("payment_method"),
-                    "payer_vpa": data.get("payer_vpa"),
-                    "raw_response": data
-                }
-            )
+        payment = Payment.objects.filter(order_id=order_id).first()
+
+        if payment:
+            payment.txn_id = data.get("txn_id")
+            payment.txn_uuid = data.get("txn_uuid")
+            payment.amount = float(data.get("amount", 0))
+            payment.status = status_value
+            payment.payment_method = data.get("payment_method")
+            payment.payer_vpa = data.get("payer_vpa")
+            payment.raw_response = data
+            payment.save()
 
         return JsonResponse({"message": "Webhook processed"})
 
