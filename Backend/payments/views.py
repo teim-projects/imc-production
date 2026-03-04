@@ -1,11 +1,14 @@
 import uuid
 import json
 import requests
-from django.http import JsonResponse, HttpResponse
+
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
+
 from .utils import get_headers
 from .models import Payment
+
 
 BASE_URL = "https://smartgateway.hdfcuat.bank.in"
 
@@ -26,12 +29,17 @@ def create_payment(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
-    body = json.loads(request.body or "{}")
+    try:
+        body = json.loads(request.body or "{}")
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    amount = float(body.get("amount", 1.00))
+    try:
+        amount = float(body.get("amount", 1))
+    except:
+        return JsonResponse({"error": "Invalid amount"}, status=400)
 
-    # SERVICE DATA FROM FRONTEND
-    payment_type = body.get("payment_type")
+    payment_type = body.get("payment_type") or "IMC Service"
     reference_id = body.get("reference_id")
 
     order_id = generate_order_id()
@@ -46,20 +54,19 @@ def create_payment(request):
         "action": "paymentPage",
         "return_url": "https://www.imcpune.in/api/payments/payment/return/",
         "currency": "INR",
-
-        # REAL SERVICE NAME WILL SHOW IN GATEWAY
-        "description": payment_type or "IMC Payment"
+        "description": payment_type
     }
 
     try:
-        res = requests.post(
+
+        response = requests.post(
             f"{BASE_URL}/session",
             headers=get_headers("imc_user_101"),
             json=payload,
             timeout=30
         )
 
-        data = res.json()
+        data = response.json()
 
         Payment.objects.update_or_create(
             order_id=order_id,
@@ -72,11 +79,13 @@ def create_payment(request):
             }
         )
 
-        data["order_id"] = order_id
-        data["payment_type"] = payment_type
-        data["reference_id"] = reference_id
-
-        return JsonResponse(data)
+        return JsonResponse({
+            "order_id": order_id,
+            "payment_type": payment_type,
+            "reference_id": reference_id,
+            "payment_links": data.get("payment_links"),
+            "status": data.get("status")
+        })
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
@@ -89,10 +98,10 @@ def create_payment(request):
 def payment_return(request):
 
     order_id = (
-        request.POST.get("order_id") or
-        request.GET.get("order_id") or
-        request.POST.get("id") or
-        request.GET.get("id")
+        request.POST.get("order_id")
+        or request.GET.get("order_id")
+        or request.POST.get("id")
+        or request.GET.get("id")
     )
 
     if not order_id:
@@ -111,6 +120,7 @@ def payment_return(request):
 def verify_payment(order_id):
 
     try:
+
         res = requests.get(
             f"{BASE_URL}/orders/{order_id}",
             headers=get_headers("imc_user_101"),
@@ -118,11 +128,13 @@ def verify_payment(order_id):
         )
 
         data = res.json()
+
         status_value = data.get("status", "FAILED")
 
         payment = Payment.objects.filter(order_id=order_id).first()
 
         if payment:
+
             payment.txn_id = data.get("txn_id")
             payment.txn_uuid = data.get("txn_uuid")
             payment.amount = float(data.get("amount", 0))
@@ -130,17 +142,20 @@ def verify_payment(order_id):
             payment.payment_method = data.get("payment_method")
             payment.payer_vpa = data.get("payer_vpa")
             payment.raw_response = data
+
             payment.save()
 
         return status_value
 
     except Exception as e:
+
         print("Verify Error:", str(e))
+
         return "FAILED"
 
 
 # =====================================================
-# 4️⃣ FULL STATUS CHECK
+# 4️⃣ STATUS CHECK API
 # =====================================================
 @csrf_exempt
 def check_status(request):
@@ -167,13 +182,12 @@ def check_status(request):
         "payment_method": payment.payment_method,
         "payer_vpa": payment.payer_vpa,
         "payment_type": payment.payment_type,
-        "reference_id": payment.reference_id,
-        "raw_response": payment.raw_response
+        "reference_id": payment.reference_id
     })
 
 
 # =====================================================
-# 5️⃣ WEBHOOK
+# 5️⃣ PAYMENT WEBHOOK
 # =====================================================
 @csrf_exempt
 def payment_webhook(request):
@@ -182,31 +196,34 @@ def payment_webhook(request):
         return JsonResponse({"error": "Invalid method"}, status=405)
 
     try:
+
         data = json.loads(request.body)
 
         order_id = data.get("order_id")
-        status_value = data.get("status")
 
         payment = Payment.objects.filter(order_id=order_id).first()
 
         if payment:
+
             payment.txn_id = data.get("txn_id")
             payment.txn_uuid = data.get("txn_uuid")
             payment.amount = float(data.get("amount", 0))
-            payment.status = status_value
+            payment.status = data.get("status")
             payment.payment_method = data.get("payment_method")
             payment.payer_vpa = data.get("payer_vpa")
             payment.raw_response = data
+
             payment.save()
 
         return JsonResponse({"message": "Webhook processed"})
 
     except Exception as e:
+
         return JsonResponse({"error": str(e)}, status=500)
 
 
 # =====================================================
-# 6️⃣ REFUND
+# 6️⃣ REFUND PAYMENT
 # =====================================================
 @csrf_exempt
 def refund_payment(request):
@@ -222,6 +239,7 @@ def refund_payment(request):
     }
 
     try:
+
         res = requests.post(
             f"{BASE_URL}/orders/{order_id}/refunds",
             headers=get_headers("imc_user_101"),
@@ -232,4 +250,5 @@ def refund_payment(request):
         return JsonResponse(res.json())
 
     except Exception as e:
+
         return JsonResponse({"error": str(e)}, status=500)
