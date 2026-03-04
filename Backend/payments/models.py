@@ -41,6 +41,10 @@ class Payment(models.Model):
 
     payment_method = models.CharField(max_length=50, blank=True, null=True)
 
+    payment_type = models.CharField(max_length=100, blank=True, null=True)
+    
+    reference_id = models.CharField(max_length=100, blank=True, null=True)
+
     payer_vpa = models.CharField(max_length=100, blank=True, null=True)
 
     raw_response = models.JSONField(blank=True, null=True)
