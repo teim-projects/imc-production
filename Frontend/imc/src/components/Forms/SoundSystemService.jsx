@@ -82,7 +82,7 @@ export default function SoundSystemService() {
       setRows(Array.isArray(list) ? list : []);
       setPage(1);
     } catch (e) {
-      setErr("Failed to fetch records");
+      setErr("Failed to fetch records: " + (e.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function SoundSystemService() {
 
   const save = async () => {
     const payload = {
-      client_name: (form.client_name || "").trim() || "Unnamed",
+      client_name: (form.client_name || "").trim(), // removed "Unnamed" fallback
       email: (form.email || "").trim() || null,
       mobile_no: (form.mobile_no || "").trim() || null,
       event_date: (form.event_date || "").trim() || null,
@@ -121,7 +121,10 @@ export default function SoundSystemService() {
       setTab("VIEW");
     } catch (e) {
       setErr(
-        "Save failed: " + JSON.stringify(e?.response?.data || e.message)
+        "Save failed: " +
+          (e.response?.data
+            ? JSON.stringify(e.response.data, null, 2)
+            : e.message || "Unknown error")
       );
     }
   };
@@ -131,9 +134,13 @@ export default function SoundSystemService() {
     try {
       await api.delete(`${API_URL}${id}/`);
       await fetchAll();
+      setMsg("Deleted successfully");
     } catch (e) {
       setErr(
-        "Delete failed: " + JSON.stringify(e?.response?.data || e.message)
+        "Delete failed: " +
+          (e.response?.data
+            ? JSON.stringify(e.response.data, null, 2)
+            : e.message || "Unknown error")
       );
     }
   };
@@ -143,7 +150,15 @@ export default function SoundSystemService() {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      [r.client_name, r.email, r.mobile_no, r.system_type, r.location, r.mixer_model, r.notes]
+      [
+        r.client_name,
+        r.email,
+        r.mobile_no,
+        r.system_type,
+        r.location,
+        r.mixer_model,
+        r.notes,
+      ]
         .filter(Boolean)
         .map(String)
         .map((x) => x.toLowerCase())
@@ -252,13 +267,14 @@ export default function SoundSystemService() {
               </label>
 
               <label>
-                Contact Number
+                Contact Number*
                 <input
                   id="mobile_no"
                   name="mobile_no"
-                  placeholder="+91XXXXXXXXXX"
+                  placeholder="+91 98765 43210"
                   value={form.mobile_no}
                   onChange={onChange}
+                  required
                 />
               </label>
 
@@ -274,11 +290,11 @@ export default function SoundSystemService() {
               </label>
 
               <label>
-                Address
+                Address / Venue
                 <input
                   id="location"
                   name="location"
-                  placeholder="Street, City"
+                  placeholder="Street, City, PIN"
                   value={form.location}
                   onChange={onChange}
                 />
@@ -325,7 +341,7 @@ export default function SoundSystemService() {
                 <input
                   id="mixer_model"
                   name="mixer_model"
-                  placeholder="e.g., X32 / DJM-900"
+                  placeholder="e.g., X32 / DJM-900 / MG10XU"
                   value={form.mixer_model}
                   onChange={onChange}
                 />
@@ -353,7 +369,7 @@ export default function SoundSystemService() {
                 <input
                   id="speakers_count"
                   name="speakers_count"
-                  placeholder="e.g., 2"
+                  placeholder="e.g., 2 or 4"
                   value={form.speakers_count}
                   onChange={onChange}
                 />
@@ -364,7 +380,7 @@ export default function SoundSystemService() {
                 <input
                   id="microphones_count"
                   name="microphones_count"
-                  placeholder="e.g., 4"
+                  placeholder="e.g., 2 wireless + 2 wired"
                   value={form.microphones_count}
                   onChange={onChange}
                 />
@@ -404,7 +420,7 @@ export default function SoundSystemService() {
                   id="notes"
                   name="notes"
                   rows={3}
-                  placeholder="Any additional details…"
+                  placeholder="Any additional details, special requirements, backup power needed..."
                   value={form.notes}
                   onChange={onChange}
                 />
@@ -429,13 +445,13 @@ export default function SoundSystemService() {
         </form>
       )}
 
-      {/* VIEW TABLE */}
+      {/* VIEW TABLE - UPDATED with Mobile column */}
       {tab === "VIEW" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
             <input
               className="pf-search"
-              placeholder="Search services…"
+              placeholder="Search by name, mobile, email, system..."
               value={q}
               onChange={(e) => {
                 setQ(e.target.value);
@@ -443,12 +459,12 @@ export default function SoundSystemService() {
               }}
             />
             <button className="btn" onClick={fetchAll} disabled={loading}>
-              {loading ? "Refreshing..." : "Refresh"}
+              {loading ? "Refreshing..." : "Refresh List"}
             </button>
           </div>
 
           {loading ? (
-            <div className="loader">Loading…</div>
+            <div className="loader">Loading records...</div>
           ) : filtered.length === 0 ? (
             <div className="empty">No records found.</div>
           ) : (
@@ -457,7 +473,8 @@ export default function SoundSystemService() {
                 <table className="pf-table">
                   <thead>
                     <tr>
-                      <th>Client</th>
+                      <th>Client Name</th>
+                      <th>Mobile</th>
                       <th>Date</th>
                       <th>System</th>
                       <th>Price</th>
@@ -472,6 +489,7 @@ export default function SoundSystemService() {
                         <td style={{ fontWeight: 600 }}>
                           {r.client_name || "-"}
                         </td>
+                        <td>{r.mobile_no || "-"}</td>
                         <td>{r.event_date || "-"}</td>
                         <td>{r.system_type || "-"}</td>
                         <td>{Number(r.price || 0).toFixed(2)}</td>
@@ -506,7 +524,7 @@ export default function SoundSystemService() {
                   Prev
                 </button>
                 <span>
-                  Page {page} / {totalPages}
+                  Page {page} of {totalPages}
                 </span>
                 <button
                   className="mini"
