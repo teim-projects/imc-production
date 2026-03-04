@@ -20,7 +20,7 @@ export default function PaymentPage() {
   const payNow = async () => {
 
     if (!amount) {
-      alert("Please enter amount");
+      alert("Enter amount");
       return;
     }
 
@@ -76,24 +76,19 @@ const styles = {
     padding: 25,
     textAlign: "center",
     borderRadius: 12,
-    boxShadow: "0 0 15px rgba(0,0,0,0.1)",
-    background: "#fff"
+    boxShadow: "0 0 10px rgba(0,0,0,0.1)"
   },
 
   select: {
     width: "100%",
     padding: 10,
-    marginTop: 15,
-    borderRadius: 6,
-    fontSize: 16
+    marginTop: 15
   },
 
   input: {
     width: "100%",
     padding: 10,
-    marginTop: 15,
-    borderRadius: 6,
-    fontSize: 16
+    marginTop: 15
   },
 
   btn: {
@@ -101,9 +96,8 @@ const styles = {
     color: "white",
     padding: "12px 20px",
     border: "none",
-    borderRadius: 6,
-    fontSize: 16,
-    cursor: "pointer",
-    marginTop: 20
+    borderRadius: 5,
+    marginTop: 20,
+    cursor: "pointer"
   }
 };
