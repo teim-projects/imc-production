@@ -14,7 +14,20 @@ import {
   CreditCard,
 } from "lucide-react";
 
-const API_BASE = "https://www.imcpune.in";
+// Use environment variable (consistent with other components)
+const API_BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in";
+
+/* NEW: Payment type mapping */
+const SERVICE_MAP = {
+  studio_booking: "Studio Booking",
+  singing_classes: "Singing Classes",
+  auditorium_music_shows: "Auditorium Music Shows",
+  private_music_events: "Private Music Events",
+  photography_service: "Photography Service",
+  videography_service: "Videography Service",
+  sound_system_service: "Sound System Service",
+  singer_management: "Singer Management",
+};
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
@@ -39,12 +52,17 @@ export default function PaymentSuccess() {
 
     const verifyPayment = async () => {
       try {
+        // Add auth header if user is logged in (important for payment status)
+        const token = localStorage.getItem("access");
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
         const res = await axios.get(`${API_BASE}/api/payments/check-status/`, {
           params: { order_id: orderId },
+          ...config,
         });
 
         setPaymentData(res.data);
-        
+
         // ← Debug: open browser console (F12) to see exact backend response
         console.log("Backend Payment Response:", res.data);
         console.log("All keys in response:", Object.keys(res.data).join(", "));
@@ -52,10 +70,17 @@ export default function PaymentSuccess() {
         setLoading(false);
       } catch (err) {
         console.error("Payment verification failed:", err);
-        const errorMsg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Failed to verify payment. Please contact support.";
+
+        let errorMsg = "Failed to verify payment. Please contact support.";
+
+        if (err.response?.status === 401) {
+          errorMsg = "Session expired or unauthorized. Please log in again.";
+        } else if (err.response?.data?.message || err.response?.data?.error) {
+          errorMsg = err.response.data.message || err.response.data.error;
+        } else if (err.message) {
+          errorMsg = err.message;
+        }
+
         setError(errorMsg);
         setLoading(false);
       }
@@ -71,7 +96,8 @@ export default function PaymentSuccess() {
     apiData.gateway_status === "CHARGED" ||
     apiData.success === true ||
     apiData.payment_status === "success" ||
-    apiData.status?.toUpperCase() === "SUCCESS";
+    apiData.status?.toUpperCase() === "SUCCESS" ||
+    apiData.status?.toUpperCase() === "PAID";
 
   // Super flexible amount extraction
   const getRawAmount = () => {
@@ -126,6 +152,11 @@ export default function PaymentSuccess() {
       }
     }
 
+    // Handle paise → rupees conversion if amount looks too large
+    if (raw > 10000 && Number.isInteger(raw)) {
+      raw = raw / 100;
+    }
+
     return raw;
   };
 
@@ -154,19 +185,39 @@ export default function PaymentSuccess() {
       apiData.date_created ||
       apiData["date-created"] ||
       apiData.created_at ||
-      apiData.payment_date;
+      apiData.payment_date ||
+      apiData.updated_at;
 
-    return dateStr
-      ? new Date(dateStr).toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })
-      : new Date().toLocaleDateString("en-IN", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
+    if (!dateStr) {
+      return new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+
+    try {
+      return new Date(dateStr).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getServiceName = () => {
+    const type = apiData.payment_type || apiData.service_type || "";
+    return (
+      SERVICE_MAP[type] ||
+      type
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()) ||
+      "Service Payment"
+    );
   };
 
   if (loading) {
@@ -190,12 +241,20 @@ export default function PaymentSuccess() {
           <AlertCircle className="w-20 h-20 text-red-600 mx-auto mb-6" />
           <h2 className="text-3xl font-bold text-red-800 mb-4">Payment Failed</h2>
           <p className="text-gray-700 mb-8 leading-relaxed">{error || "Transaction could not be verified."}</p>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold rounded-xl shadow-lg transition-all"
-          >
-            Return to Dashboard
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-semibold rounded-xl shadow-lg transition-all"
+            >
+              Return to Dashboard
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 border border-red-600 text-red-700 font-semibold rounded-xl hover:bg-red-50 transition-all"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -253,6 +312,14 @@ export default function PaymentSuccess() {
               color="text-green-600"
               bold
             />
+            {apiData.transaction_id && (
+              <DetailCard
+                icon={CreditCard}
+                label="Transaction ID"
+                value={apiData.transaction_id}
+                isMono
+              />
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 pt-6">
@@ -293,7 +360,7 @@ function DetailCard({ icon: Icon, label, value, isMono = false, color = "", bold
             bold ? "font-bold" : "font-semibold"
           }`}
         >
-          {value}
+          {value || "—"}
         </p>
       </div>
     </div>

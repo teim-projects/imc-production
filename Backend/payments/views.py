@@ -27,7 +27,12 @@ def create_payment(request):
         return JsonResponse({"error": "Invalid method"}, status=405)
 
     body = json.loads(request.body or "{}")
+
     amount = float(body.get("amount", 1.00))
+
+    # NEW FIELDS
+    payment_type = body.get("payment_type")
+    reference_id = body.get("reference_id")
 
     order_id = generate_order_id()
 
@@ -59,11 +64,17 @@ def create_payment(request):
             defaults={
                 "amount": amount,
                 "status": data.get("status", "INITIATED"),
-                "raw_response": data
+                "raw_response": data,
+
+                # NEW DATA SAVE
+                "payment_type": payment_type,
+                "reference_id": reference_id
             }
         )
 
         data["order_id"] = order_id
+        data["payment_type"] = payment_type
+
         return JsonResponse(data)
 
     except Exception as e:
@@ -156,6 +167,8 @@ def check_status(request):
         "amount": payment.amount,
         "payment_method": payment.payment_method,
         "payer_vpa": payment.payer_vpa,
+        "payment_type": payment.payment_type,
+        "reference_id": payment.reference_id,
         "raw_response": payment.raw_response
     })
 
