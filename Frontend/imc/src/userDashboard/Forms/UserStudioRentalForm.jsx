@@ -282,7 +282,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
     const payload = {
       amount: totalAmount ,           // many gateways expect paise / smallest unit
-      service: "Studio Rental",   // ⭐ VERY IMPORTANT
+      service: "studio_booking",   // ⭐ VERY IMPORTANT
       customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
       email: formData.email.trim() || "booking@studio.com",
       phone: formData.mobile.trim(),
