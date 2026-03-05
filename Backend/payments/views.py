@@ -31,13 +31,28 @@ def generate_order_id():
 @require_POST
 def create_payment(request):
 
+    # JSON read
     try:
-        body = json.loads(request.body)
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
     except:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+        body = {}
 
-    amount = Decimal(str(body.get("amount", "1.00")))
-    service = body.get("service", "studio_booking")
+    # Read amount
+    amount = body.get("amount") or request.POST.get("amount")
+
+    # Read service
+    service = body.get("service") or request.POST.get("service")
+
+    if not amount:
+        return JsonResponse({"error": "Amount is required"}, status=400)
+
+    if not service:
+        return JsonResponse({"error": "Service not received from frontend"}, status=400)
+
+    try:
+        amount = Decimal(str(amount))
+    except:
+        return JsonResponse({"error": "Invalid amount"}, status=400)
 
     print("SERVICE RECEIVED:", service)
 
@@ -196,7 +211,7 @@ def payment_webhook(request):
     return JsonResponse({"message": "Webhook processed"})
 
 
-# REFUND
+# REFUND PAYMENT
 @csrf_exempt
 @require_GET
 def refund_payment(request):
