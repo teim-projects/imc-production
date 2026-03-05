@@ -31,23 +31,13 @@ def generate_order_id():
 @require_POST
 def create_payment(request):
 
-    # JSON body read
     try:
         body = json.loads(request.body)
     except:
-        body = {}
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    # amount
     amount = Decimal(str(body.get("amount", "1.00")))
-
-    # service (JSON + fallback POST)
-    service = body.get("service")
-
-    if not service:
-        service = request.POST.get("service")
-
-    if not service:
-        return JsonResponse({"error": "Service is required"}, status=400)
+    service = body.get("service", "studio_booking")
 
     print("SERVICE RECEIVED:", service)
 
