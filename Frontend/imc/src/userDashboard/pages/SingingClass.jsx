@@ -308,6 +308,8 @@ export default function SingingClassRegistration() {
 
     const payload = {
       amount,
+
+      service: "singing_classes",   // ⭐ VERY IMPORTANT
       customer_id: `SINGING_${form.phone.replace(/\D/g, '') || 'guest'}`,
       email: form.email.trim() || "student@imc.com",
       phone: form.phone.trim(),
