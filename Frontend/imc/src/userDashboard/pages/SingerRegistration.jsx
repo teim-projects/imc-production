@@ -435,6 +435,7 @@ export default function SingerRegistration() {
       // Step 2: Initiate payment
       const paymentPayload = {
         amount: 1000,
+        service: "Annual Membership FEE",   // ⭐ VERY IMPORTANT
         customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, "") || "guest"}`,
         email: "singer@imc.com",
         phone: form.mobile.trim(),
