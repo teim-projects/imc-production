@@ -37,7 +37,7 @@ def create_payment(request):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
     amount = Decimal(str(body.get("amount", "1.00")))
-    service = body.get("service", "studio_booking")
+    service = body.get("service")
 
     print("SERVICE RECEIVED:", service)
 
