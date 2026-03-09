@@ -1,3 +1,5 @@
+# api/payment_views.py
+
 import uuid
 import json
 import requests
@@ -10,6 +12,7 @@ from django.views.decorators.http import require_POST, require_GET
 
 from .utils import get_headers
 from .models import Payment
+from api.models import SingingClass
 
 
 BASE_URL = "https://smartgateway.hdfcuat.bank.in"
@@ -27,7 +30,9 @@ def generate_order_id():
     return f"IMC{uuid.uuid4().hex[:16]}"
 
 
-# CREATE PAYMENT
+# ============================================================
+# CREATE PAYMENT  (SECURE VERSION)
+# ============================================================
 @csrf_exempt
 @require_POST
 def create_payment(request):
@@ -37,21 +42,22 @@ def create_payment(request):
     except:
         body = {}
 
-    amount = body.get("amount") or request.POST.get("amount")
-    service = body.get("service") or request.POST.get("service")
+    registration_id = body.get("registration_id")
+    service = body.get("service")
 
-    if not amount:
-        return JsonResponse({"error": "Amount is required"}, status=400)
+    if not registration_id:
+        return JsonResponse({"error": "registration_id required"}, status=400)
 
     if not service:
-        return JsonResponse({"error": "Service not received from frontend"}, status=400)
+        return JsonResponse({"error": "service required"}, status=400)
 
+    # 🔒 Get amount from DB
     try:
-        amount = Decimal(str(amount))
-    except:
-        return JsonResponse({"error": "Invalid amount"}, status=400)
+        registration = SingingClass.objects.get(id=registration_id)
+    except SingingClass.DoesNotExist:
+        return JsonResponse({"error": "Invalid registration"}, status=400)
 
-    print("SERVICE RECEIVED:", service)
+    amount = registration.fee
 
     order_id = generate_order_id()
 
@@ -96,7 +102,9 @@ def create_payment(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+# ============================================================
 # PAYMENT RETURN
+# ============================================================
 @csrf_exempt
 def payment_return(request):
 
@@ -115,7 +123,9 @@ def payment_return(request):
     return redirect(f"{SUCCESS_REDIRECT_BASE}?order_id={order_id}")
 
 
-# VERIFY PAYMENT (SECURE VERSION)
+# ============================================================
+# VERIFY PAYMENT
+# ============================================================
 def verify_payment(order_id):
 
     try:
@@ -139,6 +149,7 @@ def verify_payment(order_id):
 
         # 🔒 SECURITY CHECK
         if gateway_amount != payment.amount:
+
             print("SECURITY ALERT: Amount mismatch")
 
             payment.status = "FAILED"
@@ -163,7 +174,9 @@ def verify_payment(order_id):
         return "FAILED"
 
 
-# CHECK STATUS
+# ============================================================
+# CHECK PAYMENT STATUS
+# ============================================================
 @csrf_exempt
 @require_GET
 def check_status(request):
@@ -193,7 +206,9 @@ def check_status(request):
     })
 
 
+# ============================================================
 # WEBHOOK
+# ============================================================
 @csrf_exempt
 @require_POST
 def payment_webhook(request):
@@ -216,6 +231,7 @@ def payment_webhook(request):
 
         # 🔒 SECURITY CHECK
         if gateway_amount != payment.amount:
+
             payment.status = "FAILED"
             payment.raw_response = data
             payment.save()
@@ -234,7 +250,9 @@ def payment_webhook(request):
     return JsonResponse({"message": "Webhook processed"})
 
 
-# REFUND PAYMENT
+# ============================================================
+# REFUND
+# ============================================================
 @csrf_exempt
 @require_GET
 def refund_payment(request):
