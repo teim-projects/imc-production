@@ -376,7 +376,6 @@ export default function VideographyForm() {
                         placeholder="e.g. 75000"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                     </div>
                   </div>
                 </div>
@@ -395,7 +394,6 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -410,7 +408,6 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -440,7 +437,6 @@ export default function VideographyForm() {
                         placeholder="City / Venue"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                 </div>
@@ -491,7 +487,7 @@ export default function VideographyForm() {
                 <button
                   onClick={submit}
                   disabled={loading}
-                  className="mt-8 w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
