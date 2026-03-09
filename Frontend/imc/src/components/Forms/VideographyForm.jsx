@@ -8,15 +8,15 @@ import "./Forms.css";
  * VideographyForm:
  * ✅ Add / View tabs
  * ✅ Search + pagination
- * ✅ Payment Method as tag buttons
  * ✅ Event Type dropdown with "Other" → extra name field
+ * Payment Method removed
  */
 
 const BASE_API = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const CANDIDATE_API_URLS = [
   `${BASE_API}/auth/videography/`,
   `${BASE_API}/videography/`,
-  `${BASE_API}//videography-bookings/`,
+  `${BASE_API}/videography-bookings/`, // fixed double slash
 ];
 const PAGE_SIZE = 10;
 
@@ -42,12 +42,11 @@ const initialForm = {
   other_event_name: "",  // shown only when event_type === "Other"
   package_type: "Standard",
   package_price: "",
-  payment_method: "Cash",
   notes: "",
+  // payment_method removed
 };
 
 const packageOptions = ["Standard", "Premium", "Custom"];
-const methodOptions = ["Cash", "Card", "UPI"];
 
 const VideographyForm = ({ onClose, viewOnly = false }) => {
   const [tab, setTab] = useState(viewOnly ? "VIEW" : "ADD");
@@ -122,7 +121,7 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
     if (tab === "VIEW" && urlChecked) fetchRows();
   }, [tab, urlChecked, resolvedURL]);
 
-  // ---------- NEW: Export to CSV ----------
+  // ---------- Export to CSV ----------
   const exportVideographyToCSV = () => {
     if (!filtered.length) {
       alert("No videography bookings to export");
@@ -148,7 +147,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
       "Other Event Name",
       "Package Type",
       "Package Price (₹)",
-      "Payment Method",
       "Notes",
     ];
 
@@ -170,7 +168,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
           r.event_type === "Other" ? `"${(r.other_event_name || "").replace(/"/g, '""')}"` : "-",
           r.package_type || "-",
           r.package_price ? `₹${r.package_price}` : "-",
-          r.payment_method || "-",
           `"${(r.notes || "").replace(/"/g, '""')}"`,
         ];
         return row.join(",");
@@ -198,13 +195,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
     }));
   };
 
-  const toggleMethod = (m) => {
-    setForm((s) => ({
-      ...s,
-      payment_method: s.payment_method === m ? "" : m,
-    }));
-  };
-
   const validate = () => {
     if (!form.project?.trim()) return "Project / Event name is required.";
     if (!form.editor?.trim()) return "Editor is required.";
@@ -212,8 +202,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
 
     const d = Number(form.duration_hours);
     if (Number.isNaN(d) || d <= 0) return "Duration (hours) must be greater than 0.";
-
-  
 
     // Extra validation for "Other" type
     if (form.event_type === "Other") {
@@ -226,7 +214,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
   };
 
   const buildPayload = () => {
-    // ✅ send event_type & other_event_name to backend (model has fields)
     const payload = {
       ...form,
       duration_hours: Number(form.duration_hours) || 0,
@@ -299,13 +286,12 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
       start_time: row.start_time || "",
       duration_hours: row.duration_hours ?? 2,
       location: row.location || "",
-      // ✅ load from backend
       event_type: row.event_type || "",
       other_event_name: row.other_event_name || "",
       package_type: row.package_type || "Standard",
       package_price: row.package_price || "",
-      payment_method: row.payment_method || "Cash",
       notes: row.notes || "",
+      // payment_method removed
     });
   };
 
@@ -338,7 +324,7 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
         r.client_name || r.client || ""
       } ${r.email || ""} ${r.mobile_no || r.contact_number || ""} ${
         r.location || ""
-      } ${r.package_type || ""} ${r.payment_method || ""} ${r.notes || ""} ${
+      } ${r.package_type || ""} ${r.notes || ""} ${
         r.event_type || ""
       } ${r.other_event_name || ""}`
         .toLowerCase()
@@ -556,24 +542,7 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
             </div>
           </section>
 
-          {/* PAYMENT */}
-          <section className="pf-card">
-            <h3>Payment Method</h3>
-            <div className="pf-methods">
-              <div className="pf-tags">
-                {methodOptions.map((m) => (
-                  <button
-                    type="button"
-                    key={m}
-                    className={form.payment_method === m ? "tag active" : "tag"}
-                    onClick={() => toggleMethod(m)}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+          {/* PAYMENT SECTION REMOVED */}
 
           {/* NOTES */}
           <section className="pf-card">
@@ -637,7 +606,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
               {loading ? "Loading..." : "Refresh"}
             </button>
 
-            {/* EXPORT BUTTON ADDED HERE */}
             <button
               className="btn ghost"
               onClick={exportVideographyToCSV}
@@ -666,7 +634,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
                   <th>Date</th>
                   <th>Duration</th>
                   <th>Package</th>
-                  <th>Payment</th>
                   <th className="c">Actions</th>
                 </tr>
               </thead>
@@ -683,7 +650,6 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
                       {r.package_type || "-"}
                       {r.package_price ? ` (₹${r.package_price})` : ""}
                     </td>
-                    <td>{r.payment_method || "-"}</td>
                     <td className="c">
                       <button className="mini" onClick={() => onEdit(r)}>
                         Edit
@@ -699,7 +665,7 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
                 ))}
                 {!pageRows.length && (
                   <tr>
-                    <td colSpan="9" className="c muted">
+                    <td colSpan="8" className="c muted">
                       {loading ? "Loading..." : "No records found."}
                     </td>
                   </tr>
