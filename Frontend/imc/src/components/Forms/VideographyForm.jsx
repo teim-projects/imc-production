@@ -213,7 +213,7 @@ const VideographyForm = ({ onClose, viewOnly = false }) => {
     const d = Number(form.duration_hours);
     if (Number.isNaN(d) || d <= 0) return "Duration (hours) must be greater than 0.";
 
-    if (!form.payment_method) return "Select a payment method.";
+  
 
     // Extra validation for "Other" type
     if (form.event_type === "Other") {

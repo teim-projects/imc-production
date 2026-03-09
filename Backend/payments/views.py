@@ -2,6 +2,7 @@ import uuid
 import json
 import requests
 from decimal import Decimal
+
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
@@ -31,16 +32,12 @@ def generate_order_id():
 @require_POST
 def create_payment(request):
 
-    # JSON read
     try:
         body = json.loads(request.body.decode("utf-8")) if request.body else {}
     except:
         body = {}
 
-    # Read amount
     amount = body.get("amount") or request.POST.get("amount")
-
-    # Read service
     service = body.get("service") or request.POST.get("service")
 
     if not amount:
@@ -72,6 +69,7 @@ def create_payment(request):
     }
 
     try:
+
         resp = requests.post(
             f"{BASE_URL}/session",
             headers=get_headers(CUSTOMER_ID),
@@ -91,6 +89,7 @@ def create_payment(request):
         )
 
         data["order_id"] = order_id
+
         return JsonResponse(data)
 
     except Exception as e:
@@ -116,10 +115,11 @@ def payment_return(request):
     return redirect(f"{SUCCESS_REDIRECT_BASE}?order_id={order_id}")
 
 
-# VERIFY PAYMENT
+# VERIFY PAYMENT (SECURE VERSION)
 def verify_payment(order_id):
 
     try:
+
         resp = requests.get(
             f"{BASE_URL}/orders/{order_id}",
             headers=get_headers(CUSTOMER_ID),
@@ -127,6 +127,7 @@ def verify_payment(order_id):
         )
 
         resp.raise_for_status()
+
         data = resp.json()
 
         payment = Payment.objects.filter(order_id=order_id).first()
@@ -134,9 +135,20 @@ def verify_payment(order_id):
         if not payment:
             return "FAILED"
 
+        gateway_amount = Decimal(str(data.get("amount", "0")))
+
+        # 🔒 SECURITY CHECK
+        if gateway_amount != payment.amount:
+            print("SECURITY ALERT: Amount mismatch")
+
+            payment.status = "FAILED"
+            payment.raw_response = data
+            payment.save()
+
+            return "FAILED"
+
         payment.txn_id = data.get("txn_id")
         payment.txn_uuid = data.get("txn_uuid")
-        payment.amount = Decimal(str(data.get("amount", "0")))
         payment.status = data.get("status", "FAILED")
         payment.payment_method = data.get("payment_method")
         payment.payer_vpa = data.get("payer_vpa")
@@ -199,13 +211,24 @@ def payment_webhook(request):
     payment = Payment.objects.filter(order_id=order_id).first()
 
     if payment:
+
+        gateway_amount = Decimal(str(data.get("amount", "0")))
+
+        # 🔒 SECURITY CHECK
+        if gateway_amount != payment.amount:
+            payment.status = "FAILED"
+            payment.raw_response = data
+            payment.save()
+
+            return JsonResponse({"error": "Amount mismatch"}, status=400)
+
         payment.txn_id = data.get("txn_id")
         payment.txn_uuid = data.get("txn_uuid")
-        payment.amount = Decimal(str(data.get("amount", "0")))
         payment.status = data.get("status", "UNKNOWN")
         payment.payment_method = data.get("payment_method")
         payment.payer_vpa = data.get("payer_vpa")
         payment.raw_response = data
+
         payment.save()
 
     return JsonResponse({"message": "Webhook processed"})
@@ -227,6 +250,7 @@ def refund_payment(request):
     }
 
     try:
+
         resp = requests.post(
             f"{BASE_URL}/orders/{order_id}/refunds",
             headers=get_headers(CUSTOMER_ID),
