@@ -667,8 +667,8 @@ class Videography(models.Model):
 
     # ✅ Event type choices (matching your frontend dropdown)
     EVENT_TYPE_CHOICES = [
-        ("ALL music events", "All music events"),
-
+        ("all music events", "All music events"),
+        
         ("Birthday", "Birthday"),
         ("Other", "Other"),
     ]
@@ -716,7 +716,7 @@ class Videography(models.Model):
         choices=EVENT_TYPE_CHOICES,
         blank=True,
         default="",
-        help_text="Type of event (All music events, , Birthday, Other)",
+        help_text="Type of event (all music events, Birthday, Other)",
     )
 
     # ✅ NEW: Other event name (when event_type = 'Other')
