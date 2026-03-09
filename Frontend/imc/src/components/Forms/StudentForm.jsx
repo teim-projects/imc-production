@@ -33,12 +33,6 @@ const humanizeErr = (err) => {
   return err?.message || "Unknown error";
 };
 
-const PAYMENT_OPTIONS = [
-  { key: "card", label: "Card" },
-  { key: "upi", label: "UPI" },
-  { key: "netbanking", label: "NetBanking" },
-];
-
 export default function SingingClassForm({ onSuccess }) {
   const [tab, setTab] = useState("ADD");
 
@@ -47,7 +41,7 @@ export default function SingingClassForm({ onSuccess }) {
     address1: "", address2: "", city: "", state: "", postal_code: "",
     batch: "",
     reference_by: "", fee: "",
-    payment_method: "", agreed_terms: false,
+    agreed_terms: false,
   });
 
   const [errors, setErrors] = useState({});
@@ -108,14 +102,6 @@ export default function SingingClassForm({ onSuccess }) {
     setErrorBanner("");
   };
 
-  const setPayment = (key) => {
-    setForm((f) => ({
-      ...f,
-      payment_method: f.payment_method === key ? "" : key,
-    }));
-    setErrors((s) => ({ ...s, payment_method: undefined }));
-  };
-
   const validate = () => {
     const e = {};
     if (!form.first_name.trim()) e.first_name = "First name is required";
@@ -124,7 +110,6 @@ export default function SingingClassForm({ onSuccess }) {
     if (!form.batch) e.batch = "Please select a batch";
     if (!form.fee.toString().trim()) e.fee = "Fee is required";
     else if (isNaN(Number(form.fee)) || Number(form.fee) < 0) e.fee = "Fee must be a valid amount";
-    if (!form.payment_method) e.payment_method = "Select a payment option";
     if (!form.agreed_terms) e.agreed_terms = "You must accept terms";
     return e;
   };
@@ -134,7 +119,7 @@ export default function SingingClassForm({ onSuccess }) {
       first_name: "", last_name: "", phone: "", email: "",
       address1: "", address2: "", city: "", state: "", postal_code: "",
       batch: "", reference_by: "", fee: "",
-      payment_method: "", agreed_terms: false,
+      agreed_terms: false,
     });
     setErrors({});
     setErrorBanner("");
@@ -164,7 +149,6 @@ export default function SingingClassForm({ onSuccess }) {
       batch: Number(form.batch),
       reference_by: form.reference_by.trim() || null,
       fee: Number(form.fee),
-      payment_method: form.payment_method,
       agreed_terms: form.agreed_terms,
     };
 
@@ -300,7 +284,6 @@ export default function SingingClassForm({ onSuccess }) {
       batch: row.batch || "",
       reference_by: row.reference_by || "",
       fee: row.fee || "",
-      payment_method: row.payment_method || "",
       agreed_terms: !!row.agreed_terms,
     });
     setTab("ADD");
@@ -421,9 +404,9 @@ export default function SingingClassForm({ onSuccess }) {
             </div>
           </section>
 
-          {/* FEE & PAYMENT */}
+          {/* FEE & TERMS */}
           <section className="pf-card">
-            <h3>Fee & Payment</h3>
+            <h3>Fee & Confirmation</h3>
             <div className="pf-grid">
               <label>
                 Fee (₹)*
@@ -441,24 +424,6 @@ export default function SingingClassForm({ onSuccess }) {
                     Suggested: ₹{selectedBatch.class_fee} (from selected class)
                   </small>
                 )}
-              </label>
-
-              <label>Payment Method*
-                <div className="pf-methods">
-                  <div className="pf-tags">
-                    {PAYMENT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        className={form.payment_method === opt.key ? "tag active" : "tag"}
-                        onClick={() => setPayment(opt.key)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {errors.payment_method && <div className="field-error">{errors.payment_method}</div>}
               </label>
 
               <label className="pf-checkbox-row">
@@ -496,7 +461,6 @@ export default function SingingClassForm({ onSuccess }) {
               {listLoading ? "Refreshing..." : "Refresh"}
             </button>
 
-            {/* EXPORT BUTTON ADDED HERE */}
             <button
               className="btn ghost"
               onClick={exportAdmissionsToCSV}
