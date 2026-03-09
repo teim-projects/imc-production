@@ -29,8 +29,8 @@ const VIDEOGRAPHY_API = `${API_BASE.replace(/\/$/, "")}/auth/videography/`;
 const PACKAGE_TYPES = ["Standard", "Premium", "Custom"];
 
 const eventTypes = [
-  "theatre music events",
-  "private music events",
+  
+  "All music events",
   "Birthday",
   "Other",
 ];
