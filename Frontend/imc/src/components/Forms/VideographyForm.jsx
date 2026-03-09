@@ -22,8 +22,7 @@ const PAGE_SIZE = 10;
 
 // Event types for dropdown
 const eventTypes = [
-  "theatre music events",
-  "private music events",
+  "All music events",
   "Birthday",
   "Other",
 ];
