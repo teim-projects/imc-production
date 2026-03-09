@@ -20,20 +20,13 @@ import {
   Award,
   FileText,
   IndianRupee,
-  Wallet,
-  CreditCard,
-  Building2,
 } from "lucide-react";
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const VIDEOGRAPHY_API = `${API_BASE.replace(/\/$/, "")}/auth/videography/`;
 
-const PACKAGE_TYPES = [
-  "Standard",
-  "Premium",
-  "Custom",
-];
+const PACKAGE_TYPES = ["Standard", "Premium", "Custom"];
 
 const eventTypes = [
   "theatre music events",
@@ -45,7 +38,7 @@ const eventTypes = [
 export default function VideographyForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(""); // ← shows exact backend errors
+  const [errorMsg, setErrorMsg] = useState("");
 
   const [form, setForm] = useState({
     client_name: "",
@@ -61,7 +54,6 @@ export default function VideographyForm() {
     package_price: "",
     event_type: "",
     other_event_name: "",
-    payment_method: "",
     notes: "",
     agreed_terms: false,
   });
@@ -74,10 +66,6 @@ export default function VideographyForm() {
     }));
   };
 
-  const setPaymentMethod = (method) => {
-    setForm((prev) => ({ ...prev, payment_method: method }));
-  };
-
   const validateForm = () => {
     if (!form.client_name.trim()) return "Client name is required";
     if (!form.mobile_no.trim()) return "Mobile number is required";
@@ -85,10 +73,10 @@ export default function VideographyForm() {
     if (!form.project.trim()) return "Project / Event Name is required";
     if (!form.editor.trim()) return "Editor is required";
     if (!form.shoot_date) return "Shoot date is required";
-    if (!form.duration_hours || Number(form.duration_hours) < 1) return "Duration must be at least 1 hour";
+    if (!form.duration_hours || Number(form.duration_hours) < 1)
+      return "Duration must be at least 1 hour";
     if (!form.location.trim()) return "Location is required";
     if (!form.package_type) return "Package type is required";
-    if (!form.payment_method) return "Payment method is required";
     if (form.event_type === "Other" && !form.other_event_name.trim()) {
       return "Please specify the other event name";
     }
@@ -116,13 +104,7 @@ export default function VideographyForm() {
       package_type: form.package_type,
       package_price: form.package_price ? Number(form.package_price) : null,
       event_type: form.event_type || null,
-      // Fixed: never null
       other_event_name: form.other_event_name?.trim() || "",
-      // Fixed: always proper case
-      payment_method: form.payment_method
-        ? form.payment_method.charAt(0).toUpperCase() + form.payment_method.slice(1).toLowerCase()
-        : "Cash",
-      // Fixed: never null
       notes: form.notes?.trim() || "",
     };
 
@@ -164,7 +146,6 @@ export default function VideographyForm() {
       package_price: "",
       event_type: "",
       other_event_name: "",
-      payment_method: "",
       notes: "",
       agreed_terms: false,
     });
@@ -396,6 +377,7 @@ export default function VideographyForm() {
                         placeholder="e.g. 75000"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
+                      <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
                     </div>
                   </div>
                 </div>
@@ -414,6 +396,7 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
+                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -428,6 +411,7 @@ export default function VideographyForm() {
                         onChange={handleChange}
                         className="w-full h-12 px-5 pr-12 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
+                      <Clock className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
                   </div>
                   <div>
@@ -457,41 +441,8 @@ export default function VideographyForm() {
                         placeholder="City / Venue"
                         className="w-full h-12 pl-12 pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
                       />
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
                     </div>
-                  </div>
-                </div>
-
-                {/* Payment Method */}
-                <div className="mt-12">
-                  <label className="block text-gray-700 font-bold mb-4">
-                    Payment Method <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[
-                      { key: "Cash", label: "Cash", icon: IndianRupee },
-                      { key: "Card", label: "Card", icon: CreditCard },
-                      { key: "UPI", label: "UPI", icon: Wallet },
-                    ].map((option) => {
-                      const Icon = option.icon;
-                      const isSelected = form.payment_method === option.key;
-                      return (
-                        <button
-                          key={option.key}
-                          type="button"
-                          onClick={() => setPaymentMethod(option.key)}
-                          className={`p-6 rounded-2xl border-4 transition-all ${
-                            isSelected
-                              ? "border-amber-500 bg-amber-50 shadow-lg"
-                              : "border-gray-200 hover:border-amber-300 bg-gray-50"
-                          }`}
-                        >
-                          <Icon className={`w-12 h-12 mx-auto mb-4 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
-                          <p className={`font-bold ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
-                            {option.label}
-                          </p>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
 
@@ -516,12 +467,23 @@ export default function VideographyForm() {
                     type="checkbox"
                     id="terms"
                     checked={form.agreed_terms}
-                    onChange={(e) => setForm({ ...form, agreed_terms: e.target.checked })}
+                    onChange={(e) =>
+                      setForm({ ...form, agreed_terms: e.target.checked })
+                    }
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed">
-                    I agree to the <span className="font-bold text-amber-700">Terms & Conditions</span> and{" "}
-                    <span className="font-bold text-amber-700">Privacy Policy</span>{" "}
+                  <label
+                    htmlFor="terms"
+                    className="text-gray-700 text-lg leading-relaxed"
+                  >
+                    I agree to the{" "}
+                    <span className="font-bold text-amber-700">
+                      Terms & Conditions
+                    </span>{" "}
+                    and{" "}
+                    <span className="font-bold text-amber-700">
+                      Privacy Policy
+                    </span>{" "}
                     <span className="text-red-500">*</span>
                   </label>
                 </div>
@@ -530,11 +492,11 @@ export default function VideographyForm() {
                 <button
                   onClick={submit}
                   disabled={loading}
-                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
+                  className="mt-8 w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-4 h-4" />
+                      <Loader2 className="animate-spin w-6 h-6" />
                       Submitting...
                     </>
                   ) : (
@@ -561,22 +523,31 @@ export default function VideographyForm() {
                 <li className="flex gap-4">
                   <Video className="w-7 h-7 text-amber-300 flex-shrink-0" />
                   <div>
-                    <strong>4K Cinematic</strong><br />
-                    <span className="text-white/80">Ultra HD footage with color grading</span>
+                    <strong>4K Cinematic</strong>
+                    <br />
+                    <span className="text-white/80">
+                      Ultra HD footage with color grading
+                    </span>
                   </div>
                 </li>
                 <li className="flex gap-4">
                   <Users className="w-7 h-7 text-amber-300 flex-shrink-0" />
                   <div>
-                    <strong>Drone & Gimbal</strong><br />
-                    <span className="text-white/80">Smooth aerial and stabilized shots</span>
+                    <strong>Drone & Gimbal</strong>
+                    <br />
+                    <span className="text-white/80">
+                      Smooth aerial and stabilized shots
+                    </span>
                   </div>
                 </li>
                 <li className="flex gap-4">
                   <Star className="w-7 h-7 text-amber-300 flex-shrink-0" />
                   <div>
-                    <strong>Full Package</strong><br />
-                    <span className="text-white/80">Teaser, highlight & full film</span>
+                    <strong>Full Package</strong>
+                    <br />
+                    <span className="text-white/80">
+                      Teaser, highlight & full film
+                    </span>
                   </div>
                 </li>
               </ul>
@@ -589,9 +560,12 @@ export default function VideographyForm() {
               className="bg-white rounded-3xl p-8 shadow-xl border border-amber-100"
             >
               <Award className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-center mb-3">Professional Quality</h3>
+              <h3 className="text-2xl font-bold text-center mb-3">
+                Professional Quality
+              </h3>
               <p className="text-gray-600 text-center">
-                Trusted by hundreds of clients for cinematic storytelling and emotional films.
+                Trusted by hundreds of clients for cinematic storytelling and
+                emotional films.
               </p>
             </motion.div>
           </div>
