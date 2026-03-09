@@ -126,13 +126,12 @@ By enrolling and making payment, the student/guardian confirms acceptance of all
 ];
 
 // ────────────────────────────────────────────────
-// Smaller Policies Modal — All terms in one scrollable area
+// Smaller Policies Modal
 // ────────────────────────────────────────────────
 function PoliciesModal({ onClose, onAgree }) {
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const scrollRef = useRef(null);
 
-  // Auto-enable if content fits without scrolling
   useEffect(() => {
     const checkIfFits = () => {
       if (scrollRef.current) {
@@ -151,13 +150,11 @@ function PoliciesModal({ onClose, onAgree }) {
   const handleScroll = (e) => {
     const el = e.target;
     const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-
     if (remaining <= 60) {
       setScrolledToBottom(true);
     }
   };
 
-  // Combine all sections into one text block
   const fullPoliciesText = policies
     .map((p) => `${p.title}\n\n${p.content.trim()}`)
     .join("\n\n──────────────────────────────\n\n");
@@ -169,7 +166,6 @@ function PoliciesModal({ onClose, onAgree }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="bg-gray-950 text-white rounded-xl w-full max-w-3xl max-h-[75vh] flex flex-col shadow-2xl border border-amber-800/30 overflow-hidden"
       >
-        {/* Smaller Header */}
         <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl md:text-2xl font-bold">Terms & Conditions</h2>
@@ -185,7 +181,6 @@ function PoliciesModal({ onClose, onAgree }) {
           </button>
         </div>
 
-        {/* Smaller content area */}
         <div
           ref={scrollRef}
           className="p-4 md:p-5 overflow-y-auto flex-1 text-sm leading-relaxed prose prose-invert max-w-none"
@@ -200,7 +195,6 @@ function PoliciesModal({ onClose, onAgree }) {
           </pre>
         </div>
 
-        {/* Smaller footer buttons */}
         <div className="p-4 border-t border-gray-800 bg-gray-900/70 flex justify-center gap-3">
           <button
             onClick={onClose}
@@ -247,7 +241,6 @@ export default function SingingClassRegistration() {
     batch: "",
     reference_by: "",
     fee: "",
-    
   });
 
   useEffect(() => {
@@ -282,15 +275,14 @@ export default function SingingClassRegistration() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  
-
   const validateForm = () => {
     if (!form.first_name.trim()) return "First name is required";
     if (!form.last_name.trim()) return "Last name is required";
     if (!form.phone.trim()) return "Phone number is required";
     if (!form.batch) return "Please select a batch";
-    if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0) return "Valid fee amount is required";
-   
+    if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0)
+      return "Valid fee amount is required";
+
     return null;
   };
 
@@ -308,7 +300,6 @@ export default function SingingClassRegistration() {
       batch: Number(form.batch),
       reference_by: form.reference_by.trim() || null,
       fee: Number(form.fee),
-     
       agreed_terms: true,
       payment_status: "pending",
     };
@@ -320,35 +311,45 @@ export default function SingingClassRegistration() {
     throw new Error("Student creation failed");
   };
 
+  // ─── Your provided initiatePayment function ───
   const initiatePayment = async (studentId) => {
-    const amount = Number(form.fee) || 0;
-    if (amount <= 0) throw new Error("Invalid fee amount");
-
-    const payload = {
-      amount,
-      service: "singing_classes",
-      customer_id: `SINGING_${form.phone.replace(/\D/g, "") || "guest"}`,
-      email: form.email.trim() || "student@imc.com",
-      phone: form.phone.trim(),
-      description: `Singing Class Enrollment - Batch ${selectedBatch?.class_name || "Selected"}`,
-      return_url: `${window.location.origin}/payment-callback?type=singing-class&phone=${form.phone.trim()}&student_id=${studentId}`,
-    };
-
-    const paymentRes = await axios.post(PAYMENT_CREATE_API, payload);
-    const pData = paymentRes.data;
-    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
-
-    if (paymentUrl) {
-      window.location.href = paymentUrl;
-      return;
+    try {
+      // 🔒 Secure payload (NO amount)
+      const payload = {
+        registration_id: studentId,
+        service: "singing_classes"
+      };
+      const paymentRes = await axios.post(
+        PAYMENT_CREATE_API,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      const pData = paymentRes.data;
+      const paymentUrl =
+        pData?.payment_url ||
+        pData?.payment_links?.web ||
+        pData?.redirect_url;
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+        return;
+      }
+      if (pData?.success === true) {
+        setSuccess(true);
+        return;
+      }
+      throw new Error("Payment initiation failed - no redirect URL");
+    } catch (error) {
+      console.error("Payment error:", error);
+      throw new Error(
+        error.response?.data?.error ||
+        error.message ||
+        "Payment initiation failed"
+      );
     }
-
-    if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
-      setSuccess(true);
-      return;
-    }
-
-    throw new Error("Payment initiation failed - no redirect URL");
   };
 
   const handleEnrollClick = () => {
@@ -367,13 +368,13 @@ export default function SingingClassRegistration() {
     try {
       const studentId = await createStudent();
       await initiatePayment(studentId);
-      setSuccess(true);
+      // Note: success is set inside initiatePayment if no redirect
     } catch (err) {
       console.error("Enrollment/Payment error:", err);
       alert(
         err.response?.data?.detail ||
-          err.message ||
-          "Something went wrong. Please try again."
+        err.message ||
+        "Something went wrong. Please try again."
       );
     } finally {
       setLoading(false);
@@ -396,7 +397,6 @@ export default function SingingClassRegistration() {
       batch: "",
       reference_by: "",
       fee: "",
-     
     });
   };
 
@@ -662,8 +662,6 @@ export default function SingingClassRegistration() {
                     </p>
                   )}
                 </div>
-
-                
 
                 {/* Reference */}
                 <div className="mt-10 md:mt-12">
