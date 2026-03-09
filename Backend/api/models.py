@@ -915,25 +915,27 @@ class Singer(models.Model):
 # ============  Singing (SERVICE)  =========
 # ===============================================
 # api/models.py
+# api/models.py
+
 from django.db import models
 from django.core.validators import MinValueValidator
 
 
 class SingingClass(models.Model):
-    
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
 
-    # 🔥 IMPORTANT FIX
+    # Batch selected by student
     batch = models.ForeignKey(
         "Batch",
         on_delete=models.CASCADE,
         related_name="admissions"
     )
 
+    # Student info
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, blank=True)
     phone = models.CharField(max_length=20)
@@ -942,17 +944,17 @@ class SingingClass(models.Model):
 
     address1 = models.CharField(max_length=255, blank=True)
     address2 = models.CharField(max_length=255, blank=True)
+
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=20, blank=True)
 
+    # Fee stored in DB
     fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
-
-   
 
     agreed_terms = models.BooleanField(default=False)
 
@@ -964,11 +966,19 @@ class SingingClass(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        """
+        Automatically set fee from Batch → Class
+        to prevent amount manipulation
+        """
+
+        if self.batch and self.batch.class_obj:
+            self.fee = self.batch.class_obj.fee
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.batch}"
-
-
-
 
 
 # api/models.py
