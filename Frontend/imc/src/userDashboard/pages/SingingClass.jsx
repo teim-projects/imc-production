@@ -247,7 +247,7 @@ export default function SingingClassRegistration() {
     batch: "",
     reference_by: "",
     fee: "",
-    payment_method: "",
+    
   });
 
   useEffect(() => {
@@ -282,12 +282,7 @@ export default function SingingClassRegistration() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const setPaymentMethod = (method) => {
-    setForm((prev) => ({
-      ...prev,
-      payment_method: prev.payment_method === method ? "" : method,
-    }));
-  };
+  
 
   const validateForm = () => {
     if (!form.first_name.trim()) return "First name is required";
@@ -295,7 +290,7 @@ export default function SingingClassRegistration() {
     if (!form.phone.trim()) return "Phone number is required";
     if (!form.batch) return "Please select a batch";
     if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0) return "Valid fee amount is required";
-    if (!form.payment_method) return "Please select a payment method";
+   
     return null;
   };
 
@@ -313,7 +308,7 @@ export default function SingingClassRegistration() {
       batch: Number(form.batch),
       reference_by: form.reference_by.trim() || null,
       fee: Number(form.fee),
-      payment_method: form.payment_method,
+     
       agreed_terms: true,
       payment_status: "pending",
     };
@@ -401,7 +396,7 @@ export default function SingingClassRegistration() {
       batch: "",
       reference_by: "",
       fee: "",
-      payment_method: "",
+     
     });
   };
 
@@ -668,35 +663,7 @@ export default function SingingClassRegistration() {
                   )}
                 </div>
 
-                {/* Payment Method Selection */}
-                <div className="mt-10 md:mt-12">
-                  <label className="block text-gray-700 font-bold mb-4 md:mb-5">
-                    Choose Payment Method <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                    {PAYMENT_OPTIONS.map((option) => {
-                      const Icon = option.icon;
-                      const isSelected = form.payment_method === option.key;
-                      return (
-                        <button
-                          key={option.key}
-                          type="button"
-                          onClick={() => setPaymentMethod(option.key)}
-                          className={`p-4 sm:p-5 rounded-2xl border-4 transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[110px] sm:min-h-[130px] ${
-                            isSelected
-                              ? "border-amber-500 bg-amber-50 shadow-lg"
-                              : "border-gray-200 hover:border-amber-200 bg-gray-50 hover:shadow"
-                          }`}
-                        >
-                          <Icon className={`w-7 h-7 sm:w-8 sm:h-8 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
-                          <p className={`font-bold text-center text-sm sm:text-base ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
-                            {option.label}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                
 
                 {/* Reference */}
                 <div className="mt-10 md:mt-12">

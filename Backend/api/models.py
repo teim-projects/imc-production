@@ -839,7 +839,7 @@ class Singer(models.Model):
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=100, blank=True, default="")
 
-    rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+   
 
     gender = models.CharField(
         max_length=10,
@@ -852,15 +852,7 @@ class Singer(models.Model):
         default=""
     )
 
-    payment_method = models.CharField(
-        max_length=20,
-        choices=[
-            ('Cash', 'Cash'),
-            ('UPI', 'UPI'),
-            ('Card', 'Card')
-        ],
-        default='Cash'
-    )
+   
 
     active = models.BooleanField(default=True)
 
@@ -928,10 +920,7 @@ from django.core.validators import MinValueValidator
 
 
 class SingingClass(models.Model):
-    class PaymentMethod(models.TextChoices):
-        CARD = "card", "Card"
-        UPI = "upi", "UPI"
-        NETBANKING = "netbanking", "NetBanking"
+    
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -963,10 +952,7 @@ class SingingClass(models.Model):
         validators=[MinValueValidator(0)]
     )
 
-    payment_method = models.CharField(
-        max_length=20,
-        choices=PaymentMethod.choices,
-    )
+   
 
     agreed_terms = models.BooleanField(default=False)
 
