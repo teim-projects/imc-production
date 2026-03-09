@@ -801,7 +801,7 @@ export default function SingerRegistration() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
-                      Annual Fee (₹ per event)
+                      Annual Fee
                     </label>
                     <input
                       type="text"
