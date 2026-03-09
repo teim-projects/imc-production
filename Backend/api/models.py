@@ -399,8 +399,7 @@ class PhotographyBooking(models.Model):
     equipment_needed = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    # Payment
-    payment_methods_list = models.JSONField(default=list)
+    
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -658,11 +657,7 @@ from django.conf import settings  # remove if you don't want user FK
 
 
 class Videography(models.Model):
-    PAYMENT_CHOICES = [
-        ("Cash", "Cash"),
-        ("Card", "Card"),
-        ("UPI", "UPI"),
-    ]
+   
 
     PACKAGE_CHOICES = [
         ("Standard", "Standard"),
@@ -731,11 +726,7 @@ class Videography(models.Model):
         help_text="Custom event name when event_type is 'Other'",
     )
 
-    payment_method = models.CharField(
-        max_length=10,
-        choices=PAYMENT_CHOICES,
-        default="Cash",
-    )
+   
 
     notes = models.TextField(blank=True)
 
@@ -771,11 +762,7 @@ class Videography(models.Model):
 # ===============================================
 
 class Sound(models.Model):
-    PAYMENT_CHOICES = [
-        ("Cash", "Cash"),
-        ("Card", "Card"),
-        ("UPI", "UPI"),
-    ]
+   
     client_name = models.CharField(max_length=120)
     email = models.EmailField(blank=True, null=True)
     mobile_no = models.CharField(max_length=20, blank=True, null=True)
@@ -788,7 +775,7 @@ class Sound(models.Model):
     mixer_model = models.CharField(max_length=120, blank=True, null=True)
 
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default="Cash")
+    
     notes = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(default=timezone.now)
