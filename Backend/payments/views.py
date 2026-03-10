@@ -67,7 +67,7 @@ def create_payment(request):
         # =========================================
         elif service == "singer_registration":
 
-            amount = Decimal("500.00")
+            amount = Decimal("1000.00")
 
         else:
             return JsonResponse({"error": "Invalid service"}, status=400)
