@@ -650,8 +650,8 @@ export default function SingingClassRegistration() {
                     <input
                       type="number"
                       name="fee"
-                      value={form.fee}
-                      onChange={handleChange}
+                      value={selectedBatch?.class_fee || ""}
+                      readOnly
                       min="0"
                       className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
