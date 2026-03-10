@@ -20,8 +20,8 @@ import {
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const SINGER_API = `${API_BASE}/auth/singer/`;
-const PAYMENT_CREATE_API = `${API_BASE}/api/payments/create-payment/`;     // ← corrected path
-const PAYMENT_STATUS_API = `${API_BASE}/api/payments/check-status/`;      // ← corrected path
+const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`;     // ← corrected path
+const PAYMENT_STATUS_API = `${API_BASE}/payments/check-status/`;      // ← corrected path
 
 // Full Policies data (unchanged)
 const policies = [

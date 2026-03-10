@@ -8,53 +8,65 @@ export default function PaymentPage() {
   const [error, setError] = useState(null);
 
   const payNow = async () => {
-    // Basic validation
-    if (!registrationId.trim()) {
+
+    // Registration ID required only for some services
+    if (
+      (service === "singing_classes" || service === "singer_registration") &&
+      !registrationId.trim()
+    ) {
       setError("Please enter Registration ID");
       return;
     }
 
-    // Optional: you can add more validation here (e.g. check if number is valid)
-    const regIdNum = Number(registrationId);
-    if (isNaN(regIdNum) || regIdNum <= 0) {
-      setError("Registration ID must be a positive number");
-      return;
+    let regIdNum = null;
+
+    if (registrationId) {
+      regIdNum = Number(registrationId);
+
+      if (isNaN(regIdNum) || regIdNum <= 0) {
+        setError("Registration ID must be a positive number");
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
 
     try {
+      const payload = {
+        service: service,
+      };
+
+      if (regIdNum) {
+        payload.registration_id = regIdNum;
+      }
+
       const response = await axios.post(
-        "http://localhost:8000/api/payments/create-payment/", // ← change to your production URL later
-        {
-          registration_id: regIdNum,   // send as number
-          service: service,
-        },
+        "http://localhost:8000/api/payments/create-payment/",
+        payload,
         {
           headers: {
             "Content-Type": "application/json",
           },
-          timeout: 15000, // 15 seconds timeout
+          timeout: 15000,
         }
       );
 
       console.log("Payment initiation response:", response.data);
 
-      // Try different possible keys where gateway might return the payment URL
       const paymentUrl =
         response.data?.payment_links?.web ||
         response.data?.payment_url ||
-        response.data?.link ||
         response.data?.redirect_url ||
+        response.data?.link ||
         response.data?.paymentLink;
 
       if (!paymentUrl) {
         throw new Error("Payment URL not found in server response");
       }
 
-      // Redirect user to payment gateway
       window.location.href = paymentUrl;
+
     } catch (err) {
       console.error("Payment initiation failed:", err);
 
@@ -84,7 +96,11 @@ export default function PaymentPage() {
           <label style={styles.label}>Select Service</label>
           <select
             value={service}
-            onChange={(e) => setService(e.target.value)}
+            onChange={(e) => {
+              setService(e.target.value);
+              setRegistrationId("");
+              setError(null);
+            }}
             style={styles.select}
             disabled={loading}
           >
@@ -94,21 +110,24 @@ export default function PaymentPage() {
           </select>
         </div>
 
-        {/* Registration ID Input */}
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Registration ID</label>
-          <input
-            type="number"
-            placeholder="Enter your registration ID"
-            value={registrationId}
-            onChange={(e) => {
-              setRegistrationId(e.target.value);
-              setError(null); // clear error on typing
-            }}
-            style={styles.input}
-            disabled={loading}
-          />
-        </div>
+        {/* Registration ID only for some services */}
+        {(service === "singing_classes" ||
+          service === "singer_registration") && (
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Registration ID</label>
+            <input
+              type="number"
+              placeholder="Enter your registration ID"
+              value={registrationId}
+              onChange={(e) => {
+                setRegistrationId(e.target.value);
+                setError(null);
+              }}
+              style={styles.input}
+              disabled={loading}
+            />
+          </div>
+        )}
 
         {/* Pay Button */}
         <button
@@ -123,7 +142,6 @@ export default function PaymentPage() {
           {loading ? "Processing..." : "Pay Now"}
         </button>
 
-        {/* Error Message */}
         {error && <p style={styles.errorMessage}>{error}</p>}
 
         <p style={styles.note}>
@@ -173,7 +191,6 @@ const styles = {
     borderRadius: "8px",
     fontSize: "16px",
     outline: "none",
-    transition: "border-color 0.2s",
   },
   select: {
     width: "100%",
@@ -192,7 +209,6 @@ const styles = {
     color: "white",
     border: "none",
     borderRadius: "8px",
-    transition: "background 0.2s",
   },
   errorMessage: {
     marginTop: "16px",
