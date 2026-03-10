@@ -792,7 +792,9 @@ class SingerSerializer(serializers.ModelSerializer):
         if "gender" in ret and isinstance(ret["gender"], str):
             ret["gender"] = ret["gender"].lower()
 
-    
+        # normalize payment_method (optional but safe)
+        if "payment_method" in ret and isinstance(ret["payment_method"], str):
+            ret["payment_method"] = ret["payment_method"].strip()
 
         # empty string → None (numeric/date fields only)
         for field in ["experience", "rate", "birth_date"]:
