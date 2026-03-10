@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000/";
-const API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
+const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const API = `${BASE}/auth/annual-fees/`;
 
 const api = axios.create();
 
@@ -37,7 +37,7 @@ export default function AnnualFeePage({ singerId }) {
       setFees(Array.isArray(data) ? data : []);
 
     } catch (err) {
-      console.error(err);
+      console.error("Fetch fee error:", err);
     }
 
     setLoading(false);
@@ -51,21 +51,23 @@ export default function AnnualFeePage({ singerId }) {
 
     e.preventDefault();
 
-    if (!amount) return;
+    if (!amount || Number(amount) <= 0) {
+      alert("Enter valid amount");
+      return;
+    }
 
     try {
 
       await api.post(API, {
         singer: singerId,
-        amount: Number(amount),
-        payment_method: "Cash"
+        amount: Number(amount)
       });
 
       setAmount("");
       fetchFees();
 
     } catch (err) {
-      console.error(err);
+      console.error("Add fee error:", err);
       alert("Failed to add fee");
     }
   };
