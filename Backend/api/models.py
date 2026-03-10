@@ -788,8 +788,6 @@ class Sound(models.Model):
 # Temporary alias for legacy imports
 SoundSetup = Sound
 
-
-
 # ===============================================
 # ============  Singer (SERVICE)  =========
 # ===============================================
@@ -816,8 +814,6 @@ def singer_video_upload_to(instance, filename):
 # --------------------------------------------------
 class Singer(models.Model):
 
-    # URL-SAFE STRING PRIMARY KEY
-    # Example: IMC-SM-001
     id = models.CharField(
         max_length=20,
         primary_key=True,
@@ -839,8 +835,6 @@ class Singer(models.Model):
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=100, blank=True, default="")
 
-   
-
     gender = models.CharField(
         max_length=10,
         choices=[
@@ -851,8 +845,6 @@ class Singer(models.Model):
         blank=True,
         default=""
     )
-
-   
 
     active = models.BooleanField(default=True)
 
@@ -867,17 +859,23 @@ class Singer(models.Model):
         ],
     )
 
+    # ⭐ ADD ANNUAL FEE FIELD
+    annual_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+
     created_at = models.DateField(editable=False)
     updated_at = models.DateField(editable=False)
 
     class Meta:
-        # ✅ THIS FIXES ORDER TO 1,2,3,4
-        ordering = ['id']   # Ascending string works because IDs are zero padded (001,002,003)
+        ordering = ['id']
         verbose_name = "Singer"
         verbose_name_plural = "Singers"
 
     # --------------------------------------------------
-    # AUTO ID + DATE LOGIC (UNCHANGED)
+    # AUTO ID + DATE LOGIC
     # --------------------------------------------------
     def save(self, *args, **kwargs):
 
@@ -1058,32 +1056,22 @@ class Batch(models.Model):
 
 
 
-
 from django.db import models
 
 
 class AnnualFee(models.Model):
-    singer = models.ForeignKey(
-        "Singer",
-        on_delete=models.CASCADE,
-        related_name="annual_fees"
+
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
     )
-
-    year = models.PositiveIntegerField()
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-
-    payment_method = models.CharField(
-        max_length=50,
-        default="Cash"
-    )
-
-    remarks = models.TextField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
-        ordering = ["-created_at"]
-        unique_together = ("singer", "year")
+        ordering = ["-updated_at"]
 
     def __str__(self):
-        return f"{self.singer_id} - {self.year} - {self.amount}"
+        return f"Annual Fee ₹{self.amount}"

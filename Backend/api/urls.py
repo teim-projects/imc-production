@@ -72,7 +72,8 @@ router.register(r"auth/sound", SoundViewSet, basename="auth-sound")  # alias
 
 router.register(r"singer", SingerViewSet, basename="singer")
 
-router.register(r"auth/annual-fees", AnnualFeeViewSet, basename="annual-fees")
+router.register("annual-fee", AnnualFeeViewSet, basename="annual-fee")
+
 
 
 
