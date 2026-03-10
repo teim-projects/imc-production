@@ -600,7 +600,7 @@ class SoundViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(qs, many=True).data)
     
 
-    
+   
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -729,6 +729,8 @@ class SingerViewSet(viewsets.ModelViewSet):
             {"success": True, "message": "Singer deleted successfully"},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+
 
 
 

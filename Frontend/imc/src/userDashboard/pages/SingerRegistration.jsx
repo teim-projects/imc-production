@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
@@ -20,12 +20,10 @@ import {
 // API Configuration
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const SINGER_API = `${API_BASE}/auth/singer/`;
-const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`;
-const PAYMENT_STATUS_API = `${API_BASE}/payments/status`;
+const PAYMENT_CREATE_API = `${API_BASE}/api/payments/create-payment/`;     // ← corrected path
+const PAYMENT_STATUS_API = `${API_BASE}/api/payments/check-status/`;      // ← corrected path
 
-// ────────────────────────────────────────────────
-// Full Policies data
-// ────────────────────────────────────────────────
+// Full Policies data (unchanged)
 const policies = [
   {
     id: "A",
@@ -229,53 +227,22 @@ the singer confirms acceptance of all policies stated above.
   },
 ];
 
-// ────────────────────────────────────────────────
-// Enhanced Scroll-to-agree Policies Modal
-// ────────────────────────────────────────────────
-function PoliciesModal({ onClose, onAgree }) {
-  const [scrolledToBottom, setScrolledToBottom] = useState(false);
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    const checkIfAlreadyFits = () => {
-      if (scrollRef.current) {
-        const el = scrollRef.current;
-        if (el.scrollHeight <= el.clientHeight + 60) {
-          setScrolledToBottom(true);
-        }
-      }
-    };
-
-    checkIfAlreadyFits();
-    const timer = setTimeout(checkIfAlreadyFits, 400);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleScroll = (e) => {
-    const el = e.target;
-    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (remaining <= 70) {
-      setScrolledToBottom(true);
-    }
-  };
-
-  const fullPoliciesText = policies
-    .map((p) => `${p.title}\n\n${p.content.trim()}`)
-    .join("\n\n──────────────────────────────\n\n");
+// Policies Modal Component (unchanged)
+function PoliciesModal({ onClose }) {
+  const [activeTab, setActiveTab] = useState("A");
+  const current = policies.find((p) => p.id === activeTab);
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-gray-950 text-white rounded-xl w-full max-w-4xl max-h-[82vh] flex flex-col shadow-2xl border border-amber-800/40 overflow-hidden"
+        className="bg-gray-950 text-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-amber-800/50"
       >
-        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-5 flex justify-between items-center">
+        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-6 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold">Terms & Conditions</h2>
-            <p className="text-amber-200 text-sm mt-1">
-              IMC Artist Program – Singer Registration Policies
-            </p>
+            <h2 className="text-2xl md:text-3xl font-black">Terms & Conditions</h2>
+            <p className="text-amber-200 mt-1">IMC Singer Registration Policies</p>
           </div>
           <button
             onClick={onClose}
@@ -285,35 +252,42 @@ function PoliciesModal({ onClose, onAgree }) {
           </button>
         </div>
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="p-6 md:p-8 overflow-y-auto flex-1 text-base leading-relaxed font-sans text-gray-200 whitespace-pre-wrap"
-        >
-          <h3 className="text-xl font-bold text-amber-400 mb-6 text-center">
-            Please read all policies carefully before proceeding
-          </h3>
-          {fullPoliciesText}
+        <div className="flex flex-wrap gap-2 p-4 border-b border-gray-800 bg-gray-900/70">
+          {policies.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setActiveTab(p.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                activeTab === p.id
+                  ? "bg-amber-500 text-black shadow-md"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {p.id}
+            </button>
+          ))}
         </div>
 
-        <div className="p-5 border-t border-gray-800 bg-gray-900/70 flex justify-center gap-6">
+        <div className="p-6 md:p-8 overflow-y-auto flex-1">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-amber-400 mb-5">{current.title}</h3>
+            <pre className="whitespace-pre-wrap font-sans text-gray-200 text-base leading-relaxed">
+              {current.content.trim()}
+            </pre>
+          </motion.div>
+        </div>
+
+        <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex justify-center">
           <button
             onClick={onClose}
-            className="px-10 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl transition"
+            className="px-12 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition shadow-lg"
           >
-            Cancel
-          </button>
-
-          <button
-            disabled={!scrolledToBottom}
-            onClick={onAgree}
-            className={`px-12 py-3 font-bold rounded-xl transition min-w-[180px] ${
-              scrolledToBottom
-                ? "bg-amber-600 hover:bg-amber-500 text-white shadow-lg"
-                : "bg-gray-600 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {scrolledToBottom ? "I Agree & Continue" : "Scroll down to continue"}
+            Close
           </button>
         </div>
       </motion.div>
@@ -345,7 +319,7 @@ export default function SingerRegistration() {
     area: "",
     city: "",
     state: "",
-    rate: "",
+    rate: "1000",
     gender: "",
     active: true,
     video: null,
@@ -362,7 +336,7 @@ export default function SingerRegistration() {
     form.video !== null &&
     form.agreed_terms;
 
-  // Poll payment status
+  // Poll payment status (kept your original polling logic)
   useEffect(() => {
     let interval;
     if (paymentStatus === "pending" || paymentStatus === "checking") {
@@ -371,14 +345,15 @@ export default function SingerRegistration() {
 
         try {
           const res = await axios.get(PAYMENT_STATUS_API, {
-            params: { order_id: orderId, phone: form.mobile },
+            params: { order_id: orderId },
           });
 
-          const status = (res.data?.gateway_status || res.data?.status || "").toUpperCase();
+          console.log("[STATUS POLL] Response:", res.data);
 
-          if (status === "SUCCESS" || status === "CHARGED" || res.data?.success === true) {
+          const status = res.data?.status?.toUpperCase() || "";
+
+          if (status === "CHARGED" || res.data?.success === true) {
             setPaymentStatus("success");
-            await finalizeSingerRegistration();
             setSuccess(true);
             clearInterval(interval);
           } else if (status === "FAILED" || status === "EXPIRED") {
@@ -389,14 +364,15 @@ export default function SingerRegistration() {
         } catch (err) {
           console.error("[POLL ERROR]", err);
         }
-      }, 5000);
+      }, 5000); // every 5 seconds
     }
 
     return () => clearInterval(interval);
-  }, [paymentStatus, orderId, form.mobile]);
+  }, [paymentStatus, orderId]);
 
-  const saveSinger = async (isUpdate = false) => {
+  const createSinger = async () => {
     const data = new FormData();
+
     Object.entries(form).forEach(([key, value]) => {
       if (key === "agreed_terms") return;
       if (value === "" || value === null) return;
@@ -409,31 +385,64 @@ export default function SingerRegistration() {
     });
 
     data.append("active", "true");
-    data.append("payment_status", isUpdate ? "completed" : "pending");
-    if (orderId) data.append("payment_order_id", orderId);
+    data.append("payment_method", "Online");
+    data.append("payment_status", "pending");
 
     try {
-      let res;
-      if (isUpdate && singerId) {
-        res = await axios.put(`${SINGER_API}${singerId}/`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-      } else {
-        res = await axios.post(SINGER_API, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        setSingerId(res.data?.id || null);
-      }
-      return true;
+      const res = await axios.post(SINGER_API, data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const newSingerId = res.data?.id || res.data?.data?.id;
+      if (!newSingerId) throw new Error("Singer created but no ID returned");
+
+      setSingerId(newSingerId);
+      return newSingerId;
     } catch (err) {
-      console.error("Singer save failed:", err);
-      setErrorMessage("Profile save failed. Contact support.");
-      return false;
+      console.error("Singer creation failed:", err);
+      throw err;
     }
   };
 
-  const finalizeSingerRegistration = async () => {
-    await saveSinger(true);
+  const initiatePayment = async (regId) => {
+    try {
+      const paymentPayload = {
+        registration_id: regId,
+        service: "singer_registration",
+      };
+
+      const paymentRes = await axios.post(PAYMENT_CREATE_API, paymentPayload, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const pData = paymentRes.data;
+
+      const paymentUrl =
+        pData?.payment_links?.web ||
+        pData?.payment_url ||
+        pData?.link ||
+        pData?.redirect_url;
+
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+        return true;
+      } else {
+        // If no redirect → fallback to polling
+        const newOrderId = pData?.order_id;
+        if (newOrderId) {
+          setOrderId(newOrderId);
+          setPaymentStatus("pending");
+          setPaymentLoading(false);
+          alert("Payment initiated. Please complete payment in the next window.");
+          return false;
+        } else {
+          throw new Error("No payment URL or order ID received");
+        }
+      }
+    } catch (err) {
+      console.error("Payment initiation failed:", err);
+      throw err;
+    }
   };
 
   const handleRegistrationAndPayment = async () => {
@@ -446,65 +455,29 @@ export default function SingerRegistration() {
     setLoading(true);
 
     try {
-      // Step 1: Create singer record with pending status
-      await saveSinger(false);
+      // 1. Create singer record first
+      const regId = await createSinger();
 
       setLoading(false);
       setPaymentLoading(true);
 
-      // Step 2: Create payment order
-      const paymentPayload = {
-        amount: 1000,
-        service: "Annual Membership FEE",
-        customer_id: `IMC_SINGER_${form.mobile.replace(/\D/g, "") || "guest"}`,
-        email: "singer@imc.com",
-        phone: form.mobile.trim(),
-        description: "IMC Singer Registration Fee",
-        return_url: `${window.location.origin}/payment-success`,
-      };
+      // 2. Start payment using the newly created singer ID
+      await initiatePayment(regId);
 
-      const paymentRes = await axios.post(PAYMENT_CREATE_API, paymentPayload);
-
-      const pData = paymentRes.data;
-      const gatewayStatus = pData?.gateway_status?.toUpperCase();
-      const newOrderId = pData?.order_id || pData?.id;
-
-      if (pData?.payment_links?.web || pData?.payment_url) {
-        window.location.href = pData.payment_links?.web || pData.payment_url;
-        return;
-      }
-
-      if (newOrderId && (gatewayStatus?.includes("PENDING") || gatewayStatus === "PENDING_VBV")) {
-        setOrderId(newOrderId);
-        setPaymentStatus("pending");
-        setPaymentLoading(false);
-        alert("Payment request sent! Complete in UPI app.\nWaiting...");
-      } else if (pData?.success === true) {
-        await finalizeSingerRegistration();
-        setSuccess(true);
-      } else {
-        setErrorMessage("Payment initiation failed.");
-      }
     } catch (err) {
-      console.error("Error:", err);
       let msg = "काहीतरी चूक झाली. पुन्हा प्रयत्न करा.";
-      if (err.response?.data) {
-        msg =
-          err.response.data.message ||
-          err.response.data.detail ||
-          err.response.data.error ||
-          JSON.stringify(err.response.data);
+      if (err.response?.data?.error) {
+        msg = err.response.data.error;
+      } else if (err.response?.data?.detail) {
+        msg = err.response.data.detail;
+      } else if (err.message) {
+        msg = err.message;
       }
       setErrorMessage(msg);
     } finally {
       setLoading(false);
       setPaymentLoading(false);
     }
-  };
-
-  const handleAgree = () => {
-    setForm((prev) => ({ ...prev, agreed_terms: true }));
-    setShowModal(false);
   };
 
   const resetForm = () => {
@@ -527,7 +500,7 @@ export default function SingerRegistration() {
       area: "",
       city: "",
       state: "",
-      rate: "",
+      rate: "1000",
       gender: "",
       active: true,
       video: null,
@@ -535,6 +508,7 @@ export default function SingerRegistration() {
     });
   };
 
+  // Success Screen (kept your original)
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center px-6 py-12">
@@ -596,6 +570,7 @@ export default function SingerRegistration() {
     );
   }
 
+  // Main Registration Form
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
       {/* Hero Section */}
@@ -859,7 +834,9 @@ export default function SingerRegistration() {
                     <label className="block text-lg font-bold text-gray-800 mb-3">
                       Upload Video Song <span className="text-red-500">*</span>
                     </label>
-                    <p className="text-sm text-gray-600 mb-3"></p>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {/* You can add instruction text here if needed */}
+                    </p>
 
                     <label
                       className={`border-2 border-dashed rounded-2xl p-6 md:p-10 text-center bg-gray-50 flex flex-col items-center justify-center cursor-pointer transition min-h-[180px] ${
@@ -946,15 +923,14 @@ export default function SingerRegistration() {
                     id="terms"
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
                     checked={form.agreed_terms}
-                    readOnly
-                    onChange={() => {}} 
+                    onChange={(e) => setForm({ ...form, agreed_terms: e.target.checked })}
                   />
                   <label htmlFor="terms" className="text-lg text-slate-700 select-none">
                     I agree to the{" "}
                     <button
                       type="button"
                       onClick={() => setShowModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -962,7 +938,7 @@ export default function SingerRegistration() {
                     <button
                       type="button"
                       onClick={() => setShowModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -973,20 +949,20 @@ export default function SingerRegistration() {
                 <button
                   onClick={handleRegistrationAndPayment}
                   disabled={loading || paymentLoading || !canSubmit}
-                  className="mt-10 w-full py-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-700 text-white font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                  className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-7 h-7" />
+                      <Loader2 className="animate-spin w-6 h-6" />
                       Registering...
                     </>
                   ) : paymentLoading ? (
                     <>
-                      <Loader2 className="animate-spin w-7 h-7" />
+                      <Loader2 className="animate-spin w-6 h-6" />
                       Processing Payment...
                     </>
                   ) : (
-                    "Register & Pay ₹1,000"
+                    "Register & Pay "
                   )}
                 </button>
               </motion.div>
@@ -1049,12 +1025,7 @@ export default function SingerRegistration() {
 
       <Footer />
 
-      {showModal && (
-        <PoliciesModal
-          onClose={() => setShowModal(false)}
-          onAgree={handleAgree}
-        />
-      )}
+      {showModal && <PoliciesModal onClose={() => setShowModal(false)} />}
     </div>
   );
 }

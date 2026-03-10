@@ -11,6 +11,9 @@ const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://localhost:8000/api";
 const API_URL = `${BASE.replace(/\/$/, "")}/auth/singer/`;
 const FEE_API = `${BASE.replace(/\/$/, "")}/auth/annual-fees/`;
 
+// Payment API endpoint (adjust if your payments app URL is different)
+const PAYMENT_API = `${BASE.replace(/\/$/, "")}/payments/create-payment/`;
+
 // Axios instance with auth
 const api = axios.create({ baseURL: API_URL });
 api.interceptors.request.use((cfg) => {
@@ -403,10 +406,23 @@ export default function SingerFormPage({ initialMode = "list" }) {
           formData.append("birth_date", `${yyyy}-${mm}-${dd}`);
         }
 
-        ["city", "state", "area", "mobile", "profession", "education",
-         "achievement", "favourite_singer", "reference_by", "genre",
-         "experience", "gender"].forEach(key => {
-          if (form[key]) formData.append(key, form[key]);
+        [
+          "city",
+          "state",
+          "area",
+          "mobile",
+          "profession",
+          "education",
+          "achievement",
+          "favourite_singer",
+          "reference_by",
+          "genre",
+          "experience",
+          "gender"
+        ].forEach((key) => {
+          if (form[key]) {
+            formData.append(key, form[key]);
+          }
         });
 
         if (form.video instanceof File) {
@@ -414,10 +430,56 @@ export default function SingerFormPage({ initialMode = "list" }) {
         }
 
         response = await api.post("", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: { "Content-Type": "multipart/form-data" }
         });
 
         alert("Singer created successfully.");
+
+        // ────────────────────────────────────────────────
+        //  PAYMENT INTEGRATION - only for NEW singers
+        // ────────────────────────────────────────────────
+        const singerId = response?.data?.id || response?.data?.data?.id;
+
+        if (!singerId) {
+          alert("Singer created but ID not returned from server.");
+          // still allow to continue to list, but no payment
+        } else {
+          alert("Singer created successfully. Redirecting to payment...");
+
+          try {
+            const payRes = await axios.post(
+              PAYMENT_API,
+              {
+                registration_id: singerId,
+                service: "singer_registration"
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json"
+                }
+              }
+            );
+
+            const paymentUrl =
+              payRes.data?.payment_links?.web ||
+              payRes.data?.payment_url ||
+              payRes.data?.link;
+
+            if (!paymentUrl) {
+              alert("Payment link not received from server.");
+            } else {
+              window.location.href = paymentUrl;
+              return; // prevent going back to list
+            }
+          } catch (payErr) {
+            console.error("Payment initiation failed:", payErr);
+            alert(
+              payErr.response?.data?.error ||
+              "Failed to start payment process. Singer is created but payment pending."
+            );
+          }
+        }
+        // ────────────────────────────────────────────────
       }
 
       setSortOption("id_desc");
@@ -950,7 +1012,6 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>{s.city || "—"}</td>
                       <td>₹ {fmtCurrency(s.rate || "1000")}</td>
 
-                      {/* Payment chip - using the defined function */}
                       <td>
                         <span className={`chip ${getPaymentChipClass(s.payment_method)}`}>
                           {s.payment_method || "Cash"}
