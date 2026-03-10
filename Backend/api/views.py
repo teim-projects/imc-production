@@ -1077,12 +1077,14 @@ from .serializers import AnnualFeeSerializer
 class AnnualFeeViewSet(viewsets.ModelViewSet):
 
     serializer_class = AnnualFeeSerializer
-    queryset = AnnualFee.objects.all().order_by("-created_at")
 
     def get_queryset(self):
-        singer = self.request.query_params.get("singer")
 
-        if singer:
-            return AnnualFee.objects.filter(singer_id=singer)
+        queryset = AnnualFee.objects.all().order_by("-created_at")
 
-        return super().get_queryset()
+        singer_id = self.request.query_params.get("singer")
+
+        if singer_id:
+            queryset = queryset.filter(singer_id=singer_id)
+
+        return queryset
