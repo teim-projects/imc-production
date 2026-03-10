@@ -771,31 +771,32 @@ class SoundSerializer(serializers.ModelSerializer):
             return ""  # drop invalid mobile instead of erroring (permissive)
         return v
 
-
 from rest_framework import serializers
 from .models import Singer
 
 
 class SingerSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Singer
         fields = "__all__"
 
-    # ✅ DO NOT mutate raw multipart data
+    # -----------------------------
+    # Clean incoming data
+    # -----------------------------
     def to_internal_value(self, data):
+
         ret = super().to_internal_value(data)
 
-        # frontend-only field (safe to ignore)
+        # frontend-only field (ignore safely)
         ret.pop("agreed_terms", None)
 
         # normalize gender
         if "gender" in ret and isinstance(ret["gender"], str):
             ret["gender"] = ret["gender"].lower()
 
-    
-
-        # empty string → None (numeric/date fields only)
-        for field in ["experience", "rate", "birth_date"]:
+        # convert empty string to None
+        for field in ["experience", "birth_date"]:
             if field in ret and ret[field] in ["", None]:
                 ret[field] = None
 
@@ -904,6 +905,7 @@ from .models import AnnualFee
 
 
 class AnnualFeeSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = AnnualFee
         fields = "__all__"

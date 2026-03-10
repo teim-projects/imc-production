@@ -600,11 +600,9 @@ class SoundViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(qs, many=True).data)
     
 
-    
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
 
 from .models import Singer
 from .serializers import SingerSerializer
@@ -618,6 +616,7 @@ class SingerPermission(permissions.BasePermission):
     GET, POST  → Public
     PUT, PATCH, DELETE → Staff only
     """
+
     def has_permission(self, request, view):
         if request.method in ["GET", "POST"]:
             return True
@@ -628,53 +627,48 @@ class SingerPermission(permissions.BasePermission):
 # ViewSet
 # -----------------------------
 class SingerViewSet(viewsets.ModelViewSet):
-    """
-    BASE URL:
-    /api/auth/singer/
-    """
 
-    # ✅ FIXED ORDER → 1,2,3,4 (Ascending ID)
     queryset = Singer.objects.all().order_by("id")
-
     serializer_class = SingerSerializer
     permission_classes = [SingerPermission]
 
-    # ✅ REQUIRED FOR JSON + FORM + VIDEO
+    # JSON + Form + Video upload
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
-    # 🔍 Search
+    # Search
     filter_backends = [filters.SearchFilter]
     search_fields = ["id", "name", "city", "genre", "mobile"]
 
     # -----------------------------
-    # CREATE (POST)
+    # CREATE
     # -----------------------------
     def create(self, request, *args, **kwargs):
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(
             {"success": True, "data": serializer.data},
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_201_CREATED
         )
 
     # -----------------------------
-    # UPDATE (PUT)
+    # UPDATE
     # -----------------------------
     def update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-        except Singer.DoesNotExist:
-            raise NotFound("Singer not found")
+
+        instance = self.get_object()
 
         serializer = self.get_serializer(
             instance,
             data=request.data,
             partial=False
         )
+
         serializer.is_valid(raise_exception=True)
 
+        # delete old video if new uploaded
         if "video" in request.FILES and instance.video:
             instance.video.delete(save=False)
 
@@ -682,23 +676,22 @@ class SingerViewSet(viewsets.ModelViewSet):
 
         return Response(
             {"success": True, "data": serializer.data},
-            status=status.HTTP_200_OK,
+            status=status.HTTP_200_OK
         )
 
     # -----------------------------
-    # PARTIAL UPDATE (PATCH)
+    # PARTIAL UPDATE
     # -----------------------------
     def partial_update(self, request, *args, **kwargs):
-        try:
-            instance = self.get_object()
-        except Singer.DoesNotExist:
-            raise NotFound("Singer not found")
+
+        instance = self.get_object()
 
         serializer = self.get_serializer(
             instance,
             data=request.data,
             partial=True
         )
+
         serializer.is_valid(raise_exception=True)
 
         if "video" in request.FILES and instance.video:
@@ -708,17 +701,15 @@ class SingerViewSet(viewsets.ModelViewSet):
 
         return Response(
             {"success": True, "data": serializer.data},
-            status=status.HTTP_200_OK,
+            status=status.HTTP_200_OK
         )
 
     # -----------------------------
     # DELETE
     # -----------------------------
     def destroy(self, request, *args, **kwargs):
-        try:
-            singer = self.get_object()
-        except Singer.DoesNotExist:
-            raise NotFound("Singer not found")
+
+        singer = self.get_object()
 
         if singer.video:
             singer.video.delete(save=False)
@@ -727,9 +718,8 @@ class SingerViewSet(viewsets.ModelViewSet):
 
         return Response(
             {"success": True, "message": "Singer deleted successfully"},
-            status=status.HTTP_204_NO_CONTENT,
+            status=status.HTTP_204_NO_CONTENT
         )
-
 
 
 # api/views.py (replace or add)
@@ -1079,19 +1069,20 @@ class BatchViewSet(ModelViewSet):
 
 
 
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
 from .models import AnnualFee
 from .serializers import AnnualFeeSerializer
 
+
 class AnnualFeeViewSet(viewsets.ModelViewSet):
-    queryset = AnnualFee.objects.all().order_by("-created_at")
+
     serializer_class = AnnualFeeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    queryset = AnnualFee.objects.all().order_by("-created_at")
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        singer_id = self.request.query_params.get("singer")
-        if singer_id:
-            qs = qs.filter(singer_id=singer_id)
-        return qs
+        singer = self.request.query_params.get("singer")
 
+        if singer:
+            return AnnualFee.objects.filter(singer_id=singer)
+
+        return super().get_queryset()
