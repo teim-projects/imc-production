@@ -273,6 +273,15 @@ class Studio(models.Model):
         help_text="Price per hour in INR for this booking",
     )
 
+        # ✅ TOTAL AMOUNT STORED IN DATABASE
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True
+    )
+
+
     payment_methods = models.CharField(
         max_length=255,
         blank=True,
@@ -297,6 +306,13 @@ class Studio(models.Model):
             models.Index(fields=["date", "time_slot"]),
             models.Index(fields=["studio_name"]),
         ]
+
+    def save(self, *args, **kwargs):
+        # ✅ Auto calculate total
+        if self.price_per_hour and self.duration:
+            self.total_amount = self.price_per_hour * self.duration
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return f"{self.studio_name} | {self.customer} | {self.date}"
