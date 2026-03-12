@@ -69,8 +69,28 @@ def create_payment(request):
 
             amount = Decimal("1000.00")
 
+
+
+
+        
+
+        # -----------------------------------
+        # STUDIO BOOKING PAYMENT
+        # -----------------------------------
+        elif service == "studio_booking":
+
+            amount = body.get("amount")
+
+            if not amount:
+                return JsonResponse({"error": "amount required"}, status=400)
+
+            amount = Decimal(str(amount))
+
+
         else:
             return JsonResponse({"error": "Invalid service"}, status=400)
+
+
 
     except SingingClass.DoesNotExist:
         return JsonResponse({"error": "Invalid registration id"}, status=400)
