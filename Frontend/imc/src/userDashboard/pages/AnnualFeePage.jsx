@@ -20,7 +20,7 @@ export default function AnnualFeePage({ singerId }) {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fetchFees = async () => {
+  const fetchFees = async () => { 
 
     if (!singerId) return;
 
