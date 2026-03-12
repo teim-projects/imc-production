@@ -1,7 +1,7 @@
 // src/components/Forms/StudioForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Download } from "lucide-react"; // ← added for export icon
+import { Download } from "lucide-react";
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -101,16 +101,14 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     studio_name: "",
     date: "",
     time_slot: "",
-    duration: 1, // default 1 hour
+    duration: 1,
     payment_methods: [],
     custom_price: "",
   };
   const [formData, setFormData] = useState(emptyForm);
 
-  // selectedRange - array of slot strings that the current selection occupies
   const [selectedRange, setSelectedRange] = useState([]);
 
-  // derived selected master and its price
   const selectedStudio = useMemo(
     () => masters.find((m) => String(m.id) === String(formData.studio_id)),
     [masters, formData.studio_id]
@@ -184,11 +182,9 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(() => setPage(1), [search, dateFilter]);
 
-  // === slots at 60-min spacing ===
   const SLOT_STEP_MIN = 60;
   const allSlots = useMemo(() => makeSlots("08:00", "22:00", SLOT_STEP_MIN), []);
 
-  // compute slot availability for the selected date & studio
   const slotsInfo = useMemo(() => {
     const base = allSlots.map((s) => ({ time: s, booked: false, sources: [] }));
 
@@ -208,7 +204,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
         if (!b.time_slot) return false;
         return overlaps(
           slotObj.time,
-          1, // slot step in hours
+          1,
           b.time_slot,
           Number(b.duration) || 1
         );
@@ -414,7 +410,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     return !range.some((t) => slotsInfo.find((s) => s.time === t)?.booked);
   };
 
-  // NEW: Export function for View Bookings tab
   const exportBookingsToCSV = () => {
     if (!filtered.length) {
       alert("No bookings to export");
@@ -433,6 +428,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       "Time",
       "Duration (hrs)",
       "Price (₹/hr)",
+      "Total Amount (₹)",
       "Payment Methods",
       "Contact Number",
       "Email",
@@ -441,6 +437,9 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     const csvRows = [
       headers.join(","),
       ...filtered.map((b, index) => {
+        const price = b.price_per_hour ?? b.price ?? 0;
+        const total = (Number(b.duration) || 0) * Number(price);
+
         const row = [
           index + 1,
           `"${(b.customer || "").replace(/"/g, '""')}"`,
@@ -448,7 +447,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           b.date || "-",
           b.time_slot ? format12(b.time_slot) : "-",
           b.duration || "-",
-          b.price_per_hour || b.price ? `₹${b.price_per_hour || b.price}` : "-",
+          price ? `₹${price}` : "-",
+          total ? `₹${total.toFixed(2)}` : "-",
           Array.isArray(b.payment_methods) && b.payment_methods.length
             ? `"${b.payment_methods.join(", ")}"`
             : "-",
@@ -471,7 +471,9 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     URL.revokeObjectURL(url);
   };
 
-  // ---------- UI (Videography-style, reordered sections) ----------
+  // ────────────────────────────────────────────────
+  // UI
+  // ────────────────────────────────────────────────
   return (
     <div className="pf-wrap">
       {/* HEADER */}
@@ -521,7 +523,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       {/* ADD FORM */}
       {tab === "ADD" && (
         <form onSubmit={handleSubmit} className="pf-form">
-          {/* 1) CUSTOMER DETAILS */}
+          {/* Customer Details */}
           <section className="pf-card">
             <h3>Customer Details</h3>
             <div className="pf-grid">
@@ -535,7 +537,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   required
                 />
               </label>
-
               <label>
                 Contact Number
                 <input
@@ -545,7 +546,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   placeholder="+91XXXXXXXXXX"
                 />
               </label>
-
               <label>
                 Email
                 <input
@@ -556,7 +556,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   placeholder="customer@email.com"
                 />
               </label>
-
               <label>
                 Address
                 <input
@@ -569,7 +568,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
             </div>
           </section>
 
-          {/* 2) STUDIO & PRICING */}
+          {/* Studio & Pricing */}
           <section className="pf-card">
             <h3>Studio & Pricing</h3>
             <div className="pf-grid">
@@ -603,11 +602,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   value={finalPrice}
                   onChange={(e) =>
                     handleChange({
-                      target: {
-                        name: "custom_price",
-                        value: e.target.value,
-                        type: "text",
-                      },
+                      target: { name: "custom_price", value: e.target.value, type: "text" },
                     })
                   }
                   placeholder={masterPrice ? `Master: ₹${masterPrice}` : "Enter price"}
@@ -641,9 +636,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                         type="button"
                         key={m}
                         className={
-                          formData.payment_methods.includes(m)
-                            ? "tag active"
-                            : "tag"
+                          formData.payment_methods.includes(m) ? "tag active" : "tag"
                         }
                         onClick={() => handlePaymentChange(m)}
                       >
@@ -656,7 +649,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
             </div>
           </section>
 
-          {/* 3) SCHEDULE & SLOTS */}
+          {/* Schedule & Slots */}
           <section className="pf-card">
             <h3>Schedule & Slots</h3>
             <div className="pf-grid">
@@ -725,13 +718,9 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                               disabled={booked || !validStart}
                               title={title}
                             >
-                              <div style={{ fontWeight: 800 }}>
-                                {format12(time)}
-                              </div>
+                              <div style={{ fontWeight: 800 }}>{format12(time)}</div>
                               {booked && (
-                                <div style={{ fontSize: 11, color: "#9aa6b2" }}>
-                                  booked
-                                </div>
+                                <div style={{ fontSize: 11, color: "#9aa6b2" }}>booked</div>
                               )}
                               {!booked && !validStart && (
                                 <div style={{ fontSize: 11, color: "#c07" }}>
@@ -748,8 +737,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
               </label>
             </div>
             <p style={{ fontSize: 12, color: "#6b7280", marginTop: 8 }}>
-              Selecting a start time will highlight the full reserved range based on
-              the duration.
+              Selecting a start time will highlight the full reserved range based on the
+              duration.
             </p>
           </section>
 
@@ -782,7 +771,9 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
         </form>
       )}
 
-      {/* VIEW TABLE */}
+      {/* ────────────────────────────────────────────────
+          VIEW TABLE – with Total Amount column
+      ──────────────────────────────────────────────── */}
       {tab === "VIEW" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
@@ -803,7 +794,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
               {loading ? "Refreshing..." : "Refresh"}
             </button>
 
-            {/* EXPORT BUTTON ADDED HERE */}
             <button
               className="btn ghost"
               onClick={exportBookingsToCSV}
@@ -831,51 +821,60 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   <th>Time</th>
                   <th>Duration</th>
                   <th>Price (₹/hr)</th>
+                  <th>Total Amount (₹)</th>
                   <th>Payment</th>
                   <th className="c">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paged.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.customer || "-"}</td>
-                    <td>{s.studio_name || "-"}</td>
-                    <td>{s.date || "-"}</td>
-                    <td>{s.time_slot ? format12(s.time_slot) : "-"}</td>
-                    <td>{s.duration || "-"}</td>
-                    <td>
-                      {s.price_per_hour !== undefined && s.price_per_hour !== null
-                        ? `₹${s.price_per_hour}`
-                        : s.price !== undefined && s.price !== null
-                        ? `₹${s.price}`
-                        : "-"}
-                    </td>
-                    <td>
-                      {Array.isArray(s.payment_methods) && s.payment_methods.length
-                        ? s.payment_methods.join(", ")
-                        : "-"}
-                    </td>
-                    <td className="c">
-                      <button
-                        className="mini"
-                        onClick={() => handleEdit(s)}
-                        disabled={saving}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="mini danger"
-                        onClick={() => handleDelete(s.id)}
-                        disabled={saving}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {paged.map((s) => {
+                  const price = s.price_per_hour ?? s.price ?? 0;
+                  const totalAmount = (Number(s.duration) || 0) * Number(price);
+
+                  return (
+                    <tr key={s.id}>
+                      <td>{s.customer || "-"}</td>
+                      <td>{s.studio_name || "-"}</td>
+                      <td>{s.date || "-"}</td>
+                      <td>{s.time_slot ? format12(s.time_slot) : "-"}</td>
+                      <td>{s.duration || "-"}</td>
+                      <td>
+                        {price > 0 ? `₹${Number(price).toFixed(2)}` : "-"}
+                      </td>
+                      <td>
+                        {totalAmount > 0 ? (
+                          <strong>₹{totalAmount.toFixed(2)}</strong>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td>
+                        {Array.isArray(s.payment_methods) && s.payment_methods.length
+                          ? s.payment_methods.join(", ")
+                          : "-"}
+                      </td>
+                      <td className="c">
+                        <button
+                          className="mini"
+                          onClick={() => handleEdit(s)}
+                          disabled={saving}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="mini danger"
+                          onClick={() => handleDelete(s.id)}
+                          disabled={saving}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!paged.length && (
                   <tr>
-                    <td colSpan="8" className="c muted">
+                    <td colSpan="9" className="c muted">
                       {loading ? "Loading bookings…" : "No bookings found."}
                     </td>
                   </tr>
