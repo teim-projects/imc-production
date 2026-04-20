@@ -27,6 +27,9 @@ import Contact from "./userDashboard/pages/Contact";
 import SingingClass from "./userDashboard/pages/SingingClass";
 import SingerRegistration from "./userDashboard/pages/SingerRegistration";
 
+/* ================= ADD THIS ================= */
+import Policies from "./userDashboard/pages/Policies";
+
 /* ================= BOOKING PAGES ================= */
 import PrivateBooking from "./userDashboard/pages/PrivateBooking";
 import PhotographyBooking from "./userDashboard/pages/PhotographyBooking";
@@ -90,13 +93,11 @@ function ScrollToTop() {
 
   React.useEffect(() => {
     const forceScrollToTop = () => {
-      // Target window / document
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
 
-      // Target common scroll containers in React apps
-      const selectors = ['#root', '.app-main', 'main', 'body', 'html'];
+      const selectors = ["#root", ".app-main", "main", "body", "html"];
       selectors.forEach((sel) => {
         const el = document.querySelector(sel);
         if (el) {
@@ -105,19 +106,12 @@ function ScrollToTop() {
       });
     };
 
-    // Run immediately
     forceScrollToTop();
 
-    // Run again after short delay (content/images start loading)
     const t1 = setTimeout(forceScrollToTop, 50);
-
-    // Run again after medium delay (most images/content loaded)
     const t2 = setTimeout(forceScrollToTop, 150);
-
-    // Safety net for slow networks / heavy pages
     const t3 = setTimeout(forceScrollToTop, 400);
 
-    // Cleanup
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -131,14 +125,8 @@ function ScrollToTop() {
 function Layout() {
   const location = useLocation();
 
-  // Routes where navbar should be hidden
-  const hideNavbarRoutes = [
-    "/login",
-    "/register",
-    "/forgot-password",
-  ];
+  const hideNavbarRoutes = ["/login", "/register", "/forgot-password"];
 
-  // Also hide for reset password dynamic route
   const isResetPassword =
     location.pathname.startsWith("/password-reset-confirm");
 
@@ -147,9 +135,8 @@ function Layout() {
 
   return (
     <>
-      <ScrollToTop />   {/* Enhanced scroll fix – placed at the very top */}
+      <ScrollToTop />
 
-      {/* ✅ Show navbar only when needed */}
       {!hideNavbar && <Navbar />}
 
       <main className="app-main">
@@ -210,6 +197,7 @@ function Layout() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/classes" element={<SingingClass />} />
           <Route path="/singer" element={<SingerRegistration />} />
+          <Route path="/privacy-policy" element={<Policies />} />
 
           {/* BOOKINGS */}
           <Route
@@ -301,7 +289,6 @@ function Layout() {
             }
           />
 
-          {/* Added payment routes (from your earlier snippet) */}
           <Route path="/pay" element={<PaymentButton />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
 
@@ -310,7 +297,6 @@ function Layout() {
         </Routes>
       </main>
 
-      {/* GLOBAL STYLE FIX */}
       <style jsx="true">{`
         html,
         body,
@@ -320,6 +306,7 @@ function Layout() {
           padding: 0;
           overflow-x: hidden;
         }
+
         .app-main {
           min-height: 100vh;
         }
