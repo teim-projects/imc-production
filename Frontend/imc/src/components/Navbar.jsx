@@ -652,4 +652,6 @@ const styles = {
   },
 };
 
+
+<Link to="/privacy-policy">Privacy Policy</Link>
 export default Navbar;
