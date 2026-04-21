@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singerbag.jpg";
+import SingerBackground from "../../assets/singerbag.webp";
 import {
   Loader2, CheckCircle, Calendar, Clock, MapPin, Users,
   Phone, Mail, User, Camera, ChevronDown, Sparkles,

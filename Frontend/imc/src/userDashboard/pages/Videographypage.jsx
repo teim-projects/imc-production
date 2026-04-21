@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/videography banner desktop.png";
+import SingerBackground from "../../assets/videography banner desktop.webp";
 import {
   Loader2,
   CheckCircle,

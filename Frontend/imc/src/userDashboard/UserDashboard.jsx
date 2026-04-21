@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import Footer from "../components/footer.jsx";
 import heroVideo from "../assets/bharat.mp4";
-import EventBackground from "../assets/event banner desktop.png";
+import EventBackground from "../assets/event banner desktop.webp";
 import {
   motion,
   useScroll,
