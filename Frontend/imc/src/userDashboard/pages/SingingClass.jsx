@@ -1,11 +1,11 @@
 // SingingClassRegistration.jsx
-// Updated — Smaller modal size + all terms in one scrollable area (no tabs)
+// Updated — Added Policies Modal + Payment Flow + Improved Mobile Responsiveness in Form
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singing ccclass banner desktop.webp";
+import SingerBackground from "../../assets/singing ccclass banner desktop.png";
 import {
   Loader2,
   CheckCircle,
@@ -21,6 +21,7 @@ import {
   CreditCard,
   Wallet,
   Building2,
+  ArrowLeft,
 } from "lucide-react";
 
 // API Configuration
@@ -36,7 +37,7 @@ const PAYMENT_OPTIONS = [
 ];
 
 // ────────────────────────────────────────────────
-// Policies (all sections)
+// Policies (tailored for Singing Classes)
 // ────────────────────────────────────────────────
 const policies = [
   {
@@ -126,93 +127,68 @@ By enrolling and making payment, the student/guardian confirms acceptance of all
 ];
 
 // ────────────────────────────────────────────────
-// Smaller Policies Modal
+// Policies Modal
 // ────────────────────────────────────────────────
-function PoliciesModal({ onClose, onAgree }) {
-  const [scrolledToBottom, setScrolledToBottom] = useState(false);
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    const checkIfFits = () => {
-      if (scrollRef.current) {
-        const el = scrollRef.current;
-        if (el.scrollHeight <= el.clientHeight + 30) {
-          setScrolledToBottom(true);
-        }
-      }
-    };
-
-    checkIfFits();
-    const timer = setTimeout(checkIfFits, 300);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleScroll = (e) => {
-    const el = e.target;
-    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (remaining <= 60) {
-      setScrolledToBottom(true);
-    }
-  };
-
-  const fullPoliciesText = policies
-    .map((p) => `${p.title}\n\n${p.content.trim()}`)
-    .join("\n\n──────────────────────────────\n\n");
+function PoliciesModal({ onClose }) {
+  const [activeTab, setActiveTab] = useState("A");
+  const current = policies.find((p) => p.id === activeTab);
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-gray-950 text-white rounded-xl w-full max-w-3xl max-h-[75vh] flex flex-col shadow-2xl border border-amber-800/30 overflow-hidden"
+        className="bg-gray-950 text-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-amber-800/50"
       >
-        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-4 flex justify-between items-center">
+        <div className="bg-gradient-to-r from-amber-700 to-orange-800 p-6 flex justify-between items-center">
           <div>
-            <h2 className="text-xl md:text-2xl font-bold">Terms & Conditions</h2>
-            <p className="text-amber-200 text-xs md:text-sm mt-0.5">
-              IMC Singing Classes Enrollment Policies
-            </p>
+            <h2 className="text-2xl md:text-3xl font-black">Terms & Conditions</h2>
+            <p className="text-amber-200 mt-1">IMC Singing Classes Enrollment Policies</p>
           </div>
           <button
             onClick={onClose}
-            className="text-2xl font-bold hover:text-amber-200 transition"
+            className="text-3xl font-bold hover:text-amber-200 transition"
           >
             ×
           </button>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="p-4 md:p-5 overflow-y-auto flex-1 text-sm leading-relaxed prose prose-invert max-w-none"
-          onScroll={handleScroll}
-        >
-          <h3 className="text-lg font-bold text-amber-400 mb-4 text-center">
-            Full Enrollment Policies
-          </h3>
-
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-            {fullPoliciesText}
-          </pre>
+        <div className="flex flex-wrap gap-2 p-4 border-b border-gray-800 bg-gray-900/70">
+          {policies.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setActiveTab(p.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+                activeTab === p.id
+                  ? "bg-amber-500 text-black shadow-md"
+                  : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+              }`}
+            >
+              {p.id}
+            </button>
+          ))}
         </div>
 
-        <div className="p-4 border-t border-gray-800 bg-gray-900/70 flex justify-center gap-3">
+        <div className="p-6 md:p-8 overflow-y-auto flex-1">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3 className="text-xl md:text-2xl font-bold text-amber-400 mb-5">{current.title}</h3>
+            <pre className="whitespace-pre-wrap font-sans text-gray-200 text-base leading-relaxed">
+              {current.content.trim()}
+            </pre>
+          </motion.div>
+        </div>
+
+        <div className="p-6 border-t border-gray-800 bg-gray-900/50 flex justify-center">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition text-sm"
+            className="px-12 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition shadow-lg"
           >
-            Cancel
-          </button>
-
-          <button
-            disabled={!scrolledToBottom}
-            onClick={onAgree}
-            className={`px-8 py-2 font-semibold rounded-lg transition text-sm ${
-              scrolledToBottom
-                ? "bg-amber-600 hover:bg-amber-500 text-white"
-                : "bg-gray-600 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {scrolledToBottom ? "I Agree" : "Scroll to agree"}
+            Close
           </button>
         </div>
       </motion.div>
@@ -241,8 +217,11 @@ export default function SingingClassRegistration() {
     batch: "",
     reference_by: "",
     fee: "",
+    payment_method: "",
+    agreed_terms: false,
   });
 
+  // Fetch batches
   useEffect(() => {
     const fetchBatches = async () => {
       setBatchesLoading(true);
@@ -260,6 +239,7 @@ export default function SingingClassRegistration() {
     fetchBatches();
   }, []);
 
+  // Auto-fill fee
   const selectedBatch = useMemo(() => {
     return batches.find((b) => String(b.id) === String(form.batch));
   }, [form.batch, batches]);
@@ -271,8 +251,18 @@ export default function SingingClassRegistration() {
   }, [selectedBatch]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const setPaymentMethod = (method) => {
+    setForm((prev) => ({
+      ...prev,
+      payment_method: prev.payment_method === method ? "" : method,
+    }));
   };
 
   const validateForm = () => {
@@ -280,9 +270,9 @@ export default function SingingClassRegistration() {
     if (!form.last_name.trim()) return "Last name is required";
     if (!form.phone.trim()) return "Phone number is required";
     if (!form.batch) return "Please select a batch";
-    if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0)
-      return "Valid fee amount is required";
-
+    if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0) return "Valid fee amount is required";
+    if (!form.payment_method) return "Please select a payment method";
+    if (!form.agreed_terms) return "You must agree to terms and conditions";
     return null;
   };
 
@@ -300,7 +290,8 @@ export default function SingingClassRegistration() {
       batch: Number(form.batch),
       reference_by: form.reference_by.trim() || null,
       fee: Number(form.fee),
-      agreed_terms: true,
+      payment_method: form.payment_method,
+      agreed_terms: form.agreed_terms,
       payment_status: "pending",
     };
 
@@ -311,64 +302,49 @@ export default function SingingClassRegistration() {
     throw new Error("Student creation failed");
   };
 
-  // ─── Your provided initiatePayment function ───
   const initiatePayment = async (studentId) => {
-    try {
-      // 🔒 Secure payload (NO amount)
-      const payload = {
-        registration_id: studentId,
-        service: "singing_classes"
-      };
-      const paymentRes = await axios.post(
-        PAYMENT_CREATE_API,
-        payload,
-        {
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
-      const pData = paymentRes.data;
-      const paymentUrl =
-        pData?.payment_url ||
-        pData?.payment_links?.web ||
-        pData?.redirect_url;
-      if (paymentUrl) {
-        window.location.href = paymentUrl;
-        return;
-      }
-      if (pData?.success === true) {
-        setSuccess(true);
-        return;
-      }
-      throw new Error("Payment initiation failed - no redirect URL");
-    } catch (error) {
-      console.error("Payment error:", error);
-      throw new Error(
-        error.response?.data?.error ||
-        error.message ||
-        "Payment initiation failed"
-      );
+    const amount = Number(form.fee) || 0;
+    if (amount <= 0) throw new Error("Invalid fee amount");
+
+    const payload = {
+      amount,
+      customer_id: `SINGING_${form.phone.replace(/\D/g, '') || 'guest'}`,
+      email: form.email.trim() || "student@imc.com",
+      phone: form.phone.trim(),
+      description: `Singing Class Enrollment - Batch ${selectedBatch?.class_name || "Selected"}`,
+      return_url: `${window.location.origin}/payment-callback?type=singing-class&phone=${form.phone.trim()}&student_id=${studentId}`,
+    };
+
+    const paymentRes = await axios.post(PAYMENT_CREATE_API, payload);
+    const pData = paymentRes.data;
+    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      return;
     }
+
+    if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
+      setSuccess(true);
+      return;
+    }
+
+    throw new Error("Payment initiation failed - no redirect URL");
   };
 
-  const handleEnrollClick = () => {
+  const handleEnrollClick = async () => {
     const error = validateForm();
     if (error) {
       alert(error);
       return;
     }
-    setShowPoliciesModal(true);
-  };
 
-  const handleAgreeAndProceed = async () => {
-    setShowPoliciesModal(false);
     setLoading(true);
 
     try {
       const studentId = await createStudent();
       await initiatePayment(studentId);
-      // Note: success is set inside initiatePayment if no redirect
+      setSuccess(true);
     } catch (err) {
       console.error("Enrollment/Payment error:", err);
       alert(
@@ -397,9 +373,12 @@ export default function SingingClassRegistration() {
       batch: "",
       reference_by: "",
       fee: "",
+      payment_method: "",
+      agreed_terms: false,
     });
   };
 
+  // Success Page
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 flex items-center justify-center px-6">
@@ -426,6 +405,9 @@ export default function SingingClassRegistration() {
     );
   }
 
+  // ────────────────────────────────────────────────
+  // MAIN REGISTRATION FORM (with improved mobile view)
+  // ────────────────────────────────────────────────
   return (
     <div className="bg-gradient-to-b from-slate-50 to-slate-100 min-h-screen flex flex-col">
       {/* Hero */}
@@ -549,7 +531,7 @@ export default function SingingClassRegistration() {
                 <div className="mt-10 md:mt-12">
                   <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                     <MapPin className="inline w-5 h-5 mr-2" />
-                    Address
+                    Address 
                   </label>
                   <input
                     type="text"
@@ -650,17 +632,48 @@ export default function SingingClassRegistration() {
                     <input
                       type="number"
                       name="fee"
-                      value={selectedBatch?.class_fee || ""}
-                      readOnly
+                      value={form.fee}
+                      onChange={handleChange}
                       min="0"
                       className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
                     />
+                    
                   </div>
                   {selectedBatch?.class_fee && (
                     <p className="text-sm text-emerald-600 mt-2">
                       Suggested: ₹{selectedBatch.class_fee} (auto-filled from batch)
                     </p>
                   )}
+                </div>
+
+                {/* Payment Method Selection */}
+                <div className="mt-10 md:mt-12">
+                  <label className="block text-gray-700 font-bold mb-4 md:mb-5">
+                    Choose Payment Method <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                    {PAYMENT_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = form.payment_method === option.key;
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setPaymentMethod(option.key)}
+                          className={`p-4 sm:p-5 rounded-2xl border-4 transition-all duration-200 flex flex-col items-center justify-center gap-3 min-h-[110px] sm:min-h-[130px] ${
+                            isSelected
+                              ? "border-amber-500 bg-amber-50 shadow-lg"
+                              : "border-gray-200 hover:border-amber-200 bg-gray-50 hover:shadow"
+                          }`}
+                        >
+                          <Icon className={`w-7 h-7 sm:w-8 sm:h-8 ${isSelected ? "text-amber-600" : "text-gray-600"}`} />
+                          <p className={`font-bold text-center text-sm sm:text-base ${isSelected ? "text-amber-800" : "text-gray-800"}`}>
+                            {option.label}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Reference */}
@@ -676,19 +689,35 @@ export default function SingingClassRegistration() {
                   />
                 </div>
 
-                {/* Terms notice */}
-                <div className="mt-10 md:mt-12 p-5 bg-amber-50/50 border border-amber-200 rounded-2xl text-center">
-                  <p className="text-gray-700 text-base">
-                    By proceeding to payment, you will need to read and accept our{" "}
+                {/* Terms */}
+                <div className="flex items-start gap-3 sm:gap-4 mt-10 md:mt-12">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    name="agreed_terms"
+                    checked={form.agreed_terms}
+                    onChange={handleChange}
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 rounded focus:ring-amber-500 mt-1 flex-shrink-0"
+                  />
+                  <label htmlFor="terms" className="text-gray-700 text-base sm:text-lg leading-relaxed select-none">
+                    I agree to the{" "}
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-700 hover:text-amber-600 underline"
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors "
                     >
                       Terms & Conditions
-                    </button>
-                    .
-                  </p>
+                    </button>{" "}
+                    and{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowPoliciesModal(true)}
+                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors "
+                    >
+                      Privacy Policy
+                    </button>{" "}
+                    <span className="text-red-500">*</span>
+                  </label>
                 </div>
 
                 {/* Submit Button */}
@@ -699,7 +728,7 @@ export default function SingingClassRegistration() {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="animate-spin w-6 h-6" />
+                      <Loader2 className="animate-spin w-5 h-5 sm:w-6 sm:h-6" />
                       Processing...
                     </>
                   ) : (
@@ -765,12 +794,8 @@ export default function SingingClassRegistration() {
 
       <Footer />
 
-      {showPoliciesModal && (
-        <PoliciesModal
-          onClose={() => setShowPoliciesModal(false)}
-          onAgree={handleAgreeAndProceed}
-        />
-      )}
+      {/* Policies Modal */}
+      {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
 }
