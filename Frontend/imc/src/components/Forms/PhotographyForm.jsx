@@ -24,7 +24,7 @@ const eventTypes = [
   "theatre music events",
   "private music events",
   "Birthday",
-  "Other",
+  "Others",
 ];
 
 const initialForm = {
