@@ -19,6 +19,25 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+/* ─────────────────────────────────────────────────────────────
+   BRAND COLOR
+───────────────────────────────────────────────────────────── */
+const C = {
+  cream: "#FFFDE8",
+  creamDark: "#FFF8D0",
+  navy: "#1E3A6E",
+  navyDark: "#152B52",
+  navyLight: "#274D8F",
+  yellow: "#FFD93D",
+  yellowDark: "#F0C520",
+  orange: "#FF6633",
+  orangeLight: "#FF8255",
+  white: "#FFFFFF",
+};
+
+/* ─────────────────────────────────────────────────────────────
+   API SETUP
+───────────────────────────────────────────────────────────── */
 const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const EVENTS_URL = `${BASE}/user/events/`;
 
