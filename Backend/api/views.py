@@ -281,7 +281,7 @@ class StudioViewSet(viewsets.ModelViewSet):
         "email",
         "contact_number",
         "address",
-
+        "payment_methods",
     ]
     ordering_fields = ["date", "time_slot", "duration", "created_at"]
     ordering = ["-date", "-time_slot"]
@@ -538,7 +538,7 @@ class VideographyViewSet(viewsets.ModelViewSet):
         "mobile_no",
         "location",
         "package_type",
-        
+        "payment_method",
         "notes",
     ]
     ordering_fields = [

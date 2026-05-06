@@ -1,15 +1,15 @@
 // PhotographyBooking.jsx
-// Simplified version — removed online payment integration
+// Updated — Integrated online payment + success screen like Singer Registration + Policies Modal
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
 import Footer from "../../components/footer";
-import SingerBackground from "../../assets/singerbag.webp";
+import SingerBackground from "../../assets/singerbag.jpg";
 import {
   Loader2, CheckCircle, Calendar, Clock, MapPin, Users,
   Phone, Mail, User, Camera, ChevronDown, Sparkles,
-  Star, Award, Drone,
+  Star, Award, DollarSign, Drone, CreditCard,
 } from "lucide-react";
 
 // ────────────────────────────────────────────────
@@ -17,29 +17,37 @@ import {
 // ────────────────────────────────────────────────
 const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const PHOTOGRAPHY_API = `${API_BASE.replace(/\/$/, "")}/auth/photography-bookings/`;
+const PAYMENT_CREATE_API = `${API_BASE}/payments/create-payment/`;
 
 const SHOOT_TYPES = [
-  "Engagement/Wedding Photography",
+  "Wedding Photography",
+  "Pre-Wedding Shoot",
   "Maternity Shoot",
   "Newborn/Baby Shoot",
+  "Family Portrait",
   "Fashion/Portfolio",
   "Product Photography",
-  "Corporate shots",
-  "Musical Event Coverage",
+  "Corporate Headshots",
+  "Event Coverage",
   "Birthday Party",
+  "Engagement",
   "Other",
 ];
 
 const PACKAGE_TYPES = ["Basic", "Standard", "Premium", "Luxury", "Custom"];
 
 const DURATION_OPTIONS = [
-  { value: 6,  label: "Half Day (0 to 4 Hours)" },
-  { value: 8,  label: "Full Day (5-10 Hours)" },
+  { value: 2,  label: "2 Hours" },
+  { value: 4,  label: "4 Hours" },
+  { value: 6,  label: "Half Day (6 Hours)" },
+  { value: 8,  label: "Full Day (8-10 Hours)" },
   { value: 24, label: "Multi-Day / Overnight" },
 ];
 
+const PAYMENT_METHODS = ["Cash", "UPI", "Card", "Bank Transfer", "Google Pay", "PhonePe"];
+
 // ────────────────────────────────────────────────
-// Policies (same as before)
+// Policies (added — same tabbed style as singer registration)
 // ────────────────────────────────────────────────
 const policies = [
   {
@@ -81,19 +89,69 @@ const policies = [
 • If client is not present at agreed time + 60 minutes grace period → shoot may be cancelled without refund.
     `,
   },
-  // ... (rest of the policies remain the same — omitted here for brevity)
+  {
+    id: "C",
+    title: "C. Shoot Execution & Deliverables",
+    content: `
+8. Shoot Duration & Coverage
+• Shoot duration starts from the agreed start time.
+• Any extra time will be charged as per rate card.
+
+9. Deliverables
+• Final edited photos: 80–300+ depending on package (high-resolution JPEG).
+• Delivery timeline: 21–45 working days (rush delivery available at extra charge).
+• RAW files / unedited images are not provided unless specifically agreed & paid for.
+
+10. Editing Style
+• Natural & cinematic editing is standard.
+• Heavy filters / dramatic changes subject to discussion & may incur extra charges.
+
+11. Usage Rights
+• Client gets personal & social media usage rights.
+• IMC retains rights to use selected images for portfolio, website, social media & promotion (with client consent where required).
+    `,
+  },
+  {
+    id: "D",
+    title: "D. Travel, Location & Miscellaneous",
+    content: `
+12. Travel & Accommodation
+• Outstation shoots: Travel, stay, food & permit charges borne by client (or included in quote).
+
+13. Permissions & Permits
+• Client responsible for obtaining necessary location permissions, entry fees, drone permissions, etc.
+
+14. Weather & Unforeseen Issues
+• In case of rain / bad weather, rescheduling will be mutually decided. No refund if shoot partially completed.
+    `,
+  },
+  {
+    id: "E",
+    title: "E. Payment & Conduct Policies",
+    content: `
+15. Payment Modes
+• UPI, Bank Transfer, Card (online gateway), Cash (only for balance on shoot day).
+
+16. Code of Conduct
+• Respectful behaviour towards team & venue staff is mandatory.
+• Any misconduct may lead to immediate termination of shoot without refund.
+
+17. Force Majeure
+• IMC not liable for delays/cancellations due to natural disasters, government restrictions, etc.
+    `,
+  },
   {
     id: "F",
     title: "F. Final Acceptance",
     content: `
-By submitting this booking form,
+By submitting this booking form and making any payment,
 the client confirms acceptance of all the above policies.
 Any disputes will be subject to Mumbai jurisdiction only.
     `,
   },
 ];
 
-// Policies Modal (unchanged)
+// Policies Modal Component (added — same design as singer registration)
 function PoliciesModal({ onClose }) {
   const [activeTab, setActiveTab] = useState("A");
   const current = policies.find((p) => p.id === activeTab);
@@ -163,9 +221,11 @@ function PoliciesModal({ onClose }) {
 
 export default function PhotographyBooking() {
   const [loading, setLoading] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [showPoliciesModal, setShowPoliciesModal] = useState(false);
+  const [bookingId, setBookingId] = useState(null);
+  const [showPoliciesModal, setShowPoliciesModal] = useState(false); // ← added for modal
 
   const [form, setForm] = useState({
     client: "",
@@ -183,6 +243,7 @@ export default function PhotographyBooking() {
     location: "",
     photographers_count: "1",
     drone_needed: false,
+    payment_methods_list: [],
     agreed_terms: false,
   });
 
@@ -193,6 +254,18 @@ export default function PhotographyBooking() {
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const togglePayment = (method) => {
+    setForm((prev) => {
+      if (prev.payment_methods_list.includes(method)) {
+        return {
+          ...prev,
+          payment_methods_list: prev.payment_methods_list.filter((m) => m !== method),
+        };
+      }
+      return { ...prev, payment_methods_list: [...prev.payment_methods_list, method] };
+    });
   };
 
   const validateForm = () => {
@@ -213,6 +286,7 @@ export default function PhotographyBooking() {
     return null;
   };
 
+  // Create booking record (payment pending)
   const createBooking = async () => {
     const payload = {
       client:               form.client.trim(),
@@ -230,19 +304,55 @@ export default function PhotographyBooking() {
       location:             form.location.trim(),
       photographers_count:  Number(form.photographers_count),
       drone_needed:         Boolean(form.drone_needed),
-      payment_status:       "pending", // or "manual" / "to_be_confirmed"
+      payment_methods_list: form.payment_methods_list,
+      payment_status:       "pending",
     };
 
     const response = await axios.post(PHOTOGRAPHY_API, payload, {
       headers: { "Content-Type": "application/json" },
     });
 
-    if (response.status !== 201) {
-      throw new Error("Failed to create booking");
+    if (response.status === 201) {
+      const newBookingId = response.data.id || response.data.pk || response.data._id;
+      setBookingId(newBookingId);
+      return newBookingId;
     }
+    throw new Error("Failed to create booking");
   };
 
-  const handleSubmit = async () => {
+  // Initiate payment
+  const initiatePayment = async (bookingId) => {
+    const amount = (Number(form.package_price || 0) + Number(form.addon_price || 0)) || 5000;
+
+    const payload = {
+      amount: amount,
+      customer_id: `PHOTO_${form.contact_number.replace(/\D/g, '') || 'guest'}`,
+      email: form.email.trim() || "booking@imc.com",
+      phone: form.contact_number.trim(),
+      description: `Photography Booking - ${form.event_type || "Shoot"}`,
+      return_url: `${window.location.origin}/payment-callback?type=photography&mobile=${form.contact_number.trim()}&booking_id=${bookingId}`,
+    };
+
+    const paymentRes = await axios.post(PAYMENT_CREATE_API, payload);
+
+    const pData = paymentRes.data;
+    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+
+    if (paymentUrl) {
+      window.location.href = paymentUrl;
+      return;
+    }
+
+    // Rare case: instant success without redirect
+    if (pData?.success === true || pData?.status?.toUpperCase().includes("SUCCESS")) {
+      setSuccess(true);
+      return;
+    }
+
+    throw new Error("Payment initiation failed - no redirect URL received");
+  };
+
+  const handleBookingAndPayment = async () => {
     setErrorMsg("");
     const validationError = validateForm();
     if (validationError) {
@@ -253,33 +363,47 @@ export default function PhotographyBooking() {
     setLoading(true);
 
     try {
-      await createBooking();
+      // Step 1: Create booking (pending)
+      const newBookingId = await createBooking();
+
+      setLoading(false);
+      setPaymentLoading(true);
+
+      // Step 2: Start payment process
+      await initiatePayment(newBookingId);
+
+      // If we reach here → payment was instant (very rare)
+      setPaymentLoading(false);
       setSuccess(true);
     } catch (err) {
-      console.error("Booking error:", err);
-      let msg = "Something went wrong. Please try again later.";
-
+      console.error("Booking/Payment error:", err);
+      let msg = "Something went wrong. Please try again.";
+      
       if (err.response?.data) {
         const serverError = err.response.data;
         if (typeof serverError === "object") {
           const firstKey = Object.keys(serverError)[0];
-          msg = Array.isArray(serverError[firstKey])
-            ? serverError[firstKey][0]
+          msg = Array.isArray(serverError[firstKey]) 
+            ? serverError[firstKey][0] 
             : serverError[firstKey] || msg;
         } else if (typeof serverError === "string") {
           msg = serverError;
         }
+      } else if (err.message) {
+        msg = err.message;
       }
 
       setErrorMsg(msg);
     } finally {
       setLoading(false);
+      setPaymentLoading(false);
     }
   };
 
   const resetForm = () => {
     setSuccess(false);
     setErrorMsg("");
+    setBookingId(null);
     setForm({
       client: "",
       email: "",
@@ -296,12 +420,13 @@ export default function PhotographyBooking() {
       location: "",
       photographers_count: "1",
       drone_needed: false,
+      payment_methods_list: [],
       agreed_terms: false,
     });
   };
 
   // ────────────────────────────────────────────────
-  // SUCCESS VIEW
+  // SUCCESS VIEW (same style as Singer Registration)
   // ────────────────────────────────────────────────
   if (success) {
     return (
@@ -321,7 +446,7 @@ export default function PhotographyBooking() {
           </motion.div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold text-green-800 mb-4">
-            Booking Received!
+            Booking & Payment Successful!
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-700 mb-8">
@@ -330,11 +455,11 @@ export default function PhotographyBooking() {
 
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-10">
             <p className="text-lg text-gray-800 leading-relaxed">
-              Your photography booking request has been submitted successfully.<br />
-              Our team will contact you shortly (usually within 24 hours) to confirm details, availability and discuss payment.
+              Your photography booking has been confirmed.<br />
+              We will contact you shortly with shoot details and schedule.
             </p>
             <p className="text-base text-gray-600 mt-4">
-              We will reach you via WhatsApp / call / email.
+              Confirmation sent to your email / mobile number.
             </p>
           </div>
 
@@ -355,7 +480,8 @@ export default function PhotographyBooking() {
           </div>
 
           <p className="text-sm text-gray-500 mt-12">
-            Thank you for choosing IMC Visual Arts!
+            Thank you for choosing IMC Visual Arts!<br />
+            Secured Payment
           </p>
         </motion.div>
       </div>
@@ -615,6 +741,7 @@ export default function PhotographyBooking() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
+                      <DollarSign className="inline w-5 h-5 mr-2" />
                       Package Price (₹) – approximate
                     </label>
                     <input
@@ -641,6 +768,7 @@ export default function PhotographyBooking() {
 
                   <div>
                     <label className="block text-gray-700 font-medium mb-3">
+                      <DollarSign className="inline w-5 h-5 mr-2" />
                       Add-on Price (₹)
                     </label>
                     <input
@@ -654,7 +782,30 @@ export default function PhotographyBooking() {
                   </div>
                 </div>
 
-                {/* Terms */}
+                {/* Preferred Payment Methods */}
+                <div className="mt-12">
+                  <label className="block text-lg font-bold text-gray-800 mb-3">
+                    Preferred Payment Methods
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {PAYMENT_METHODS.map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => togglePayment(method)}
+                        className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 shadow-sm transform hover:scale-105 ${
+                          form.payment_methods_list.includes(method)
+                            ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {method}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Terms & Submit — only this part changed slightly */}
                 <div className="flex items-start gap-4 mt-12">
                   <input
                     type="checkbox"
@@ -669,7 +820,7 @@ export default function PhotographyBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Terms & Conditions
                     </button>{" "}
@@ -677,7 +828,7 @@ export default function PhotographyBooking() {
                     <button
                       type="button"
                       onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      className="font-bold text-amber-600 hover:text-amber-500  transition-colors"
                     >
                       Privacy Policy
                     </button>{" "}
@@ -686,17 +837,25 @@ export default function PhotographyBooking() {
                 </div>
 
                 <button
-                  onClick={handleSubmit}
-                  disabled={loading || !form.agreed_terms}
+                  onClick={handleBookingAndPayment}
+                  disabled={loading || paymentLoading || !form.agreed_terms}
                   className="mt-5 w-full max-w-[200px] mx-auto mt-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition flex items-center justify-center gap-2 disabled:opacity-70"
                 >
                   {loading ? (
                     <>
                       <Loader2 className="animate-spin w-6 h-6" />
-                      Submitting...
+                      Creating Booking...
+                    </>
+                  ) : paymentLoading ? (
+                    <>
+                      <Loader2 className="animate-spin w-6 h-6" />
+                      Redirecting to Payment...
                     </>
                   ) : (
-                    "Submit Booking Request"
+                    <>
+                      <CreditCard className="w-6 h-6" />
+                      Confirm Booking 
+                    </>
                   )}
                 </button>
               </motion.div>
@@ -757,6 +916,7 @@ export default function PhotographyBooking() {
 
       <Footer />
 
+      {/* Policies Modal — added here */}
       {showPoliciesModal && <PoliciesModal onClose={() => setShowPoliciesModal(false)} />}
     </div>
   );
