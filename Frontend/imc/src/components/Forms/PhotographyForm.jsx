@@ -6,9 +6,9 @@ import "./Forms.css";
 
 /**
  * PhotographyForm – with:
- * ✅ Event Type "Other" → extra fields
+ * ✅ Payment Method section
+ * ✅ Event Type "Other" → extra fields (other name + add-on price)
  * ✅ Package price field
- * Payment Method section removed
  */
 
 const BASE_API = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
@@ -41,16 +41,17 @@ const initialForm = {
   package_price: "",         // ₹ price for selected package
   photographers_count: 1,
 
-  // optional add-on
+  // optional add-on when user chooses Other / anything extra
   addon_name: "",
   addon_price: "",           // ₹
 
   drone_needed: false,
   equipment_needed: "",
   notes: "",
-  // payment_methods removed
+  payment_methods: [], // single-select wrapper ["Cash"|"Card"|"UPI"]
 };
 
+const methodOptions = ["Cash", "Card", "UPI"];
 const packages = ["Basic", "Standard", "Premium", "Custom"];
 
 const PhotographyForm = ({ onClose, viewOnly = false }) => {
@@ -92,6 +93,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
         // try next
       }
     }
+    // none worked – keep first so UI shows clear message
     setUrlChecked(true);
   };
 
@@ -155,6 +157,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
       "Equipment Needed",
       "Add-on Name",
       "Add-on Price (₹)",
+      "Payment Method",
       "Notes",
     ];
 
@@ -179,6 +182,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
           `"${(r.equipment_needed || "").replace(/"/g, '""')}"`,
           `"${(r.addon_name || "").replace(/"/g, '""')}"`,
           r.addon_price ? `₹${r.addon_price}` : "-",
+          r.payment_method || "-",
           `"${(r.notes || "").replace(/"/g, '""')}"`,
         ];
         return row.join(",");
@@ -206,11 +210,21 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
     }));
   };
 
+  // only one method selectable
+  const toggleMethod = (m) => {
+    setForm((s) => {
+      const current = s.payment_methods?.[0] || null;
+      const next = current === m ? [] : [m];
+      return { ...s, payment_methods: next };
+    });
+  };
+
   const validate = () => {
     if (!form.client_name?.trim()) return "Client name is required.";
     if (!form.shoot_date) return "Shoot date is required.";
     if (!form.start_time) return "Start time is required.";
     if (!form.location?.trim()) return "Location is required.";
+    if (!form.payment_methods?.length) return "Select a payment method.";
 
     if (form.event_type === "Other" && !form.event_type_other.trim()) {
       return 'Please specify "Other" event type.';
@@ -227,8 +241,9 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
     const p = {};
     Object.entries(form).forEach(([k, v]) => {
       const key = alias[k] || k;
-      // skip payment_methods completely
-      if (key !== "payment_methods") {
+      if (key === "payment_methods") {
+        p["payment_methods_list"] = v || [];
+      } else {
         p[key] = v ?? "";
       }
     });
@@ -277,6 +292,15 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
     setEditingId(row.id);
     setTab("ADD");
 
+    const pm =
+      row.payment_methods_list ||
+      (row.payment_methods || row.payment_methods_csv || "")
+        .toString()
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    const pmOne = pm.length ? [pm[0]] : [];
+
     setForm({
       ...initialForm,
       client_name: row.client || row.client_name || "",
@@ -298,7 +322,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
       drone_needed: !!row.drone_needed,
       equipment_needed: row.equipment_needed || "",
       notes: row.notes || "",
-      // payment_methods removed
+      payment_methods: pmOne,
     });
   };
 
@@ -550,7 +574,26 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
             </div>
           </section>
 
-          {/* Payment Method section completely removed */}
+          {/* ✅ Payment Method Section */}
+          <section className="pf-card">
+            <h3>Payment Method</h3>
+            <div className="pf-methods">
+              <div className="pf-tags">
+                {methodOptions.map((m) => (
+                  <button
+                    type="button"
+                    key={m}
+                    className={
+                      form.payment_methods.includes(m) ? "tag active" : "tag"
+                    }
+                    onClick={() => toggleMethod(m)}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
 
           <div className="pf-actions">
             <button className="btn" disabled={saving}>
@@ -598,6 +641,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
               {loading ? "Loading..." : "Refresh"}
             </button>
 
+            {/* EXPORT BUTTON ADDED HERE */}
             <button
               className="btn ghost"
               onClick={exportPhotographyToCSV}
@@ -625,6 +669,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
                   <th>Location</th>
                   <th>Package</th>
                   <th>Budget</th>
+                  <th>Payment</th>
                   <th className="c">Actions</th>
                 </tr>
               </thead>
@@ -637,11 +682,21 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
                     <td>{r.date}</td>
                     <td>{r.location}</td>
 
+                    {/* PACKAGE */}
                     <td>{r.package_type || "-"}</td>
 
+                    {/* BUDGET (from package_price) */}
                     <td>
                       {r.package_price
                         ? `₹${Number(r.package_price).toLocaleString()}`
+                        : "-"}
+                    </td>
+
+                    {/* PAYMENT (from payment_methods_list) */}
+                    <td>
+                      {Array.isArray(r.payment_methods_list) &&
+                      r.payment_methods_list.length > 0
+                        ? r.payment_methods_list.join(", ")
                         : "-"}
                     </td>
 
@@ -661,7 +716,7 @@ const PhotographyForm = ({ onClose, viewOnly = false }) => {
 
                 {!pageRows.length && (
                   <tr>
-                    <td colSpan="7" className="c muted">
+                    <td colSpan="8" className="c muted">
                       {loading ? "Loading..." : "No records found."}
                     </td>
                   </tr>
