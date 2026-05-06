@@ -273,15 +273,6 @@ class Studio(models.Model):
         help_text="Price per hour in INR for this booking",
     )
 
-        # ✅ TOTAL AMOUNT STORED IN DATABASE
-    total_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        blank=True,
-        null=True
-    )
-
-
     payment_methods = models.CharField(
         max_length=255,
         blank=True,
@@ -306,13 +297,6 @@ class Studio(models.Model):
             models.Index(fields=["date", "time_slot"]),
             models.Index(fields=["studio_name"]),
         ]
-
-    def save(self, *args, **kwargs):
-        # ✅ Auto calculate total
-        if self.price_per_hour and self.duration:
-            self.total_amount = self.price_per_hour * self.duration
-        super().save(*args, **kwargs)
-
 
     def __str__(self):
         return f"{self.studio_name} | {self.customer} | {self.date}"
@@ -415,7 +399,8 @@ class PhotographyBooking(models.Model):
     equipment_needed = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    
+    # Payment
+    payment_methods_list = models.JSONField(default=list)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -673,7 +658,11 @@ from django.conf import settings  # remove if you don't want user FK
 
 
 class Videography(models.Model):
-   
+    PAYMENT_CHOICES = [
+        ("Cash", "Cash"),
+        ("Card", "Card"),
+        ("UPI", "UPI"),
+    ]
 
     PACKAGE_CHOICES = [
         ("Standard", "Standard"),
@@ -683,7 +672,8 @@ class Videography(models.Model):
 
     # ✅ Event type choices (matching your frontend dropdown)
     EVENT_TYPE_CHOICES = [
-        ("All music events", "All music events"),
+        ("theatre music events", "theatre music events"),
+        ("private music events", "private music events"),
         ("Birthday", "Birthday"),
         ("Other", "Other"),
     ]
@@ -731,7 +721,7 @@ class Videography(models.Model):
         choices=EVENT_TYPE_CHOICES,
         blank=True,
         default="",
-        help_text="Type of event (All music events, Birthday, Other)",
+        help_text="Type of event (theatre music events, private music events, Birthday, Other)",
     )
 
     # ✅ NEW: Other event name (when event_type = 'Other')
@@ -741,7 +731,11 @@ class Videography(models.Model):
         help_text="Custom event name when event_type is 'Other'",
     )
 
-   
+    payment_method = models.CharField(
+        max_length=10,
+        choices=PAYMENT_CHOICES,
+        default="Cash",
+    )
 
     notes = models.TextField(blank=True)
 
@@ -777,7 +771,11 @@ class Videography(models.Model):
 # ===============================================
 
 class Sound(models.Model):
-   
+    PAYMENT_CHOICES = [
+        ("Cash", "Cash"),
+        ("Card", "Card"),
+        ("UPI", "UPI"),
+    ]
     client_name = models.CharField(max_length=120)
     email = models.EmailField(blank=True, null=True)
     mobile_no = models.CharField(max_length=20, blank=True, null=True)
@@ -790,7 +788,7 @@ class Sound(models.Model):
     mixer_model = models.CharField(max_length=120, blank=True, null=True)
 
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
+    payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default="Cash")
     notes = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(default=timezone.now)
@@ -855,7 +853,7 @@ class Singer(models.Model):
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=100, blank=True, default="")
 
-   
+    rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     gender = models.CharField(
         max_length=10,
@@ -868,7 +866,15 @@ class Singer(models.Model):
         default=""
     )
 
-   
+    payment_method = models.CharField(
+        max_length=20,
+        choices=[
+            ('Cash', 'Cash'),
+            ('UPI', 'UPI'),
+            ('Card', 'Card')
+        ],
+        default='Cash'
+    )
 
     active = models.BooleanField(default=True)
 
@@ -931,27 +937,28 @@ class Singer(models.Model):
 # ============  Singing (SERVICE)  =========
 # ===============================================
 # api/models.py
-# api/models.py
-
 from django.db import models
 from django.core.validators import MinValueValidator
 
 
 class SingingClass(models.Model):
+    class PaymentMethod(models.TextChoices):
+        CARD = "card", "Card"
+        UPI = "upi", "UPI"
+        NETBANKING = "netbanking", "NetBanking"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
 
-    # Batch selected by student
+    # 🔥 IMPORTANT FIX
     batch = models.ForeignKey(
         "Batch",
         on_delete=models.CASCADE,
         related_name="admissions"
     )
 
-    # Student info
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100, blank=True)
     phone = models.CharField(max_length=20)
@@ -960,16 +967,19 @@ class SingingClass(models.Model):
 
     address1 = models.CharField(max_length=255, blank=True)
     address2 = models.CharField(max_length=255, blank=True)
-
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=20, blank=True)
 
-    # Fee stored in DB
     fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)]
+    )
+
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
     )
 
     agreed_terms = models.BooleanField(default=False)
@@ -982,19 +992,11 @@ class SingingClass(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        """
-        Automatically set fee from Batch → Class
-        to prevent amount manipulation
-        """
-
-        if self.batch and self.batch.class_obj:
-            self.fee = self.batch.class_obj.fee
-
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.batch}"
+
+
+
 
 
 # api/models.py

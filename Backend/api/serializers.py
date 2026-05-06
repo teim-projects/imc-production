@@ -305,7 +305,10 @@ class PrivateBookingSerializer(serializers.ModelSerializer):
         data = data.copy()
         if data.get("time_slot", None) == "":
             data["time_slot"] = None
-        
+        pm = data.get("payment_methods")
+        if isinstance(pm, str):
+            data["payment_methods"] = [s.strip() for s in pm.split(",") if s.strip()]
+        return super().to_internal_value(data)
 
 
 # ---------------------------------------------------------------------
@@ -325,7 +328,10 @@ class PhotographyBookingSerializer(serializers.ModelSerializer):
                 "event_type_other": "Other event type is required when selecting 'Other'."
             })
 
-     
+        if not data.get("payment_methods_list"):
+            raise serializers.ValidationError({
+                "payment_methods_list": "Select a payment method."
+            })
 
         return data
 
@@ -466,7 +472,8 @@ class VideographySerializer(serializers.ModelSerializer):
                 {"duration_hours": "Duration (hours) must be greater than 0."}
             )
 
-
+        if not data.get("payment_method"):
+            raise serializers.ValidationError({"payment_method": "Select a payment method."})
 
         # Optional: ensure package_price is not negative
         price = data.get("package_price")
@@ -709,7 +716,7 @@ class SoundSerializer(serializers.ModelSerializer):
             "mixer_model": {"required": False, "allow_null": True, "allow_blank": True},
             "notes": {"required": False, "allow_null": True, "allow_blank": True},
             "event_date": {"required": False, "allow_null": True},
-           
+            "payment_method": {"required": False},  # model default is "Cash"
         }
 
     # --- small helpers ---
@@ -755,7 +762,8 @@ class SoundSerializer(serializers.ModelSerializer):
         d["price"] = self._to_decimal_or_zero(d.get("price"))
 
         # Payment choice (normalize)
-      
+        pm = (d.get("payment_method") or "").strip().lower()
+        d["payment_method"] = {"upi": "UPI", "card": "Card", "cash": "Cash"}.get(pm, "Cash")
 
         # Client name default
         if not (d.get("client_name") or "").strip():
@@ -792,7 +800,9 @@ class SingerSerializer(serializers.ModelSerializer):
         if "gender" in ret and isinstance(ret["gender"], str):
             ret["gender"] = ret["gender"].lower()
 
-    
+        # normalize payment_method (optional but safe)
+        if "payment_method" in ret and isinstance(ret["payment_method"], str):
+            ret["payment_method"] = ret["payment_method"].strip()
 
         # empty string → None (numeric/date fields only)
         for field in ["experience", "rate", "birth_date"]:
