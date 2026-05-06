@@ -6,6 +6,7 @@ import "./Forms.css";
 
 /**
  * PhotographyForm – with:
+ * ✅ Event Type "Other" → extra fields\
  * ✅ Payment Method section
  * ✅ Event Type "Other" → extra fields (other name + add-on price)
  * ✅ Package price field
