@@ -1,16 +1,27 @@
-
 // src/components/Forms/ClassFormModal.jsx
+
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE =
+  import.meta.env.VITE_BASE_API_URL ||
+  "https://www.imcpune.in/api";
+
+// ✅ APIs
 const TEACHER_API = `${BASE.replace(/\/$/, "")}/auth/teachers/`;
+const CLASS_API = `${BASE.replace(/\/$/, "")}/auth/classes/`;
 
 const api = axios.create();
+
+// ✅ JWT Token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("access");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
@@ -21,11 +32,14 @@ export default function ClassFormModal({
   setForm,
   onSave,
   isEdit,
-  saving = false,
 }) {
   const [teachers, setTeachers] = useState([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  // =========================================
+  // FETCH TEACHERS
+  // =========================================
   useEffect(() => {
     if (isOpen) {
       fetchTeachers();
@@ -34,42 +48,123 @@ export default function ClassFormModal({
 
   const fetchTeachers = async () => {
     setLoadingTeachers(true);
+
     try {
       const res = await api.get(TEACHER_API);
-      setTeachers(Array.isArray(res.data) ? res.data : res.data.results || []);
+
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.results || [];
+
+      setTeachers(data);
+
     } catch (err) {
       console.error("Failed to load teachers", err);
+
     } finally {
       setLoadingTeachers(false);
     }
   };
 
+  // =========================================
+  // HANDLE INPUT
+  // =========================================
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  // =========================================
+  // SAVE CLASS TO DATABASE
+  // =========================================
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave();
+
+    setSaving(true);
+
+    try {
+
+      const payload = {
+        name: form.name,
+        trainer: Number(form.trainer),
+        fee: Number(form.fee),
+        description: form.description || "",
+      };
+
+      console.log("CLASS PAYLOAD:", payload);
+
+      // ✅ SAVE API
+      const res = await api.post(CLASS_API, payload);
+
+      console.log("CLASS SAVED:", res.data);
+
+      alert("Class saved successfully");
+
+      // optional refresh callback
+      if (onSave) {
+        onSave(res.data);
+      }
+
+      // reset form
+      setForm({
+        name: "",
+        trainer: "",
+        fee: "",
+        description: "",
+      });
+
+      onClose();
+
+    } catch (err) {
+
+      console.error(
+        "SAVE ERROR:",
+        err.response?.data || err
+      );
+
+      alert("Failed to save class");
+
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+    >
+      <div
+        className="modal-box"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
         <div className="modal-header">
-          <h2>{isEdit ? "Edit Class" : "Add Class"}</h2>
-          <button onClick={onClose} className="close-btn">
+          <h2>
+            {isEdit ? "Edit Class" : "Add Class"}
+          </h2>
+
+          <button
+            onClick={onClose}
+            className="close-btn"
+          >
             <X size={20} />
           </button>
         </div>
 
+        {/* FORM */}
         <form onSubmit={handleSubmit}>
+
           {/* CLASS NAME */}
           <label>
             Class Name *
+
             <input
               type="text"
               name="name"
@@ -83,6 +178,7 @@ export default function ClassFormModal({
           {/* TRAINER */}
           <label>
             Trainer *
+
             <select
               name="trainer"
               value={form.trainer || ""}
@@ -91,19 +187,27 @@ export default function ClassFormModal({
               required
             >
               <option value="">
-                {loadingTeachers ? "Loading trainers..." : "Select Trainer"}
+                {loadingTeachers
+                  ? "Loading trainers..."
+                  : "Select Trainer"}
               </option>
+
               {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name || `${t.first_name} ${t.last_name}`.trim()}
+                <option
+                  key={t.id}
+                  value={t.id}
+                >
+                  {t.name ||
+                    `${t.first_name} ${t.last_name}`.trim()}
                 </option>
               ))}
             </select>
           </label>
 
-          {/* FEE PER MONTH */}
+          {/* FEE */}
           <label>
             Fee Per Month (₹) *
+
             <input
               type="number"
               name="fee"
@@ -118,6 +222,7 @@ export default function ClassFormModal({
           {/* DESCRIPTION */}
           <label>
             Description
+
             <textarea
               name="description"
               rows="4"
@@ -129,9 +234,19 @@ export default function ClassFormModal({
 
           {/* ACTIONS */}
           <div className="actions">
-            <button type="submit" disabled={saving} className="save-btn">
-              {saving ? "Saving..." : "Save Class"}
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="save-btn"
+            >
+              {saving
+                ? "Saving..."
+                : isEdit
+                ? "Update Class"
+                : "Save Class"}
             </button>
+
             <button
               type="button"
               className="cancel-btn"
@@ -140,6 +255,7 @@ export default function ClassFormModal({
             >
               Cancel
             </button>
+
           </div>
         </form>
 
@@ -188,7 +304,6 @@ export default function ClassFormModal({
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background 0.2s;
           }
 
           .close-btn:hover {
@@ -216,7 +331,6 @@ export default function ClassFormModal({
             border: 1px solid #e2e8f0;
             background: #f8fafc;
             font-size: 1rem;
-            transition: all 0.2s;
           }
 
           input:focus,
@@ -228,15 +342,9 @@ export default function ClassFormModal({
             box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
           }
 
-          input::placeholder,
-          textarea::placeholder {
-            color: #94a3b8;
-          }
-
           textarea {
             resize: vertical;
             min-height: 100px;
-            font-family: inherit;
           }
 
           .actions {
@@ -244,7 +352,6 @@ export default function ClassFormModal({
             justify-content: center;
             gap: 1rem;
             margin-top: 2rem;
-            padding-top: 1rem;
           }
 
           .save-btn {
@@ -254,18 +361,15 @@ export default function ClassFormModal({
             border-radius: 999px;
             border: none;
             font-weight: 600;
-            font-size: 1.05rem;
             cursor: pointer;
-            transition: all 0.2s;
           }
 
           .save-btn:hover:not(:disabled) {
             background: #dc4d05;
-            transform: translateY(-2px);
           }
 
           .save-btn:disabled {
-            background: #cbd5e1;
+            opacity: 0.6;
             cursor: not-allowed;
           }
 
