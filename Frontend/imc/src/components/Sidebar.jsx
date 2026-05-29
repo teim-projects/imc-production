@@ -116,8 +116,8 @@ function Sidebar({ openModal, openSubModal, currentKey = null }) {
       },
 
       {
-        name: "Triner",
-        key: "Triner",
+        name: "Payment Record",
+        key: "Payment Record",
         icon: <FaMoneyBill />,
         modal: null,
         subActionKey: "addTrainer",

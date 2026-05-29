@@ -3,6 +3,7 @@
 from django.urls import path
 from . import views
 
+
 urlpatterns = [
 
     # Create payment session
@@ -19,5 +20,8 @@ urlpatterns = [
 
     # Refund API
     path("refund/", views.refund_payment, name="refund_payment"),
+    
+   path("report/", views.payment_report, name="payment_report"),
+
 
 ]

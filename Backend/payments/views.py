@@ -1,18 +1,25 @@
-# api/payment_views.py
-
 import uuid
 import json
 import requests
 from decimal import Decimal
 
 from django.http import JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 
 from .utils import get_headers
 from .models import Payment
-from api.models import SingingClass
+from api.models import (
+    SingingClass,
+    Studio,
+    EventBooking,
+    PrivateBooking,
+    PhotographyBooking,
+    Singer,
+    Sound,
+    Videography,
+)
 
 
 BASE_URL = "https://smartgateway.hdfcuat.bank.in"
@@ -22,8 +29,8 @@ CUSTOMER_ID = "imc_user_101"
 CUSTOMER_EMAIL = "user@imc.com"
 CUSTOMER_PHONE = "9999999999"
 
-RETURN_URL = "https://www.imcpune.in/api/payments/payment/return/"
-SUCCESS_REDIRECT_BASE = "https://www.imcpune.in/payment-success"
+RETURN_URL = "http://127.0.0.1:8000/api/payments/payment/return/"
+SUCCESS_REDIRECT_BASE = "http://localhost:5173/payment-success"
 
 
 def generate_order_id():
@@ -56,44 +63,117 @@ def create_payment(request):
         # =========================================
         if service == "singing_classes":
 
-            if not registration_id:
-                return JsonResponse({"error": "registration_id required"}, status=400)
+            registration = SingingClass.objects.get(
+                id=registration_id
+            )
 
-            registration = SingingClass.objects.get(id=registration_id)
             amount = registration.fee
+            # ADDED:
+            customer_name = f"{registration.first_name} {registration.last_name}"
 
         # =========================================
-        # SINGER REGISTRATION PAYMENT
+        # STUDIO BOOKING
+        # =========================================
+        elif service == "studio_booking":
+
+            registration = Studio.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.total_amount
+            # ADDED:
+            customer_name = registration.customer
+
+        # =========================================
+        # EVENT BOOKING
+        # =========================================
+        elif service == "auditorium_music_shows":
+
+            registration = EventBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.total_amount
+            # ADDED:
+            customer_name = registration.customer_name
+
+        # =========================================
+        # PRIVATE EVENT
+        # =========================================
+        elif service == "private_music_events":
+
+            registration = PrivateBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = Decimal("5000.00")
+            # ADDED:
+            customer_name = registration.customer
+
+        # =========================================
+        # PHOTOGRAPHY
+        # =========================================
+        elif service == "photography_service":
+
+            registration = PhotographyBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.package_price
+            # ADDED:
+            customer_name = registration.client
+
+        # =========================================
+        # SINGER
         # =========================================
         elif service == "singer_registration":
 
+            registration = Singer.objects.get(
+                id=registration_id
+            )
+
             amount = Decimal("1000.00")
+            # ADDED:
+            customer_name = registration.name
 
+        # =========================================
+        # SOUND
+        # =========================================
+        elif service == "sound_service":
 
+            registration = Sound.objects.get(
+                id=registration_id
+            )
 
+            amount = registration.price
+            # ADDED:
+            customer_name = registration.client_name
 
-        
+        # =========================================
+        # VIDEOGRAPHY
+        # =========================================
+        elif service == "videography_service":
 
-        # -----------------------------------
-        # STUDIO BOOKING PAYMENT
-        # -----------------------------------
-        elif service == "studio_booking":
+            registration = Videography.objects.get(
+                id=registration_id
+            )
 
-            amount = body.get("amount")
-
-            if not amount:
-                return JsonResponse({"error": "amount required"}, status=400)
-
-            amount = Decimal(str(amount))
-
+            amount = registration.package_price
+            # ADDED:
+            customer_name = registration.client_name
 
         else:
-            return JsonResponse({"error": "Invalid service"}, status=400)
+            return JsonResponse(
+                {"error": "Invalid service"},
+                status=400
+            )
 
+    except Exception as e:
 
-
-    except SingingClass.DoesNotExist:
-        return JsonResponse({"error": "Invalid registration id"}, status=400)
+        return JsonResponse(
+            {"error": str(e)},
+            status=400
+        )
 
     order_id = generate_order_id()
 
@@ -127,7 +207,10 @@ def create_payment(request):
         resp.raise_for_status()
         data = resp.json()
 
+        # UPDATED: Added customer_name field
         Payment.objects.create(
+            registration_id=registration_id,
+            customer_name=customer_name,  # ADDED THIS LINE
             order_id=order_id,
             amount=amount,
             service=service,
@@ -208,6 +291,102 @@ def verify_payment(order_id):
         payment.raw_response = data
 
         payment.save()
+
+        # ======================================
+        # DYNAMIC PAYMENT STATUS UPDATE
+        # ======================================
+
+        if payment.status == "CHARGED":
+
+            # Singing
+            if payment.service == "singing_classes":
+
+                obj = SingingClass.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+
+            # Studio
+            elif payment.service == "studio_booking":
+
+                obj = Studio.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Event
+            elif payment.service == "auditorium_music_shows":
+
+                obj = EventBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+
+            # Private Booking
+            elif payment.service == "private_music_events":
+
+                obj = PrivateBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Photography
+            elif payment.service == "photography_service":
+
+                obj = PhotographyBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Singer
+            elif payment.service == "singer_registration":
+
+                obj = Singer.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Sound
+            elif payment.service == "sound_service":
+
+                obj = Sound.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Videography
+            elif payment.service == "videography_service":
+
+                obj = Videography.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
 
         return payment.status
 
@@ -290,6 +469,102 @@ def payment_webhook(request):
 
         payment.save()
 
+        # ======================================
+        # DYNAMIC PAYMENT STATUS UPDATE IN WEBHOOK
+        # ======================================
+
+        if payment.status == "CHARGED":
+
+            # Singing
+            if payment.service == "singing_classes":
+
+                obj = SingingClass.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+
+            # Studio
+            elif payment.service == "studio_booking":
+
+                obj = Studio.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Event
+            elif payment.service == "auditorium_music_shows":
+
+                obj = EventBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+
+            # Private Booking
+            elif payment.service == "private_music_events":
+
+                obj = PrivateBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Photography
+            elif payment.service == "photography_service":
+
+                obj = PhotographyBooking.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Singer
+            elif payment.service == "singer_registration":
+
+                obj = Singer.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Sound
+            elif payment.service == "sound_service":
+
+                obj = Sound.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+            # Videography
+            elif payment.service == "videography_service":
+
+                obj = Videography.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
     return JsonResponse({"message": "Webhook processed"})
 
 
@@ -326,3 +601,116 @@ def refund_payment(request):
 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+# ============================================================
+# PAYMENT REPORT (JSON API)
+# ============================================================
+
+def get_customer_name(payment):
+
+    try:
+
+        if payment.service == "singing_classes":
+            obj = SingingClass.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return f"{obj.first_name} {obj.last_name}"
+
+        elif payment.service == "studio_booking":
+            obj = Studio.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.customer
+
+        elif payment.service == "auditorium_music_shows":
+            obj = EventBooking.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.customer_name
+
+        elif payment.service == "private_music_events":
+            obj = PrivateBooking.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.customer
+
+        elif payment.service == "photography_service":
+            obj = PhotographyBooking.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.client
+
+        elif payment.service == "singer_registration":
+            obj = Singer.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.name
+
+        elif payment.service == "sound_service":
+            obj = Sound.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.client_name
+
+        elif payment.service == "videography_service":
+            obj = Videography.objects.filter(
+                id=payment.registration_id
+            ).first()
+
+            if obj:
+                return obj.client_name
+
+    except Exception as e:
+        print("Customer Name Error:", e)
+
+    return "N/A"
+
+
+def payment_report(request):
+    try:
+
+        payments = Payment.objects.all().order_by("-created_at")
+
+        data = []
+
+        for p in payments:
+
+            data.append({
+                "name": get_customer_name(p),
+                "order_id": p.order_id,
+                "service": p.service,
+                "amount": float(p.amount),
+                "status": p.status,
+                "payment_method": p.payment_method,
+                "txn_id": p.txn_id,
+                "payer_vpa": p.payer_vpa,
+                "created_at": p.created_at.strftime("%d-%m-%Y %H:%M")
+            })
+
+        return JsonResponse({
+            "success": True,
+            "count": len(data),
+            "payments": data
+        })
+
+    except Exception as e:
+
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=500)

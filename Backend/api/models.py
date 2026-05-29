@@ -204,6 +204,11 @@ class Studio(models.Model):
         null=True,
         help_text="Comma-separated: Card, UPI, NetBanking",
     )
+    
+    payment_status = models.CharField(
+    max_length=20,
+    default="pending"
+    )
 
     # Meta
     created_at = models.DateTimeField(auto_now_add=True)
@@ -568,6 +573,12 @@ class EventBooking(models.Model):
         ("confirmed", "Confirmed"),
         ("cancelled", "Cancelled"),
     ]
+    
+    
+    payment_status = models.CharField(
+    max_length=20,
+    default="pending"
+    )
 
     user = models.ForeignKey(
         CustomUser,
@@ -867,6 +878,11 @@ class Singer(models.Model):
         blank=True,
         default=""
     )
+    
+    payment_status = models.CharField(
+    max_length=20,
+    default="pending"
+   )
 
    
 
@@ -926,13 +942,6 @@ class Singer(models.Model):
         return f"{self.id} - {self.name}"
 
 
-
-# ===============================================
-# ============  Singing (SERVICE)  =========
-# ===============================================
-# api/models.py
-# api/models.py
-
 from django.db import models
 from django.core.validators import MinValueValidator
 
@@ -953,17 +962,43 @@ class SingingClass(models.Model):
 
     # Student info
     first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100, blank=True)
+
+    last_name = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
     phone = models.CharField(max_length=20)
 
-    email = models.EmailField(blank=True, null=True)
+    email = models.EmailField(
+        blank=True,
+        null=True
+    )
 
-    address1 = models.CharField(max_length=255, blank=True)
-    address2 = models.CharField(max_length=255, blank=True)
+    address1 = models.CharField(
+        max_length=255,
+        blank=True
+    )
 
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=100, blank=True)
-    postal_code = models.CharField(max_length=20, blank=True)
+    address2 = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
+    city = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    state = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    postal_code = models.CharField(
+        max_length=20,
+        blank=True
+    )
 
     # Fee stored in DB
     fee = models.DecimalField(
@@ -972,28 +1007,42 @@ class SingingClass(models.Model):
         validators=[MinValueValidator(0)]
     )
 
-    agreed_terms = models.BooleanField(default=False)
+    agreed_terms = models.BooleanField(
+        default=False
+    )
 
+    # ADMISSION STATUS
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    # PAYMENT STATUS
+    payment_status = models.CharField(
+        max_length=20,
+        default="pending"
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     def save(self, *args, **kwargs):
+
         """
         Automatically set fee from Batch → Class
         to prevent amount manipulation
         """
 
         if self.batch and self.batch.class_obj:
+
             self.fee = self.batch.class_obj.fee
 
         super().save(*args, **kwargs)
 
     def __str__(self):
+
         return f"{self.first_name} {self.last_name} - {self.batch}"
 
 

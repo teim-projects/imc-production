@@ -17,11 +17,41 @@ class Payment(models.Model):
         ("auditorium_music_shows", "Auditorium Music Shows"),
         ("private_music_events", "Private Music Events"),
         ("photography_service", "Photography Service"),
+        ("singer_registration", "Singer Registration"),
+        ("sound_service", "Sound Service"),
+        ("videography_service", "Videography Service"),
     )
 
-    order_id = models.CharField(max_length=100, unique=True)
-    txn_id = models.CharField(max_length=200, blank=True, null=True)
-    txn_uuid = models.CharField(max_length=200, blank=True, null=True)
+    # Registration ID of service booking
+    registration_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+
+    # NEW FIELD
+    customer_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
+    order_id = models.CharField(
+        max_length=100,
+        unique=True
+    )
+
+    txn_id = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
+
+    txn_uuid = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True
+    )
 
     service = models.CharField(
         max_length=100,
@@ -30,7 +60,10 @@ class Payment(models.Model):
         null=True
     )
 
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
+    )
 
     status = models.CharField(
         max_length=50,
@@ -38,13 +71,30 @@ class Payment(models.Model):
         default="INITIATED"
     )
 
-    payment_method = models.CharField(max_length=50, blank=True, null=True)
-    payer_vpa = models.CharField(max_length=100, null=True, blank=True)
+    payment_method = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True
+    )
 
-    raw_response = models.JSONField(blank=True, null=True)
+    payer_vpa = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    raw_response = models.JSONField(
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
 
     def __str__(self):
-        return f"{self.order_id} - {self.status}"
+        return f"{self.customer_name} - ₹{self.amount} - {self.status}"
