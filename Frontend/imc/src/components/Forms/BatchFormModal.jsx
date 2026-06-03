@@ -1,4 +1,3 @@
-// src/components/Forms/BatchFormModal.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -58,7 +57,7 @@ export default function BatchFormModal({ onClose, onSaved, editData = null }) {
         trainer:   editData.trainer?.id?.toString()   || editData.trainer   || "",
         day:       editData.day       || "",
         time_slot: editData.time_slot || "",
-        capacity:  editData.capacity != null ? String(editData.capacity) : "",
+        capacity:  editData.capacity !== null && editData.capacity !== undefined ? String(editData.capacity) : "",
       });
     }
   }, [editData]);
@@ -103,7 +102,7 @@ export default function BatchFormModal({ onClose, onSaved, editData = null }) {
       trainer:   Number(form.trainer),
       day:       form.day,
       time_slot: form.time_slot.trim(),
-      ...(form.capacity.trim() !== "" && { capacity: Number(form.capacity) }),
+      ...(form.capacity && form.capacity.trim() !== "" && { capacity: Number(form.capacity) }),
     };
 
     try {
@@ -113,8 +112,8 @@ export default function BatchFormModal({ onClose, onSaved, editData = null }) {
         await api.post(BATCH_API, payload);
       }
 
-      onSaved?.();
-      onClose();
+      if (onSaved) onSaved();
+      if (onClose) onClose();
     } catch (err) {
       console.error("Save error:", err.response?.data || err);
       const msg = err.response?.data
