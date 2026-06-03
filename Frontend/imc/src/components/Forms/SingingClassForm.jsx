@@ -7,7 +7,7 @@ import BatchFormModal from "../Forms/BatchFormModal";
 import TeacherFormModal from "../Forms/TeacherFormModal";
 import ClassFormModal from "../Forms/ClassFormModal";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000/api";
 
 const CLASS_API = `${BASE.replace(/\/$/, "")}/auth/classes/`;
 const TEACHER_API = `${BASE.replace(/\/$/, "")}/auth/teachers/`;

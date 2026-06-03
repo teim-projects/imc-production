@@ -4,7 +4,7 @@ import axios from "axios";
 import { Download } from "lucide-react"; // ← added for export icon
 import "./Forms.css";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000/api";
 const API_URL = `${BASE.replace(/\/$/, "")}/auth/singing-classes/`;
 const BATCH_API = `${BASE.replace(/\/$/, "")}/auth/batches/`;
 const PAGE_SIZE = 10;
