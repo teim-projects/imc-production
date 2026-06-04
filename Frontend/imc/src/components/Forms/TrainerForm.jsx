@@ -399,9 +399,11 @@ const PaymentReport = () => {
         setLoading(true);
       }
 
-      const response = await axios.get(
-        "http://127.0.0.1:8000/api/payments/report/"
-      );
+      const BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+
+      const API_URL = `${BASE}/payments/report/`;
+
+      const response = await axios.get(API_URL);
 
       setPayments(response.data.payments || []);
     } catch (error) {

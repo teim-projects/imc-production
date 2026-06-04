@@ -28,9 +28,8 @@ PAYMENT_PAGE_CLIENT_ID = "hdfcmaster"
 CUSTOMER_ID = "imc_user_101"
 CUSTOMER_EMAIL = "user@imc.com"
 CUSTOMER_PHONE = "9999999999"
-
-RETURN_URL = "http://127.0.0.1:8000/api/payments/payment/return/"
-SUCCESS_REDIRECT_BASE = "http://localhost:5173/payment-success"
+RETURN_URL = "https://www.imcpune.in/api/payments/payment/return/"
+SUCCESS_REDIRECT_BASE = "https://www.imcpune.in/payment-success"
 
 
 def generate_order_id():
