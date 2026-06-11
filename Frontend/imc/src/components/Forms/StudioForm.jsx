@@ -76,6 +76,20 @@ const humanizeErr = (err) => {
   return err?.message || "Unknown error";
 };
 
+// Function to get payment status chip styles
+const getPaymentStatusChipStyles = (status) => {
+  const isPaid = status === "paid";
+  return {
+    padding: "4px 10px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    display: "inline-block",
+    backgroundColor: isPaid ? "#dcfce7" : "#fee2e2",
+    color: isPaid ? "#166534" : "#991b1b",
+  };
+};
+
 const StudioForm = ({ onClose, viewOnly = false }) => {
   const [tab, setTab] = useState(viewOnly ? "VIEW" : "ADD");
   const [loading, setLoading] = useState(false);
@@ -104,6 +118,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     duration: 1,
     payment_methods: [],
     custom_price: "",
+    payment_status: "pending", // Add payment status field
   };
   const [formData, setFormData] = useState(emptyForm);
 
@@ -168,7 +183,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           (r.customer || "").toLowerCase().includes(q) ||
           (r.studio_name || "").toLowerCase().includes(q) ||
           (r.email || "").toLowerCase().includes(q) ||
-          (r.contact_number || "").toLowerCase().includes(q)
+          (r.contact_number || "").toLowerCase().includes(q) ||
+          (r.payment_status || "").toLowerCase().includes(q) // Add payment status to search
       );
     }
     return rows;
@@ -284,6 +300,10 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     });
   };
 
+  const handlePaymentStatusChange = (status) => {
+    setFormData((prev) => ({ ...prev, payment_status: status }));
+  };
+
   const onSlotClick = (time) => {
     const range = computeRangeForStart(time, formData.duration);
     const perSlotHr = SLOT_STEP_MIN / 60;
@@ -313,6 +333,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       duration: row.duration ?? 1,
       payment_methods: Array.isArray(row.payment_methods) ? row.payment_methods : [],
       custom_price: row.price_per_hour ?? row.price ?? (master?.hourly_rate ?? ""),
+      payment_status: row.payment_status || "pending", // Add payment status to edit
     });
     setSelectedRange([]);
     clearStatus();
@@ -374,6 +395,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       price_per_hour: priceToSend,
       price: priceToSend,
       studio_name: formData.studio_name,
+      payment_status: formData.payment_status || "pending",
     };
 
     setSaving(true);
@@ -430,6 +452,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       "Price (₹/hr)",
       "Total Amount (₹)",
       "Payment Methods",
+      "Payment Status", // Add payment status header
       "Contact Number",
       "Email",
     ];
@@ -452,6 +475,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           Array.isArray(b.payment_methods) && b.payment_methods.length
             ? `"${b.payment_methods.join(", ")}"`
             : "-",
+          b.payment_status === "paid" ? "Paid" : "Pending", // Payment status
           b.contact_number || "-",
           b.email || "-",
         ];
@@ -646,6 +670,37 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   </div>
                 </div>
               </label>
+
+              {/* Payment Status Field - NEW */}
+              <label>
+                Payment Status
+                <div className="pf-methods">
+                  <div className="pf-tags">
+                    <button
+                      type="button"
+                      className={`tag ${formData.payment_status === "pending" ? "active" : ""}`}
+                      onClick={() => handlePaymentStatusChange("pending")}
+                      style={{
+                        backgroundColor: formData.payment_status === "pending" ? "#fee2e2" : "",
+                        color: formData.payment_status === "pending" ? "#991b1b" : "",
+                      }}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      type="button"
+                      className={`tag ${formData.payment_status === "paid" ? "active" : ""}`}
+                      onClick={() => handlePaymentStatusChange("paid")}
+                      style={{
+                        backgroundColor: formData.payment_status === "paid" ? "#dcfce7" : "",
+                        color: formData.payment_status === "paid" ? "#166534" : "",
+                      }}
+                    >
+                      Paid
+                    </button>
+                  </div>
+                </div>
+              </label>
             </div>
           </section>
 
@@ -772,14 +827,14 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       )}
 
       {/* ────────────────────────────────────────────────
-          VIEW TABLE – with Total Amount column
+          VIEW TABLE – with Payment Status column
       ──────────────────────────────────────────────── */}
       {tab === "VIEW" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
             <input
               className="pf-search"
-              placeholder="Search: customer, studio, email, phone"
+              placeholder="Search: customer, studio, email, phone, payment status"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -823,6 +878,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   <th>Price (₹/hr)</th>
                   <th>Total Amount (₹)</th>
                   <th>Payment</th>
+                  <th>Payment Status</th> {/* NEW COLUMN */}
                   <th className="c">Actions</th>
                 </tr>
               </thead>
@@ -853,6 +909,12 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                           ? s.payment_methods.join(", ")
                           : "-"}
                       </td>
+                      {/* PAYMENT STATUS COLUMN */}
+                      <td>
+                        <span style={getPaymentStatusChipStyles(s.payment_status)}>
+                          {s.payment_status === "paid" ? "Paid" : "Pending"}
+                        </span>
+                      </td>
                       <td className="c">
                         <button
                           className="mini"
@@ -874,7 +936,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                 })}
                 {!paged.length && (
                   <tr>
-                    <td colSpan="9" className="c muted">
+                    <td colSpan="10" className="c muted">
                       {loading ? "Loading bookings…" : "No bookings found."}
                     </td>
                   </tr>

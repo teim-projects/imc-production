@@ -76,6 +76,20 @@ const safeImageUrl = (url) => {
   }
 };
 
+// Function to get payment status chip styles
+const getPaymentStatusChipStyles = (status) => {
+  const isPaid = status === "paid";
+  return {
+    padding: "4px 10px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    display: "inline-block",
+    backgroundColor: isPaid ? "#dcfce7" : "#fee2e2",
+    color: isPaid ? "#166534" : "#991b1b",
+  };
+};
+
 // MAIN COMPONENT
 export default function SingerFormPage({ initialMode = "list" }) {
   const emptyInitial = {
@@ -197,7 +211,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
     const headers = [
       "Sr No", "ID", "Name", "Birth Date", "Mobile", "Profession",
       "Education", "Achievement", "Favourite Singer", "Reference",
-      "Genre", "City", "Annual Fee (₹)", "Payment Method", "Status",
+      "Genre", "City", "Annual Fee (₹)", "Payment Method", "Payment Status", "Status",
     ];
 
     const csvRows = [
@@ -218,6 +232,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
           `"${(s.city || "").replace(/"/g, '""')}"`,
           s.rate || "",
           s.payment_method || "Cash",
+          s.payment_status || "pending",
           s.active ? "Active" : "Inactive",
         ];
         return row.join(",");
@@ -892,7 +907,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <input
                   className="pf-search"
-                  placeholder="Search by name, mobile, city, id..."
+                  placeholder="Search by name, mobile, city, id, payment status..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchSingers()}
@@ -958,6 +973,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                   <th>City</th>
                   <th>Fee (₹)</th>
                   <th>Payment</th>
+                  <th>Payment Status</th> {/* NEW COLUMN */}
                   <th>Status</th>
                   <th className="c">Actions</th>
                 </tr>
@@ -965,13 +981,13 @@ export default function SingerFormPage({ initialMode = "list" }) {
               <tbody>
                 {loadingList ? (
                   <tr>
-                    <td colSpan={16} className="text-center py-8">
+                    <td colSpan={17} className="text-center py-8">
                       Loading singers...
                     </td>
                   </tr>
                 ) : singers.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="text-center py-10 text-gray-500">
+                    <td colSpan={17} className="text-center py-10 text-gray-500">
                       No singers found. Use "+ Add Singer" to register one.
                     </td>
                   </tr>
@@ -1015,6 +1031,13 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>
                         <span className={`chip ${getPaymentChipClass(s.payment_method)}`}>
                           {s.payment_method || "Cash"}
+                        </span>
+                      </td>
+
+                      {/* PAYMENT STATUS COLUMN */}
+                      <td>
+                        <span style={getPaymentStatusChipStyles(s.payment_status)}>
+                          {s.payment_status === "paid" ? "Paid" : "Pending"}
                         </span>
                       </td>
 
