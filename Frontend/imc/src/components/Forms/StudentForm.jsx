@@ -308,7 +308,15 @@ export default function SingingClassForm({ onSuccess }) {
     return items.filter((r) => {
       const batchInfo = batches.find(b => b.id === r.batch);
       const batchStr = batchInfo ? `${batchInfo.day} ${batchInfo.time_slot} ${batchInfo.trainer_name || ""} ${batchInfo.class_name || ""}` : "";
-      const hay = `${r.first_name || ""} ${r.last_name || ""} ${r.phone || ""} ${r.email || ""} ${batchStr} ${r.fee || ""}`.toLowerCase();
+      const hay = `
+  ${r.first_name || ""}
+  ${r.last_name || ""}
+  ${r.phone || ""}
+  ${r.email || ""}
+  ${batchStr}
+  ${r.fee || ""}
+  ${r.payment_status || ""}
+`.toLowerCase();
       return hay.includes(q);
     });
   }, [items, search, batches]);
@@ -492,6 +500,7 @@ export default function SingingClassForm({ onSuccess }) {
                     <th>Teacher</th>
                     <th>Class</th>
                     <th>Fee Paid</th>
+                    <th>Payment Status</th>
                     <th>Phone</th>
                     <th className="c">Actions</th>
                   </tr>
@@ -508,6 +517,24 @@ export default function SingingClassForm({ onSuccess }) {
                         <td>{batchInfo?.trainer_name || "-"}</td>
                         <td>{batchInfo?.class_name || "-"}</td>
                         <td>{r.fee ? `₹${r.fee}` : "-"}</td>
+
+                        <td>
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: "20px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              backgroundColor:
+                                r.payment_status === "paid" ? "#dcfce7" : "#fee2e2",
+                              color:
+                                r.payment_status === "paid" ? "#166534" : "#991b1b",
+                            }}
+                          >
+                            {r.payment_status || "pending"}
+                          </span>
+                        </td>
+
                         <td>{r.phone || "-"}</td>
                         <td className="c">
                           <button className="mini" onClick={() => handleEdit(r)}>Edit</button>
@@ -542,6 +569,19 @@ export default function SingingClassForm({ onSuccess }) {
                 <p><strong>Teacher:</strong> {batchInfo?.trainer_name || "-"}</p>
                 <p><strong>Class:</strong> {batchInfo?.class_name || "-"}</p>
                 <p><strong>Monthly Fee Paid:</strong> {selected.fee ? `₹${selected.fee}` : "-"}</p>
+
+                <p>
+                  <strong>Payment Status:</strong>{" "}
+                  <span
+                    style={{
+                      color: selected.payment_status === "paid" ? "green" : "red",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {selected.payment_status || "pending"}
+                  </span>
+                </p>
+
                 <p><strong>Phone:</strong> {selected.phone || "-"}</p>
                 <p><strong>Email:</strong> {selected.email || "-"}</p>
                 <p className="muted">{selected.address1} {selected.address2}</p>
