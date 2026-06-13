@@ -762,12 +762,18 @@ def first_existing_attr(obj, candidates, default=None):
             return c
     return default
 
+
+
 class DashboardSummary(APIView):
     """
-    Safer dashboard summary. On error it logs full exception and returns a helpful message
-    (this helps you see what's wrong while debugging).
+    Dashboard summary with comprehensive statistics including:
+    - Customer, booking, event counts
+    - Revenue from all sources (Payments, Studio, Photography, Videography, Sound, Classes, Annual Fees)
+    - Payment status statistics for singing classes
+    - Monthly chart data for revenue visualization
+    - Recent activities from all modules
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # Change to [AllowAny] for testing without auth
 
     def _safe_count(self, Model):
         try:
@@ -838,7 +844,8 @@ class DashboardSummary(APIView):
 
     def get(self, request):
         try:
-            # common models and app label guesses (adjust 'api' if your app label differs)
+            from django.db.models.functions import TruncMonth
+            
             APP = "api"
 
             CustomUser = get_model_safely(APP, "CustomUser") or get_model_safely("auth", "User")
@@ -849,70 +856,295 @@ class DashboardSummary(APIView):
             Event = get_model_safely(APP, "Event")
             Show = get_model_safely(APP, "Show")
             Payment = get_model_safely(APP, "Payment")
+            SingingClass = get_model_safely(APP, "SingingClass")
+            Singer = get_model_safely(APP, "Singer")
+            Trainer = get_model_safely(APP, "Trainer")
+            Sound = get_model_safely(APP, "Sound")
+            AnnualFee = get_model_safely(APP, "AnnualFee")
 
-            # customers
+            # ==================================
+            # COUNTS
+            # ==================================
+            
+            # Customers count
             customers = 0
             if CustomUser:
                 try:
                     customers = CustomUser.objects.filter(is_active=True).count()
                 except Exception:
-                    # fallback to counting all rows
                     customers = self._safe_count(CustomUser)
 
-            # bookings total (sum counts)
-            bookings = 0
-            for M in (Studio, PrivateBooking, PhotographyBooking, Videography):
-                if M:
-                    bookings += self._safe_count(M)
+            # Individual booking counts
+            studio_count = Studio.objects.count() if Studio else 0
+            private_count = PrivateBooking.objects.count() if PrivateBooking else 0
+            photo_count = PhotographyBooking.objects.count() if PhotographyBooking else 0
+            video_count = Videography.objects.count() if Videography else 0
 
-            # events
+            # Total bookings
+            bookings = studio_count + private_count + photo_count + video_count
+
+            # Events count
             events = 0
             for M in (Event, Show):
                 if M:
                     events += self._safe_count(M)
 
-            # revenue: try common field names on Payment: amount, total, price
-            revenue = 0.0
+            # Other counts
+            singers_count = Singer.objects.count() if Singer else 0
+            trainers_count = Trainer.objects.count() if Trainer else 0
+            sound_count = Sound.objects.count() if Sound else 0
+            singing_classes_count = SingingClass.objects.count() if SingingClass else 0
+
+            # ==================================
+            # REVENUE FROM ALL SOURCES
+            # ==================================
+
+            # Payment revenue
+            payment_revenue = 0.0
             if Payment:
-                revenue = self._safe_sum(Payment, ["amount", "total", "price", "paid_amount"])
+                payment_revenue = float(
+                    Payment.objects.aggregate(total=Sum("amount"))["total"] or 0
+                )
 
-            # collect recent bookings from available tables
+            # Studio revenue
+            studio_revenue = 0.0
+            if Studio:
+                studio_revenue = float(
+                    Studio.objects.aggregate(total=Sum("total_amount"))["total"] or 0
+                )
+
+            # Photography revenue
+            photo_revenue = 0.0
+            if PhotographyBooking:
+                photo_revenue = float(
+                    PhotographyBooking.objects.aggregate(total=Sum("package_price"))["total"] or 0
+                )
+
+            # Videography revenue
+            video_revenue = 0.0
+            if Videography:
+                video_revenue = float(
+                    Videography.objects.aggregate(total=Sum("package_price"))["total"] or 0
+                )
+
+            # Sound revenue
+            sound_revenue = 0.0
+            if Sound:
+                sound_revenue = float(
+                    Sound.objects.aggregate(total=Sum("price"))["total"] or 0
+                )
+
+            # Singing class revenue
+            class_revenue = 0.0
+            if SingingClass:
+                class_revenue = float(
+                    SingingClass.objects.aggregate(total=Sum("fee"))["total"] or 0
+                )
+
+            # Annual fee revenue
+            annual_fee_revenue = 0.0
+            if AnnualFee:
+                annual_fee_revenue = float(
+                    AnnualFee.objects.aggregate(total=Sum("amount"))["total"] or 0
+                )
+
+            # Total revenue from all sources
+            total_revenue = (
+                payment_revenue +
+                studio_revenue +
+                photo_revenue +
+                video_revenue +
+                sound_revenue +
+                class_revenue +
+                annual_fee_revenue
+            )
+
+            # ==================================
+            # PAYMENT STATUS STATISTICS
+            # ==================================
+
+            paid_students = 0
+            pending_students = 0
+            paid_revenue = 0.0
+            pending_revenue = 0.0
+
+            if SingingClass:
+                try:
+                    paid_students = SingingClass.objects.filter(
+                        payment_status="paid"
+                    ).count()
+
+                    pending_students = SingingClass.objects.filter(
+                        payment_status="pending"
+                    ).count()
+
+                    paid_revenue = float(
+                        SingingClass.objects.filter(
+                            payment_status="paid"
+                        ).aggregate(total=Sum("fee"))["total"] or 0
+                    )
+
+                    pending_revenue = float(
+                        SingingClass.objects.filter(
+                            payment_status="pending"
+                        ).aggregate(total=Sum("fee"))["total"] or 0
+                    )
+                except Exception as e:
+                    logger.warning("payment_status field may not exist in SingingClass: %s", e)
+
+            # ==================================
+            # MONTHLY CHART DATA
+            # ==================================
+            
+            monthly_chart = []
+            
+            if Payment:
+                try:
+                    monthly_data = (
+                        Payment.objects
+                        .annotate(month=TruncMonth("date"))
+                        .values("month")
+                        .annotate(total=Sum("amount"))
+                        .order_by("month")
+                    )
+
+                    monthly_chart = [
+                        {
+                            "name": item["month"].strftime("%b"),
+                            "value": float(item["total"])
+                        }
+                        for item in monthly_data
+                    ]
+                except Exception as e:
+                    logger.warning("Monthly chart error: %s", e)
+
+            # ==================================
+            # RECENT ACTIVITIES
+            # ==================================
+
             recent = []
-            # common date and price candidates to attempt
-            date_candidates = ["date", "created_at", "shoot_date", "event_date", "booking_date"]
-            price_candidates = ["price", "amount", "total", "paid_amount"]
-            customer_candidates = ["customer", "client", "client_name", "customer_name", "user"]
 
-            for Model, name in ((PrivateBooking, "PrivateBooking"),
-                                (PhotographyBooking, "PhotographyBooking"),
-                                (Videography, "Videography"),
-                                (Studio, "Studio")):
-                if Model:
-                    recent.extend(self._gather_recent(Model, name, date_candidates, price_candidates, customer_candidates))
+            # Studio recent bookings
+            if Studio:
+                for item in Studio.objects.order_by("-created_at")[:5]:
+                    recent.append({
+                        "type": "Studio",
+                        "customer": item.customer,
+                        "price": float(item.total_amount or 0),
+                        "date": str(item.date) if item.date else None
+                    })
 
-            # sort recent by date (descending) and keep top 6
-            recent_sorted = sorted([r for r in recent if r.get("date")], key=lambda x: x["date"], reverse=True)[:6]
+            # Photography recent bookings
+            if PhotographyBooking:
+                for item in PhotographyBooking.objects.order_by("-created_at")[:5]:
+                    recent.append({
+                        "type": "Photography",
+                        "customer": item.client,
+                        "price": float(item.package_price or 0),
+                        "date": str(item.date) if item.date else None
+                    })
 
+            # Videography recent bookings
+            if Videography:
+                for item in Videography.objects.order_by("-created_at")[:5]:
+                    recent.append({
+                        "type": "Videography",
+                        "customer": item.client_name,
+                        "price": float(item.package_price or 0),
+                        "date": str(item.shoot_date) if item.shoot_date else None
+                    })
+
+            # Sound recent bookings
+            if Sound:
+                for item in Sound.objects.order_by("-created_at")[:5]:
+                    recent.append({
+                        "type": "Sound",
+                        "customer": item.client_name,
+                        "price": float(item.price or 0),
+                        "date": str(item.event_date) if item.event_date else None
+                    })
+
+            # Private booking recent entries
+            if PrivateBooking:
+                for item in PrivateBooking.objects.order_by("-created_at")[:5]:
+                    recent.append({
+                        "type": "Private Booking",
+                        "customer": item.customer_name,
+                        "price": float(item.amount or 0),
+                        "date": str(item.date) if item.date else None
+                    })
+
+            # Sort recent by date (descending) and keep top 10
+            recent = sorted(
+                [r for r in recent if r.get("date")],
+                key=lambda x: x["date"],
+                reverse=True
+            )[:10]
+
+            # ==================================
+            # FINAL PAYLOAD
+            # ==================================
+            
             payload = {
+                # Basic counts
                 "customers": customers,
                 "bookings": bookings,
                 "events": events,
-                "revenue": revenue,
-                "recent_bookings": recent_sorted,
+                
+                # Revenue (multiple formats for compatibility)
+                "revenue": total_revenue,
+                "totalRevenue": total_revenue,
+                
+                # Individual revenue breakdown
+                "payment_revenue": payment_revenue,
+                "studio_revenue": studio_revenue,
+                "photo_revenue": photo_revenue,
+                "video_revenue": video_revenue,
+                "sound_revenue": sound_revenue,
+                "class_revenue": class_revenue,
+                "annual_fee_revenue": annual_fee_revenue,
+                
+                # Individual counts
+                "studio_count": studio_count,
+                "private_count": private_count,
+                "photo_count": photo_count,
+                "video_count": video_count,
+                
+                # Singing Class Stats
+                "singing_classes_count": singing_classes_count,
+                "paid_students": paid_students,
+                "pending_students": pending_students,
+                "paid_revenue": float(paid_revenue),
+                "pending_revenue": float(pending_revenue),
+                
+                # Other counts
+                "singers_count": singers_count,
+                "trainers_count": trainers_count,
+                "sound_count": sound_count,
+                
+                # Chart Data
+                "chart_data": monthly_chart,
+                
+                # Recent activities
+                "recent_bookings": recent,
+                
+                # Metadata
                 "generated_at": timezone.now().isoformat(),
             }
+            
             return Response(payload)
+            
         except Exception as exc:
             # Log full exception server-side for debugging
             logger.exception("DashboardSummary failed")
-            # Return the error back in the response to help debugging (remove in production)
-            return Response({
-                "detail": "Failed to compute dashboard summary",
-                "error": str(exc)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
+            # Return the error back in the response to help debugging
+            return Response(
+                {
+                    "detail": "Failed to compute dashboard summary",
+                    "error": str(exc)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
