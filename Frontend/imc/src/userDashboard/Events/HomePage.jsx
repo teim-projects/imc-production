@@ -13,10 +13,12 @@ import {
   FaUsers,
   FaTicketAlt,
   FaTimes,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { Loader2 } from "lucide-react"; // or any spinner
 
-// Import the new Footer component
+// Import Footer
 import Footer from "../../components/footer";
 
 /* ===================== API CONFIG ===================== */
@@ -24,6 +26,8 @@ const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
+const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
+const PAYMENT_STATUS_API = `${BASE}/payments/check-status/`;
 
 /* ===================== AXIOS ===================== */
 const api = axios.create();
@@ -47,22 +51,29 @@ const COLORS = {
 };
 
 /* ======================================================
-   FORM BOOKING MODAL – with Basic / Premium / VIP options
+  BOOKING MODAL WITH PAYMENT
 ====================================================== */
 function BookingModal({ event, onClose, onBookingCreated }) {
+  // Steps: 'form' | 'processing' | 'success' | 'failed'
+  const [step, setStep] = useState("form");
+
+  // Form fields
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [tickets, setTickets] = useState(1);
-  const [ticketType, setTicketType] = useState("general"); // "general", "basic", "premium", "vip"
+  const [ticketType, setTicketType] = useState("basic"); // "basic", "premium", "vip"
   const [payment, setPayment] = useState("UPI");
+
+  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [orderId, setOrderId] = useState(null);
+  const [bookingId, setBookingId] = useState(null);
 
   if (!event) return null;
 
-  // Determine available ticket types and their prices
+  // Ticket options (available if price > 0)
   const ticketOptions = [
- 
     {
       type: "basic",
       label: "Basic",
@@ -83,239 +94,422 @@ function BookingModal({ event, onClose, onBookingCreated }) {
     },
   ].filter((opt) => opt.available && opt.price > 0);
 
-  // Default to first available option if none selected
+  // Auto-select first available type if current is not valid
   useEffect(() => {
     if (ticketOptions.length > 0 && !ticketOptions.some((opt) => opt.type === ticketType)) {
       setTicketType(ticketOptions[0].type);
     }
-  }, [event, ticketType]);
+  }, [ticketOptions, ticketType]);
 
+  // Selected ticket option
   const selectedOption = ticketOptions.find((opt) => opt.type === ticketType) || ticketOptions[0] || {};
   const pricePerTicket = selectedOption.price || 0;
   const total = tickets * pricePerTicket;
 
+  // On modal open, check if we returned from payment gateway
+  useEffect(() => {
+    const storedOrderId = sessionStorage.getItem("event_order_id");
+    if (storedOrderId && step === "form") {
+      setOrderId(storedOrderId);
+      setStep("processing");
+    }
+  }, [step]);
+
+  // Poll payment status when in processing state
+  useEffect(() => {
+    if (step !== "processing" || !orderId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(PAYMENT_STATUS_API, {
+          params: { order_id: orderId },
+        });
+        const status = res.data?.status?.toUpperCase() || "";
+        if (status === "CHARGED" || res.data?.success === true) {
+          setStep("success");
+          clearInterval(interval);
+          onBookingCreated(); // refresh events
+        } else if (status === "FAILED" || status === "EXPIRED") {
+          setStep("failed");
+          setError("Payment failed or expired. Please try again.");
+          clearInterval(interval);
+        }
+      } catch (err) {
+        console.error("[POLL ERROR]", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [step, orderId, onBookingCreated]);
+
+  // Reset modal state
+  const resetModal = () => {
+    setStep("form");
+    setOrderId(null);
+    setBookingId(null);
+    setError("");
+    setLoading(false);
+    sessionStorage.removeItem("event_order_id");
+    onClose();
+  };
+
+  // Submit booking → create booking → initiate payment
   const submitBooking = async () => {
     setError("");
 
+    // Validation
     if (!name.trim() || !phone.trim()) {
       setError("Name and phone number are required");
       return;
     }
-
     if (!/^\d{10}$/.test(phone.trim())) {
       setError("Please enter a valid 10-digit phone number");
       return;
     }
-
     if (tickets < 1) {
       setError("Please select at least 1 ticket");
       return;
     }
-
     if (!selectedOption.type) {
       setError("Please select a ticket type");
       return;
     }
 
+    setLoading(true);
+
     try {
-      setLoading(true);
-      await api.post(BOOKINGS_URL, {
+      // 1. Create the booking
+      const bookingRes = await api.post(BOOKINGS_URL, {
         event: event.id,
         customer_name: name.trim(),
         contact_number: phone.trim(),
-        ticket_type: selectedOption.type === "general" ? null : selectedOption.type, // or send "basic"/"premium"/"vip"
+        ticket_type: selectedOption.type, // "basic", "premium", "vip"
         number_of_tickets: tickets,
         total_amount: total,
         payment_method: payment,
+        payment_status: "pending", // optional
       });
-      onBookingCreated();
-      onClose();
+
+      const newBookingId = bookingRes.data?.id || bookingRes.data?.booking_id;
+      if (!newBookingId) {
+        throw new Error("Booking created but no ID returned");
+      }
+      setBookingId(newBookingId);
+
+      // ================ FIXED PAYMENT PAYLOAD ================
+      // Backend expects 'registration_id' and service = 'auditorium_music_shows'
+      // Amount is fetched from booking by backend
+      const paymentPayload = {
+        registration_id: newBookingId,
+        service: "auditorium_music_shows",
+      };
+      // ========================================================
+
+      const paymentRes = await api.post(PAYMENT_CREATE_API, paymentPayload);
+      const pData = paymentRes.data;
+      const paymentUrl =
+        pData?.payment_links?.web ||
+        pData?.payment_url ||
+        pData?.link ||
+        pData?.redirect_url;
+
+      if (paymentUrl) {
+        // Save orderId for polling after return
+        const newOrderId = pData?.order_id;
+        if (newOrderId) {
+          sessionStorage.setItem("event_order_id", newOrderId);
+          setOrderId(newOrderId);
+        }
+        // Redirect to payment gateway
+        window.location.href = paymentUrl;
+        // The page will unload; we set step to processing but it won't be seen
+        setStep("processing");
+        setLoading(false);
+      } else {
+        // No payment URL – maybe payment is already completed or manual
+        const newOrderId = pData?.order_id;
+        if (newOrderId) {
+          setOrderId(newOrderId);
+          setStep("processing");
+          setLoading(false);
+          setError("Payment initiated. Please complete payment in the next window.");
+        } else {
+          throw new Error("No payment URL or order ID received");
+        }
+      }
     } catch (err) {
-      console.error(err);
-      setError("Booking failed. Please try again.");
-    } finally {
+      console.error("Booking/payment error:", err);
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        err.response?.data?.non_field_errors?.[0] ||
+        err.message ||
+        "Booking failed. Please try again.";
+      setError(msg);
       setLoading(false);
     }
   };
 
-return (
-  <AnimatePresence>
-    <motion.div
-      className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <motion.div
-        className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh]"
-        initial={{ y: 60, scale: 0.95 }}
-        animate={{ y: 0, scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {/* HEADER */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h3 className="text-xl font-bold text-[#0B2545] mt-5">
-            {event.name}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-[#0B2545]"
-            disabled={loading}
+  // ---- Render based on step ----
+
+  // Success screen
+  if (step === "success") {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-3xl w-full max-w-md p-8 text-center shadow-2xl"
+            initial={{ y: 60, scale: 0.95 }}
+            animate={{ y: 0, scale: 1 }}
           >
-            <FaTimes size={22} />
-          </button>
-        </div>
+            <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-green-700 mb-2">Payment Successful!</h3>
+            <p className="text-gray-700 mb-1">
+              Your booking is confirmed, {name.split(" ")[0]}!
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              We'll send you the event details on your phone.
+            </p>
+            <button
+              onClick={resetModal}
+              className="w-full py-3.5 rounded-xl font-bold text-lg bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] shadow-md hover:shadow-lg transition-all"
+            >
+              Done
+            </button>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
-        {/* SCROLLABLE BODY */}
-        <div className="overflow-y-auto p-6 space-y-5">
+  // Failure screen
+  if (step === "failed") {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-3xl w-full max-w-md p-8 text-center shadow-2xl"
+            initial={{ y: 60, scale: 0.95 }}
+            animate={{ y: 0, scale: 1 }}
+          >
+            <FaTimes className="text-red-500 text-6xl mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-red-700 mb-2">Payment Failed</h3>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <button
+              onClick={() => {
+                setStep("form");
+                setError("");
+                setLoading(false);
+                sessionStorage.removeItem("event_order_id");
+              }}
+              className="w-full py-3.5 rounded-xl font-bold text-lg bg-gray-200 text-gray-800 shadow-md hover:bg-gray-300 transition-all"
+            >
+              Try Again
+            </button>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
-          {/* Full Name + Phone */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Full Name *
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Phone Number * (10 digits)
-              </label>
-              <input
-                value={phone}
-                onChange={(e) =>
-                  setPhone(e.target.value.replace(/\D/g, ""))
-                }
-                placeholder="9876543210"
-                maxLength={10}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
-                disabled={loading}
-              />
-            </div>
+  // Form step (with processing overlay)
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.div
+          className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[95vh]"
+          initial={{ y: 60, scale: 0.95 }}
+          animate={{ y: 0, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* HEADER */}
+          <div className="flex justify-between items-center p-6 border-b">
+            <h3 className="text-xl font-bold text-[#0B2545] mt-5">
+              {event.name}
+            </h3>
+            <button
+              onClick={resetModal}
+              className="text-gray-600 hover:text-[#0B2545]"
+              disabled={loading || step === "processing"}
+            >
+              <FaTimes size={22} />
+            </button>
           </div>
 
-          {/* Ticket Type */}
-          {ticketOptions.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ticket Type
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ticketOptions.map((opt) => (
-                  <label
-                    key={opt.type}
-                    className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
-                      ticketType === opt.type
-                        ? "border-[#FF7A3C] bg-[#FFD447]/10"
-                        : "border-gray-300 hover:border-[#FF7A3C]/50"
-                    }`}
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {opt.label}
-                      </div>
-                      <div className="text-sm text-[#FF7A3C] font-bold">
-                        ₹{opt.price.toLocaleString("en-IN")}
-                      </div>
-                    </div>
-
+          {/* BODY */}
+          <div className="overflow-y-auto p-6 space-y-5">
+            {step === "processing" ? (
+              <div className="text-center py-12">
+                <Loader2 className="animate-spin text-orange-500 w-12 h-12 mx-auto mb-4" />
+                <p className="text-gray-700 text-lg font-medium">
+                  Processing your payment...
+                </p>
+                {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+              </div>
+            ) : (
+              // FORM FIELDS
+              <>
+                {/* Name & Phone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Full Name *
+                    </label>
                     <input
-                      type="radio"
-                      name="ticketType"
-                      checked={ticketType === opt.type}
-                      onChange={() => setTicketType(opt.type)}
-                      className="w-5 h-5 accent-[#FF7A3C]"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your full name"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
                       disabled={loading}
                     />
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Phone Number * (10 digits)
+                    </label>
+                    <input
+                      value={phone}
+                      onChange={(e) =>
+                        setPhone(e.target.value.replace(/\D/g, ""))
+                      }
+                      placeholder="9876543210"
+                      maxLength={10}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-1 focus:ring-[#FFD447]/30 outline-none"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
 
-          {/* Tickets + Payment */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Number of Tickets
-              </label>
-              <select
-                value={tickets}
-                onChange={(e) =>
-                  setTickets(Number(e.target.value))
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
-                disabled={loading}
-              >
-                {[1,2,3,4,5,6,7,8,9,10].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n > 1 ? "tickets" : "ticket"}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {/* Ticket Type */}
+                {ticketOptions.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ticket Type
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {ticketOptions.map((opt) => (
+                        <label
+                          key={opt.type}
+                          className={`flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all ${
+                            ticketType === opt.type
+                              ? "border-[#FF7A3C] bg-[#FFD447]/10"
+                              : "border-gray-300 hover:border-[#FF7A3C]/50"
+                          }`}
+                        >
+                          <div>
+                            <div className="font-medium">{opt.label}</div>
+                            <div className="text-sm text-[#FF7A3C] font-bold">
+                              ₹{opt.price.toLocaleString("en-IN")}
+                            </div>
+                          </div>
+                          <input
+                            type="radio"
+                            name="ticketType"
+                            checked={ticketType === opt.type}
+                            onChange={() => setTicketType(opt.type)}
+                            className="w-5 h-5 accent-[#FF7A3C]"
+                            disabled={loading}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Payment Method
-              </label>
-              <select
-                value={payment}
-                onChange={(e) => setPayment(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
-                disabled={loading}
-              >
-                <option value="UPI">UPI</option>
-                <option value="Card">Card</option>
-                <option value="Cash">Cash at Venue</option>
-              </select>
-            </div>
+                {/* Tickets & Payment */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Number of Tickets
+                    </label>
+                    <select
+                      value={tickets}
+                      onChange={(e) => setTickets(Number(e.target.value))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
+                      disabled={loading}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                        <option key={n} value={n}>
+                          {n} {n > 1 ? "tickets" : "ticket"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Payment Method
+                    </label>
+                    <select
+                      value={payment}
+                      onChange={(e) => setPayment(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:border-[#FF7A3C] outline-none"
+                      disabled={loading}
+                    >
+                      <option value="UPI">UPI</option>
+                      <option value="Card">Card</option>
+                      <option value="Cash">Cash at Venue</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="pt-2 flex justify-between items-center text-xl font-bold">
+                  <span className="text-gray-800">Total:</span>
+                  <span className="text-[#FF7A3C]">
+                    ₹{total.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                {error && (
+                  <div className="text-red-600 text-sm bg-red-50 p-3 rounded-xl">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={submitBooking}
+                  disabled={loading}
+                  className={`w-full py-3.5 rounded-xl font-bold text-lg transition-all shadow-md ${
+                    loading
+                      ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                      : "bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] hover:brightness-105 hover:shadow-lg"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin inline w-5 h-5 mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Proceed to Payment"
+                  )}
+                </button>
+              </>
+            )}
           </div>
-
-          {/* Total */}
-          <div className="pt-2 flex justify-between items-center text-xl font-bold">
-            <span className="text-gray-800">Total:</span>
-            <span className="text-[#FF7A3C]">
-              ₹{total.toLocaleString("en-IN")}
-            </span>
-          </div>
-
-          {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-xl">
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={submitBooking}
-            disabled={loading}
-            className={`w-full py-3.5 rounded-xl font-bold text-lg transition-all shadow-md ${
-              loading
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                : "bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] hover:brightness-105 hover:shadow-lg"
-            }`}
-          >
-            {loading ? "Processing..." : "Confirm Booking"}
-          </button>
-
-        </div>
+        </motion.div>
       </motion.div>
-    </motion.div>
-  </AnimatePresence>
-);
-
+    </AnimatePresence>
+  );
 }
 
 /* ======================================================
-   MAIN USER EVENTS PAGE
+  MAIN USER EVENTS PAGE (unchanged)
 ====================================================== */
 export default function UserEvents() {
   const [events, setEvents] = useState([]);
@@ -323,33 +517,29 @@ export default function UserEvents() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
- const fetchEvents = async () => {
-  try {
-    setLoading(true);
-
-    const token = localStorage.getItem("access");
-
-    const res = await api.get(EVENTS_URL, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    // Handle paginated (res.data.results) and non-paginated (res.data)
-    const eventArray = Array.isArray(res.data)
-      ? res.data
-      : Array.isArray(res.data?.results)
-      ? res.data.results
-      : [];
-
-    setEvents(eventArray);
-  } catch (error) {
-    console.error("Failed to load events:", error);
-    setEvents([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("access");
+      const res = await api.get(EVENTS_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      // Handle paginated (res.data.results) and non-paginated (res.data)
+      const eventArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.results)
+        ? res.data.results
+        : [];
+      setEvents(eventArray);
+    } catch (error) {
+      console.error("Failed to load events:", error);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -384,7 +574,6 @@ export default function UserEvents() {
           <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 opacity-90">
             Experience unforgettable nights of music, energy, and entertainment. Book your tickets now!
           </p>
-          
         </motion.div>
       </section>
 

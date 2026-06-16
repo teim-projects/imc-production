@@ -11,6 +11,7 @@ import {
   FaTimes,
   FaCheckCircle,
 } from "react-icons/fa";
+import { Loader2 } from "lucide-react"; // or use any spinner icon
 
 /* ===================== CONFIG ===================== */
 
@@ -18,6 +19,8 @@ const BASE = import.meta.env.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 
 const EVENTS_URL = `${BASE}/user/events/`;
 const BOOKINGS_URL = `${BASE}/user/event-bookings/`;
+const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
+const PAYMENT_STATUS_API = `${BASE}/payments/check-status/`;
 
 /* ===================== AXIOS INSTANCE ===================== */
 
@@ -32,10 +35,12 @@ api.interceptors.request.use((config) => {
 });
 
 /* ======================================================
-   BOOKING MODAL – FORM STYLE (NO SEAT SELECTION)
+   BOOKING MODAL WITH PAYMENT
 ====================================================== */
 
 function BookingModal({ event, onClose, onSuccess }) {
+  // Step: 'form' | 'processing' | 'success' | 'failed'
+  const [step, setStep] = useState("form");
   const [form, setForm] = useState({
     customer_name: "",
     contact_number: "",
@@ -43,10 +48,10 @@ function BookingModal({ event, onClose, onSuccess }) {
     number_of_tickets: 1,
     payment_method: "UPI",
   });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [bookingId, setBookingId] = useState(null);
 
   if (!event) return null;
 
@@ -59,13 +64,64 @@ function BookingModal({ event, onClose, onSuccess }) {
       ...prev,
       [name]: name === "number_of_tickets" ? Number(value) : value,
     }));
-    setError(""); // clear error on change
+    setError("");
   };
 
+  // Poll payment status
+  useEffect(() => {
+    if (step !== "processing") return;
+
+    if (orderId) {
+      const interval = setInterval(async () => {
+        try {
+          const res = await api.get(PAYMENT_STATUS_API, {
+            params: { order_id: orderId },
+          });
+          const status = res.data?.status?.toUpperCase() || "";
+          if (status === "CHARGED" || res.data?.success === true) {
+            setStep("success");
+            clearInterval(interval);
+            onSuccess(); // refresh events list
+          } else if (status === "FAILED" || status === "EXPIRED") {
+            setStep("failed");
+            setError("Payment failed or expired. Please try again.");
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error("[POLL ERROR]", err);
+        }
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [step, orderId, onSuccess]);
+
+  // On modal open, check if we returned from payment gateway
+  useEffect(() => {
+    const storedOrderId = sessionStorage.getItem("event_order_id");
+    if (storedOrderId && step === "form") {
+      setOrderId(storedOrderId);
+      setStep("processing");
+    }
+  }, [step]);
+
+  // Reset modal state
+  const resetModal = () => {
+    setStep("form");
+    setOrderId(null);
+    setBookingId(null);
+    setError("");
+    setLoading(false);
+    sessionStorage.removeItem("event_order_id");
+    onClose();
+  };
+
+  // Submit booking & initiate payment
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
+    // Validation
     if (!form.customer_name.trim()) {
       setError("Please enter your full name");
       return;
@@ -82,7 +138,8 @@ function BookingModal({ event, onClose, onSuccess }) {
     setLoading(true);
 
     try {
-      await api.post(BOOKINGS_URL, {
+      // 1. Create the booking
+      const bookingRes = await api.post(BOOKINGS_URL, {
         event: event.id,
         customer_name: form.customer_name.trim(),
         contact_number: form.contact_number.trim(),
@@ -90,27 +147,147 @@ function BookingModal({ event, onClose, onSuccess }) {
         number_of_tickets: form.number_of_tickets,
         total_amount: total,
         payment_method: form.payment_method,
+        payment_status: "pending", // optional, backend may set default
       });
 
-      setSuccess(true);
+      const newBookingId = bookingRes.data?.id || bookingRes.data?.booking_id;
+      if (!newBookingId) {
+        throw new Error("Booking created but no ID returned");
+      }
+      setBookingId(newBookingId);
 
-      // Auto-refresh parent list & close after short delay
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2200);
+      // ===================== FIXED PAYMENT PAYLOAD =====================
+      // Backend expects 'registration_id' and service = 'auditorium_music_shows'
+      // Amount is fetched from booking by backend, so we don't send it.
+      const paymentPayload = {
+        registration_id: newBookingId,
+        service: "auditorium_music_shows",
+      };
+      // =================================================================
+
+      const paymentRes = await api.post(PAYMENT_CREATE_API, paymentPayload);
+      const pData = paymentRes.data;
+      console.log("Payment Response:", pData);
+
+      const paymentUrl =
+        pData?.payment_links?.web ||
+        pData?.payment_url ||
+        pData?.link ||
+        pData?.redirect_url;
+
+      if (paymentUrl) {
+        // Save orderId for polling after return
+        const newOrderId = pData?.order_id;
+        if (newOrderId) {
+          sessionStorage.setItem("event_order_id", newOrderId);
+          setOrderId(newOrderId);
+        }
+        // Redirect to payment gateway
+        window.location.href = paymentUrl;
+        // Set step to processing (though page will unload)
+        setStep("processing");
+        setLoading(false);
+      } else {
+        // No payment URL – maybe payment is already completed or manual
+        const newOrderId = pData?.order_id;
+        if (newOrderId) {
+          setOrderId(newOrderId);
+          setStep("processing");
+          setLoading(false);
+          setError("Payment initiated. Please complete payment in the next window.");
+        } else {
+          throw new Error("No payment URL or order ID received");
+        }
+      }
     } catch (err) {
-      console.error("Booking error:", err);
-      setError(
+      console.error("Booking/payment error:", err);
+      const msg =
+        err.response?.data?.error ||
         err.response?.data?.detail ||
         err.response?.data?.non_field_errors?.[0] ||
-        "Could not complete booking. Please try again."
-      );
-    } finally {
+        err.message ||
+        "Booking failed. Please try again.";
+      setError(msg);
       setLoading(false);
     }
   };
 
+  // Render based on step
+  if (step === "success") {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-2xl w-full max-w-md p-6 text-center shadow-2xl"
+            initial={{ y: 80, scale: 0.92 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 60, scale: 0.9 }}
+          >
+            <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-green-700 mb-3">
+              Payment Successful!
+            </h3>
+            <p className="text-gray-700 mb-2">
+              Your booking is confirmed, {form.customer_name.split(" ")[0]}!
+            </p>
+            <p className="text-gray-500 text-sm mb-6">
+              We'll send you the event details on your phone.
+            </p>
+            <button
+              onClick={resetModal}
+              className="w-full bg-gradient-to-r from-[#FFD447] to-[#FF7A3C] text-[#0B2545] font-semibold py-3 rounded-xl shadow-md hover:shadow-lg transition-all"
+            >
+              Done
+            </button>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  if (step === "failed") {
+    return (
+      <AnimatePresence>
+        <motion.div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-2xl w-full max-w-md p-6 text-center shadow-2xl"
+            initial={{ y: 80, scale: 0.92 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: 60, scale: 0.9 }}
+          >
+            <FaTimes className="text-red-500 text-6xl mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-red-700 mb-3">
+              Payment Failed
+            </h3>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <button
+              onClick={() => {
+                setStep("form");
+                setError("");
+                setLoading(false);
+                sessionStorage.removeItem("event_order_id");
+              }}
+              className="w-full bg-gray-200 text-gray-800 font-semibold py-3 rounded-xl shadow-md hover:bg-gray-300 transition-all"
+            >
+              Try Again
+            </button>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
+  // Form step (including processing state)
   return (
     <AnimatePresence>
       <motion.div
@@ -126,9 +303,9 @@ function BookingModal({ event, onClose, onSuccess }) {
           exit={{ y: 60, scale: 0.9 }}
         >
           <button
-            onClick={onClose}
+            onClick={resetModal}
             className="absolute top-4 right-5 text-gray-500 hover:text-gray-800 transition-colors"
-            disabled={loading}
+            disabled={loading || step === "processing"}
           >
             <FaTimes size={22} />
           </button>
@@ -137,22 +314,16 @@ function BookingModal({ event, onClose, onSuccess }) {
             {event.name}
           </h2>
 
-          {success ? (
+          {step === "processing" ? (
             <div className="text-center py-12">
-              <FaCheckCircle className="text-green-500 text-6xl mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-green-700 mb-3">
-                Booking Confirmed!
-              </h3>
-              <p className="text-gray-600 mb-2">
-                Thank you, {form.customer_name.split(" ")[0]}!
+              <Loader2 className="animate-spin text-orange-500 w-12 h-12 mx-auto mb-4" />
+              <p className="text-gray-700 text-lg font-medium">
+                Processing your payment...
               </p>
-              <p className="text-gray-500 text-sm">
-                You'll receive confirmation on your phone shortly.
-              </p>
+              {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Full Name *
@@ -168,7 +339,6 @@ function BookingModal({ event, onClose, onSuccess }) {
                 />
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Phone Number *
@@ -185,7 +355,6 @@ function BookingModal({ event, onClose, onSuccess }) {
                 />
               </div>
 
-              {/* Email (optional) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Email (optional)
@@ -201,7 +370,6 @@ function BookingModal({ event, onClose, onSuccess }) {
                 />
               </div>
 
-              {/* Tickets */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Number of Tickets
@@ -221,7 +389,6 @@ function BookingModal({ event, onClose, onSuccess }) {
                 </select>
               </div>
 
-              {/* Payment */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Payment Method
@@ -239,7 +406,6 @@ function BookingModal({ event, onClose, onSuccess }) {
                 </select>
               </div>
 
-              {/* Total */}
               <div className="pt-3 pb-2 flex justify-between items-center text-xl font-bold">
                 <span className="text-gray-800">Total Amount:</span>
                 <span className="text-[#FF7A3C]">₹{total.toLocaleString()}</span>
@@ -263,7 +429,14 @@ function BookingModal({ event, onClose, onSuccess }) {
                   }
                 `}
               >
-                {loading ? "Processing..." : "Confirm Booking"}
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin inline w-5 h-5 mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  "Proceed to Payment"
+                )}
               </button>
             </form>
           )}
@@ -311,7 +484,6 @@ export default function UserEvents() {
       style={{ background: "linear-gradient(to bottom, #FFF7DF, #ffffff)" }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
         {/* Hero */}
         <section className="pt-16 pb-14 text-center">
           <div className="inline-flex items-center gap-3 px-6 py-3 bg-orange-600/10 rounded-full mb-6">

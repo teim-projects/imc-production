@@ -121,7 +121,7 @@ export default function Dashboard() {
   const [fetchError, setFetchError] = useState(null);
 
   const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
-  const DASHBOARD_URL = `${BASE.replace(/\/$/, "")}/auth/dashboard/`;
+  const DASHBOARD_URL = `${BASE.replace(/\/$/, "")}/api/auth/dashboard/`;
 
   const safeSetActiveForm = useCallback((key) => {
     setActiveForm(ALLOWED_KEYS.has(key) ? key : null);
