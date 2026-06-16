@@ -1,6 +1,25 @@
 import axios from "axios";
 import { useState } from "react";
 
+// Allowed services (backend list)
+const ALL_SERVICES = [
+  "singing_classes",
+  "studio_booking",
+  "auditorium_music_shows",
+  "private_music_events",
+  "photography_service",
+  "singer_registration",
+  "sound_service",
+  "videography_service",
+];
+
+// Services that require a registration_id (for this test page)
+const SERVICES_REQUIRING_REG_ID = [
+  "singing_classes",
+  "singer_registration",
+  "auditorium_music_shows",
+];
+
 export default function PaymentPage() {
   const [service, setService] = useState("singing_classes");
   const [registrationId, setRegistrationId] = useState("");
@@ -8,21 +27,18 @@ export default function PaymentPage() {
   const [error, setError] = useState(null);
 
   const payNow = async () => {
+    // Clear previous error
+    setError(null);
 
-    // Registration ID required only for some services
-    if (
-      (service === "singing_classes" || service === "singer_registration") &&
-      !registrationId.trim()
-    ) {
+    // Validate registration ID if required
+    if (SERVICES_REQUIRING_REG_ID.includes(service) && !registrationId.trim()) {
       setError("Please enter Registration ID");
       return;
     }
 
     let regIdNum = null;
-
-    if (registrationId) {
-      regIdNum = Number(registrationId);
-
+    if (registrationId.trim()) {
+      regIdNum = Number(registrationId.trim());
       if (isNaN(regIdNum) || regIdNum <= 0) {
         setError("Registration ID must be a positive number");
         return;
@@ -30,7 +46,6 @@ export default function PaymentPage() {
     }
 
     setLoading(true);
-    setError(null);
 
     try {
       const payload = {
@@ -66,7 +81,6 @@ export default function PaymentPage() {
       }
 
       window.location.href = paymentUrl;
-
     } catch (err) {
       console.error("Payment initiation failed:", err);
 
@@ -104,15 +118,16 @@ export default function PaymentPage() {
             style={styles.select}
             disabled={loading}
           >
-            <option value="singing_classes">Singing Classes</option>
-            <option value="singer_registration">Singer Registration</option>
-            <option value="studio_booking">Studio Booking</option>
+            {ALL_SERVICES.map((svc) => (
+              <option key={svc} value={svc}>
+                {svc.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Registration ID only for some services */}
-        {(service === "singing_classes" ||
-          service === "singer_registration") && (
+        {/* Registration ID – only for services that need it */}
+        {SERVICES_REQUIRING_REG_ID.includes(service) && (
           <div style={styles.formGroup}>
             <label style={styles.label}>Registration ID</label>
             <input
