@@ -894,9 +894,9 @@ function RegistrationForm({
                   <option value="" disabled>
                     Select Gender
                   </option>
-                  <option>Male</option>
-                  <option>Female</option>
-                  <option>Other</option>
+                  <option>male</option>
+                  <option>female</option>
+                  <option>other</option>
                 </select>
                 <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
               </div>

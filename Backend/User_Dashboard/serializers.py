@@ -467,13 +467,9 @@ from api.models import Event, EventBooking, Singer
 
 # ... your other serializers (EventListSerializer, UserEventBookingSerializer, etc.) ...
 
-
 class SingerListSerializer(serializers.ModelSerializer):
-    """
-    Serializer for singer listing on frontend.
-    """
     display_name = serializers.SerializerMethodField()
-    photo_url = serializers.SerializerMethodField()
+    video_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Singer
@@ -495,31 +491,25 @@ class SingerListSerializer(serializers.ModelSerializer):
             "favourite_singer",
             "profession",
             "reference_by",
-            "photo",
-            "photo_url",
+            "video",
+            "video_url",
             "active",
+            "payment_status",
         ]
 
     def get_display_name(self, obj):
         return obj.name
 
-    def get_photo_url(self, obj):
-        """
-        Returns absolute URL for singer photo (or None).
-        """
-        if not obj.photo:
-            return None
-        try:
-            url = obj.photo.url
-        except ValueError:
+    def get_video_url(self, obj):
+        if not obj.video:
             return None
 
         request = self.context.get("request")
-        if request is not None:
-            return request.build_absolute_uri(url)
-        return url
 
+        if request:
+            return request.build_absolute_uri(obj.video.url)
 
+        return obj.video.url
 
 
 
