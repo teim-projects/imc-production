@@ -4,7 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DashboardSummary
+from .views import DashboardSummary, EventBookingViewSet
 from .views import SingingClassAdmissionViewSet
 
 
@@ -46,6 +46,11 @@ router.register(r"auth/studios", StudioViewSet, basename="auth-studios")  # alia
 
 # ============== Events & Shows =======================
 router.register(r"events", EventViewSet, basename="events")
+router.register(
+    r"event-bookings",
+    EventBookingViewSet,
+    basename="event-bookings"
+)
 
 
 # ============== Payments =============================

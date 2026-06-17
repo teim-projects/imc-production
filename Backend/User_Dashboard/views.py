@@ -134,7 +134,7 @@ class PublicEventViewSet(viewsets.ReadOnlyModelViewSet):
 class UserEventBookingViewSet(viewsets.ModelViewSet):
 
     serializer_class = UserEventBookingSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]   # change
 
     def get_queryset(self):
         user = self.request.user

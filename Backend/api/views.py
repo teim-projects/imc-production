@@ -1327,3 +1327,15 @@ class AnnualFeeViewSet(viewsets.ModelViewSet):
             qs = qs.filter(singer_id=singer_id)
         return qs
 
+
+
+from .models import EventBooking
+from .serializers import EventBookingSerializer
+from rest_framework import permissions, viewsets
+
+class EventBookingViewSet(viewsets.ModelViewSet):
+    queryset = EventBooking.objects.all().order_by("-created_at")
+    serializer_class = EventBookingSerializer
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]

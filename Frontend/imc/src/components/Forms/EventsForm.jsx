@@ -5,8 +5,9 @@ import { Download } from "lucide-react";
 import "./Forms.css";
 
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
-const API_URL = `${BASE}/auth/events/`;
-const BOOKINGS_URL = `${BASE}/user/events/`;   // ← added this line
+const API_URL = `${BASE}/auth/events/`;          // Admin CRUD
+const PUBLIC_EVENTS_URL = `${BASE}/user/events/`; // Public event list for bookings
+const BOOKINGS_URL = `${BASE}/auth/event-bookings/`;
 
 // Small axios client that injects JWT if present
 const api = axios.create();
@@ -33,13 +34,14 @@ const TIME_SLOT_OPTIONS = [
 
 const EventsForm = ({ onClose }) => {
   const [tab, setTab] = useState("ADD");
-  const [events, setEvents] = useState([]);
-  const [bookings, setBookings] = useState([]);           // ← added
+  const [events, setEvents] = useState([]);           // for View tab
+  const [publicEvents, setPublicEvents] = useState([]); // for bookings lookup
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [bookingsLoading, setBookingsLoading] = useState(false); // ← added
+  const [bookingsLoading, setBookingsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [bookingsError, setBookingsError] = useState(null);      // ← added
+  const [bookingsError, setBookingsError] = useState(null);
   const [success, setSuccess] = useState("");
 
   const [search, setSearch] = useState("");
@@ -93,7 +95,7 @@ const EventsForm = ({ onClose }) => {
     setSuccess("");
   };
 
-  // ---------------- Fetch Events ----------------
+  // ---------------- Fetch Events (Admin) ----------------
   const fetchEvents = async () => {
     setLoading(true);
     clearStatus();
@@ -120,13 +122,26 @@ const EventsForm = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------- Fetch Bookings ----------------
+  // ---------------- Fetch Bookings (with public events) ----------------
   const fetchBookings = async () => {
     setBookingsLoading(true);
     setBookingsError(null);
     try {
-      const res = await api.get(BOOKINGS_URL);
-      setBookings(Array.isArray(res.data) ? res.data : res.data?.results || []);
+      // Fetch both public events and bookings in parallel
+      const [eventsRes, bookingsRes] = await Promise.all([
+        api.get(PUBLIC_EVENTS_URL),
+        api.get(BOOKINGS_URL),
+      ]);
+
+      const eventRows = Array.isArray(eventsRes.data)
+        ? eventsRes.data
+        : eventsRes.data?.results || [];
+      const bookingRows = Array.isArray(bookingsRes.data)
+        ? bookingsRes.data
+        : bookingsRes.data?.results || [];
+
+      setPublicEvents(eventRows);
+      setBookings(bookingRows);
     } catch (err) {
       setBookingsError(humanizeErr(err) || "Failed to load bookings");
     } finally {
@@ -134,6 +149,7 @@ const EventsForm = ({ onClose }) => {
     }
   };
 
+  // Fetch bookings when the "BOOKINGS" tab is opened
   useEffect(() => {
     if (tab === "BOOKINGS") {
       fetchBookings();
@@ -925,7 +941,7 @@ const EventsForm = ({ onClose }) => {
         </div>
       )}
 
-      {/* BOOKINGS TAB - NOW SHOWS REAL DATA */}
+      {/* BOOKINGS TAB - fetches both public events and bookings */}
       {tab === "BOOKINGS" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
@@ -959,15 +975,20 @@ const EventsForm = ({ onClose }) => {
                       <th>Tickets</th>
                       <th>Total (₹)</th>
                       <th>Payment</th>
+                      <th>Payment Status</th>
+                      <th>Booking Status</th>
                       <th>Booked On</th>
                     </tr>
                   </thead>
                   <tbody>
                     {bookings.map((booking) => {
-                      const event = events.find((e) => e.id === booking.event) || {};
+                      // Lookup event name from publicEvents
+                      const event = publicEvents.find(
+                        (e) => Number(e.id) === Number(booking.event)
+                      );
                       return (
                         <tr key={booking.id}>
-                          <td>{event.title || "Unknown Event"}</td>
+                          <td>{event?.name || booking.event_name || "Unknown"}</td>
                           <td>{booking.customer_name || booking.name || "-"}</td>
                           <td>{booking.contact_number || booking.phone || "-"}</td>
                           <td>{booking.number_of_tickets || booking.tickets || "-"}</td>
@@ -977,6 +998,8 @@ const EventsForm = ({ onClose }) => {
                               : "-"}
                           </td>
                           <td>{booking.payment_method || "-"}</td>
+                          <td>{booking.payment_status || "-"}</td>
+                          <td>{booking.status || "-"}</td>
                           <td>
                             {booking.created_at
                               ? new Date(booking.created_at).toLocaleString("en-IN", {

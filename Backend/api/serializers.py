@@ -907,3 +907,12 @@ class AnnualFeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnnualFee
         fields = "__all__"
+
+
+
+from .models import EventBooking
+
+class EventBookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventBooking
+        fields = "__all__"
