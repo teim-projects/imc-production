@@ -865,6 +865,14 @@ class Singer(models.Model):
     area = models.CharField(max_length=200, blank=True, default="")
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=100, blank=True, default="")
+    
+    
+      # NEW FIELD
+    rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1000
+    )
 
    
 
