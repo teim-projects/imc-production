@@ -130,7 +130,7 @@ def create_payment(request):
                 id=registration_id
             )
 
-            amount = Decimal("1000.00")
+            amount = Decimal("3000.00")
             customer_name = registration.name
 
         # =========================================

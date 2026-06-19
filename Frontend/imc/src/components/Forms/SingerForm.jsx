@@ -106,7 +106,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
     area: "",
     city: "",
     state: "",
-    rate: "1000",
+    rate: "3000",
     gender: "",
     payment_method: "Cash",
     active: true,
@@ -275,7 +275,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         area: d.area || "",
         city: d.city || "",
         state: d.state || "",
-        rate: d.rate ?? "1000",
+        rate: d.rate ?? "3000",
         gender: d.gender || "",
         payment_method: d.payment_method || "Cash",
         active: typeof d.active === "boolean" ? d.active : true,
@@ -374,7 +374,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
             formData.append("birth_date", `${yyyy}-${mm}-${dd}`);
           }
 
-          formData.append("rate", "1000");
+          formData.append("rate", "3000");
           formData.append("video", form.video);
 
           response = await api.patch(`${encodedId}/`, formData, {
@@ -397,7 +397,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
             gender: form.gender || "",
             payment_method: form.payment_method || "Cash",
             active: form.active,
-            rate: "1000",
+            rate: "3000",
           };
 
           if (form.birth_date) {
@@ -412,7 +412,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         const formData = new FormData();
 
         formData.append("name", form.name);
-        formData.append("rate", "1000");
+        formData.append("rate", "3000");
         formData.append("active", form.active);
         formData.append("payment_method", form.payment_method || "Cash");
 
@@ -780,7 +780,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                   className="input"
                   name="rate"
                   type="text"
-                  value="1000"
+                  value="3000"
                   readOnly
                   disabled
                   style={{
@@ -790,7 +790,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                   }}
                 />
                 <small style={{ color: "#6b7280", display: "block", marginTop: "4px" }}>
-                  Fixed annual membership fee: ₹1000
+                  Fixed annual membership fee: ₹3000
                 </small>
               </label>
               <label>
@@ -1026,7 +1026,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                       <td>{s.reference_by || "—"}</td>
                       <td>{s.genre || "—"}</td>
                       <td>{s.city || "—"}</td>
-                      <td>₹ {fmtCurrency(s.rate || "1000")}</td>
+                      <td>₹ {fmtCurrency(s.rate || "3000")}</td>
 
                       <td>
                         <span className={`chip ${getPaymentChipClass(s.payment_method)}`}>

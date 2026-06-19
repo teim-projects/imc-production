@@ -871,7 +871,7 @@ class Singer(models.Model):
     rate = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        default=1000
+        default=3000
     )
 
    

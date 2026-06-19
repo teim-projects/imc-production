@@ -89,7 +89,7 @@ const POLICIES = [
 • Seats/slots are allotted on a first-paid, first-confirmed basis.
 
 11. Contribution Structure
-• Auditorium Karaoke Events – ₹1500 per solo song, ₹1000 per partner (duet)
+• Auditorium Karaoke Events – ₹1500 per solo song, ₹3000 per partner (duet)
 • Live Events – ₹3000 per solo song, ₹1500 per partner (duet)
 
 12. Payment Modes
@@ -352,7 +352,7 @@ function useSingerForm() {
     area: "",
     city: "",
     state: "",
-    rate: "1000",
+    rate: "3000",
     gender: "",
     active: true,
     video: null,
@@ -389,7 +389,7 @@ function useSingerForm() {
       area: "",
       city: "",
       state: "",
-      rate: "1000",
+      rate: "3000",
       gender: "",
       active: true,
       video: null,
