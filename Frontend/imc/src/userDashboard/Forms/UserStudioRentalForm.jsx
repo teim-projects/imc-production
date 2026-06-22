@@ -3,14 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// You can keep this import if you want to separate CSS file
-// import "../../components/Forms/Forms.css";
-
-// ─────────────────────────────────────────────────────────────
-// If you prefer inline / single-file style for development/testing,
-// paste the entire CSS below into a <style> tag or dedicated file
-// ─────────────────────────────────────────────────────────────
-
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
@@ -251,21 +243,30 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   };
 
   const createBooking = async () => {
-    const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
+    const totalAmount =
+      (Number(pricePerHour) || 0) * Number(formData.duration || 1);
 
     const payload = {
-      customer: formData.full_name,
+      studio: Number(formData.studio_id),
+
+      customer_name: formData.full_name,
       contact_number: formData.mobile,
       email: formData.email,
       address: "",
-      studio_id: formData.studio_id,
-      studio_name: formData.studio_name,
+
       date: formData.date,
-      time_slot: formData.time_slot,
-      duration: Number(formData.duration),
-      payment_methods: [],
-      price_per_hour: priceToSend,
-      price: priceToSend,
+
+      time_slot:
+        formData.time_slot.length === 5
+          ? `${formData.time_slot}:00`
+          : formData.time_slot,
+
+      duration_hours: Number(formData.duration),
+
+      payment_methods: ["UPI"],
+
+      agreed_price: totalAmount,
+
       notes: formData.notes || "",
     };
 
@@ -281,8 +282,8 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     if (totalAmount <= 0) throw new Error("Invalid amount");
 
     const payload = {
-      amount: totalAmount ,           // many gateways expect paise / smallest unit
-      service: "studio_booking",   // ⭐ VERY IMPORTANT
+      amount: totalAmount ,
+      service: "studio_booking",
       customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
       email: formData.email.trim() || "booking@studio.com",
       phone: formData.mobile.trim(),
@@ -300,7 +301,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
 
-    // Fallback - if no redirect (some gateways show popup or success immediately)
     if (pData?.success === true || String(pData?.status || "").toUpperCase().includes("SUCCESS")) {
       setSuccessMsg("Payment initiated successfully! Redirecting shortly...");
       setTimeout(() => navigate("/booking-success"), 2500);
@@ -326,7 +326,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     try {
       const bookingId = await createBooking();
       await initiatePayment(bookingId);
-      // If we reach here without redirect, show success (but usually redirect happens)
       setSuccessMsg("Booking & payment processed!");
     } catch (err) {
       console.error("Booking/Payment error:", err);
@@ -570,9 +569,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
         </div>
       </form>
 
-      {/* ──────────────────────────────────────────────── */}
-      {/*               CSS (recommended in Forms.css)      */}
-      {/* ──────────────────────────────────────────────── */}
       <style>{`
         .pf-wrap {
           padding: 1rem;
@@ -614,7 +610,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           gap: 1.25rem;
         }
 
-        /* Studio cards */
         .studio-grid {
           display: grid;
           grid-template-columns: 1fr;
@@ -706,7 +701,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           color: #b91c1c;
         }
 
-        /* Form fields */
         label {
           display: block;
         }
@@ -737,7 +731,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
         }
 
-        /* Time slots */
         .start-time-label {
           display: block;
           margin-top: 1.25rem;
@@ -803,7 +796,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           font-weight: 600;
         }
 
-        /* Actions */
         .form-actions {
           display: flex;
           flex-wrap: wrap;
@@ -845,7 +837,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           cursor: not-allowed;
         }
 
-        /* Messages */
         .pf-banner {
           padding: 1rem;
           border-radius: 8px;
