@@ -278,22 +278,16 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   };
 
   const initiatePayment = async (bookingId) => {
-    const totalAmount = (pricePerHour || 0) * Number(formData.duration || 1);
-    if (totalAmount <= 0) throw new Error("Invalid amount");
-
+    // ✅ CORRECT payload – only what the backend expects
     const payload = {
-      amount: totalAmount ,
       service: "studio_booking",
-      customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
-      email: formData.email.trim() || "booking@studio.com",
-      phone: formData.mobile.trim(),
-      description: `Studio Booking - ${selectedStudio?.name || "Selected Studio"} on ${formData.date} ${formData.time_slot}`,
-      return_url: `${window.location.origin}/payment-callback?type=studio-booking&mobile=${formData.mobile.trim()}&booking_id=${bookingId}`,
+      registration_id: bookingId,
     };
 
     const paymentRes = await api.post(PAYMENT_CREATE_API, payload);
     const pData = paymentRes.data;
 
+    // If backend returns a payment URL, redirect
     const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
 
     if (paymentUrl) {
@@ -301,6 +295,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       return;
     }
 
+    // Fallback: if the API returns success without a redirect URL, treat as success
     if (pData?.success === true || String(pData?.status || "").toUpperCase().includes("SUCCESS")) {
       setSuccessMsg("Payment initiated successfully! Redirecting shortly...");
       setTimeout(() => navigate("/booking-success"), 2500);
