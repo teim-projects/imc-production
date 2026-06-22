@@ -242,67 +242,81 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     return null;
   };
 
+  // ========== REPLACED createBooking ==========
   const createBooking = async () => {
     const totalAmount =
-      (Number(pricePerHour) || 0) * Number(formData.duration || 1);
+      Number(pricePerHour || 0) *
+      Number(formData.duration || 1);
 
     const payload = {
-      studio: Number(formData.studio_id),
-
-      customer_name: formData.full_name,
+      customer: formData.full_name,
       contact_number: formData.mobile,
-      email: formData.email,
+      email: formData.email || "",
       address: "",
+
+      studio_name: selectedStudio?.name || "",
 
       date: formData.date,
 
       time_slot:
-        formData.time_slot.length === 5
+        formData.time_slot?.length === 5
           ? `${formData.time_slot}:00`
           : formData.time_slot,
 
-      duration_hours: Number(formData.duration),
+      duration: Number(formData.duration),
+
+      price_per_hour: Number(pricePerHour || 0),
+
+      total_amount: totalAmount,
 
       payment_methods: ["UPI"],
-
-      agreed_price: totalAmount,
-
-      notes: formData.notes || "",
     };
 
+    console.log("STUDIO BOOKING PAYLOAD:", payload);
+
     const res = await api.post(BOOKINGS_URL, payload);
-    if (res.status === 201 || res.status === 200) {
-      return res.data.id || res.data.pk || res.data._id || res.data.booking_id;
+
+    console.log("BOOKING RESPONSE:", res.data);
+
+    const bookingId =
+      res.data?.id ||
+      res.data?.pk ||
+      res.data?.booking_id;
+
+    if (!bookingId) {
+      throw new Error("Booking created but ID not returned");
     }
-    throw new Error("Booking creation failed");
+
+    return bookingId;
   };
 
+  // ========== REPLACED initiatePayment ==========
   const initiatePayment = async (bookingId) => {
-    // ✅ CORRECT payload – only what the backend expects
-    const payload = {
+    const paymentPayload = {
       service: "studio_booking",
       registration_id: bookingId,
     };
 
-    const paymentRes = await api.post(PAYMENT_CREATE_API, payload);
-    const pData = paymentRes.data;
+    console.log("PAYMENT PAYLOAD:", paymentPayload);
 
-    // If backend returns a payment URL, redirect
-    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+    const paymentRes = await api.post(
+      PAYMENT_CREATE_API,
+      paymentPayload
+    );
 
-    if (paymentUrl) {
-      window.location.href = paymentUrl;
-      return;
+    console.log("PAYMENT RESPONSE:", paymentRes.data);
+
+    const paymentUrl =
+      paymentRes.data?.payment_links?.web ||
+      paymentRes.data?.payment_url ||
+      paymentRes.data?.redirect_url ||
+      paymentRes.data?.link;
+
+    if (!paymentUrl) {
+      throw new Error("Payment URL not received");
     }
 
-    // Fallback: if the API returns success without a redirect URL, treat as success
-    if (pData?.success === true || String(pData?.status || "").toUpperCase().includes("SUCCESS")) {
-      setSuccessMsg("Payment initiated successfully! Redirecting shortly...");
-      setTimeout(() => navigate("/booking-success"), 2500);
-      return;
-    }
-
-    throw new Error("Payment initiation failed - no redirect URL received");
+    window.location.href = paymentUrl;
   };
 
   const handleSubmit = async (e) => {
@@ -323,11 +337,14 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
       await initiatePayment(bookingId);
       setSuccessMsg("Booking & payment processed!");
     } catch (err) {
-      console.error("Booking/Payment error:", err);
+      // ========== REPLACED catch block ==========
+      console.error("FULL ERROR:", err);
+      console.error("RESPONSE:", err.response?.data);
+
       setError(
-        err.response?.data?.detail ||
-        err.message ||
-        "Something went wrong. Please try again."
+        err.response?.data
+          ? JSON.stringify(err.response.data)
+          : err.message
       );
     } finally {
       setSaving(false);
