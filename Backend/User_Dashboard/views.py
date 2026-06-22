@@ -36,13 +36,15 @@ class PublicStudioViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["name", "location", "city", "area", "state"]
     ordering_fields = ["name", "hourly_rate", "capacity"]
     ordering = ["name"]
+    
+    
 
+from rest_framework.response import Response
+from rest_framework import status
 
 class UserStudioBookingViewSet(viewsets.ModelViewSet):
     """
     User / customer bookings.
-    - Authenticated user: sees only their bookings (unless staff).
-    - Anonymous: can create bookings, but cannot list (for safety).
     """
 
     serializer_class = UserStudioBookingSerializer
@@ -55,26 +57,48 @@ class UserStudioBookingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = UserStudioBooking.objects.select_related("studio")
         user = self.request.user
+
         if user.is_staff or user.is_superuser:
             return qs
+
         if user.is_authenticated:
             return qs.filter(user=user)
-        # anonymous – no listing, only create allowed
+
         return qs.none()
+
+    # 🔥 ADD THIS METHOD
+    def create(self, request, *args, **kwargs):
+
+        print("REQUEST DATA =", request.data)
+
+        serializer = self.get_serializer(
+            data=request.data,
+            context={"request": request}
+        )
+
+        if not serializer.is_valid():
+            print("SERIALIZER ERRORS =", serializer.errors)
+
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        booking = serializer.save()
+
+        return Response(
+            self.get_serializer(booking).data,
+            status=status.HTTP_201_CREATED
+        )
 
     def perform_create(self, serializer):
         serializer.save()
-        # user assignment is already done in serializer.create()
 
     @action(detail=False, methods=["get"], permission_classes=[permissions.IsAuthenticated])
     def my(self, request, *args, **kwargs):
-        """
-        GET /user/studio-bookings/my/ => current user's bookings.
-        """
         qs = self.get_queryset()
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
-
 
 
 
