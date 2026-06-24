@@ -1,5 +1,5 @@
 // SingingClassRegistration.jsx
-// Updated — Smaller modal size + all terms in one scrollable area (no tabs)
+// Updated — Date of Birth & Preferred Class Start Date side-by-side
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
@@ -241,6 +241,9 @@ export default function SingingClassRegistration() {
     batch: "",
     reference_by: "",
     fee: "",
+    birth_date: "",
+    start_date: "",
+    fee_month_date: "",
   });
 
   useEffect(() => {
@@ -302,6 +305,9 @@ export default function SingingClassRegistration() {
       fee: Number(form.fee),
       agreed_terms: true,
       payment_status: "pending",
+      birth_date: form.birth_date || null,
+      start_date: form.start_date || null,
+      fee_month_date: form.fee_month_date || null,
     };
 
     const res = await axios.post(STUDENT_API, payload);
@@ -397,6 +403,9 @@ export default function SingingClassRegistration() {
       batch: "",
       reference_by: "",
       fee: "",
+      birth_date: "",
+      start_date: "",
+      fee_month_date: "",
     });
   };
 
@@ -545,6 +554,34 @@ export default function SingingClassRegistration() {
                   </div>
                 </div>
 
+                {/* Date of Birth & Preferred Start Date - side-by-side */}
+                <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">
+                      Date of Birth
+                    </label>
+                    <input
+                      type="date"
+                      name="birth_date"
+                      value={form.birth_date || ""}
+                      onChange={handleChange}
+                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2 md:mb-3">
+                      Preferred Class Start Date
+                    </label>
+                    <input
+                      type="date"
+                      name="start_date"
+                      value={form.start_date || ""}
+                      onChange={handleChange}
+                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                    />
+                  </div>
+                </div>
+
                 {/* Address */}
                 <div className="mt-10 md:mt-12">
                   <label className="block text-gray-700 font-medium mb-2 md:mb-3">
@@ -661,6 +698,20 @@ export default function SingingClassRegistration() {
                       Suggested: ₹{selectedBatch.class_fee} (auto-filled from batch)
                     </p>
                   )}
+                </div>
+
+                {/* Fee Month Date */}
+                <div className="mt-6 md:mt-8">
+                  <label className="block text-gray-700 font-medium mb-2 md:mb-3">
+                    Fee Month Date (Payment Date)
+                  </label>
+                  <input
+                    type="date"
+                    name="fee_month_date"
+                    value={form.fee_month_date || ""}
+                    onChange={handleChange}
+                    className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                  />
                 </div>
 
                 {/* Reference */}

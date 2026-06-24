@@ -503,8 +503,9 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
               Duration (hours) *
               <input
                 type="number"
-                step="0.5"
-                min="0.5"
+                
+                min="1"
+                max="24"
                 name="duration"
                 value={formData.duration}
                 onChange={(e) => {
@@ -557,7 +558,10 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
           <p className="slot-hint">
             • Full range is reserved based on selected duration<br />
-            • Gray = booked • Red = selected
+            • Gray = Available<br />
+            • Red = Booked / Selected for Booking<br />
+            • No cancellation allowed after booking confirmation.
+
           </p>
         </section>
 

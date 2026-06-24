@@ -90,72 +90,8 @@ export default function HomePage() {
       <div className="homepage-content flex-1 relative z-10">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ">
           
-          {/* ================= MODERN & ATTRACTIVE FILTER BAR ================= */}
-          <div className="mb-12 bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl border border-gray-100/70 overflow-hidden">
-            {/* <div className="px-6 pt-6 pb-3">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-                Find Your Perfect Studio
-              </h2>
-              <p className="text-gray-600 mt-1.5 text-base">
-                Search by name, location or your budget
-              </p>
-            </div> */}
-
-            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-              {/* Search */}
-              <div className="relative group">
-                <label htmlFor="search" className="block text-sm font-semibold text-gray-700 mb-2.5">
-                  Keywords / Studio Name
-                </label>
-                <div className="relative">
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-orange-600 transition-colors" />
-                  <input
-                    id="search"
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="e.g. n9 studio, vocal booth, pune..."
-                    className="w-full pl-12 pr-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 placeholder-gray-500 shadow-sm hover:shadow-md"
-                  />
-                </div>
-              </div>
-
-              {/* Location */}
-              <div>
-                <label htmlFor="location" className="block text-sm font-semibold text-gray-700 mb-2.5">
-                  Location
-                </label>
-                <input
-                  id="location"
-                  type="text"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  placeholder="Pune, Mumbai, Baner, Wakad, Hinjewadi..."
-                  className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 placeholder-gray-500 shadow-sm hover:shadow-md"
-                />
-              </div>
-
-              {/* Price Range */}
-              <div>
-                <label htmlFor="price" className="block text-sm font-semibold text-gray-700 mb-2.5">
-                  Hourly Rate
-                </label>
-                <select
-                  id="price"
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all text-gray-800 shadow-sm hover:shadow-md appearance-none cursor-pointer"
-                >
-                  <option value="">All Prices</option>
-                  <option value="0-500">Up to ₹500</option>
-                  <option value="500-1000">₹500 – ₹1,000</option>
-                  <option value="1000-2000">₹1,000 – ₹2,000</option>
-                  <option value="2000+">₹2,000 and above</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
+        
+           
           {/* ================= STUDIO LIST ================= */}
           <StudioList 
             onBook={openBooking}

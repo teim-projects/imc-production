@@ -31,7 +31,7 @@ const contactInfo = [
     icon: MapPin,
     title: "Visit Us",
     value: "Indian Musical Club",
-    description: "Thergaon, Chinchwad, Pune 411033",
+    description: "Address - Indian Musical club S-19, Ground floor, Greens Center, Opposite Pudumjee Paper Mill, Aditya Birla Hospital Road, Thergaon, Chinchwad 411033",
   },
   {
     icon: Clock,
