@@ -372,10 +372,10 @@ export default function UserDashboard() {
 
   /* ── Stats ── */
   const stats = [
-    { icon: Users,    label: "Artists Served",  value: 5000,  suffix: "+", color: C.orange },
-    { icon: Music,    label: "Studio Sessions",  value: 12000, suffix: "+", color: C.yellow },
-    { icon: Calendar, label: "Live Events",      value: 350,   suffix: "+", color: C.orange },
-    { icon: Award,    label: "Awards Won",       value: 28,    suffix: "",  color: C.yellow },
+    { icon: Users,    label: "Artists Served",  value: 164,  suffix: "+", color: C.orange },
+    { icon: Music,    label: "Studio Sessions",  value: 57, suffix: "+", color: C.yellow },
+    { icon: Calendar, label: "Live Events",      value: 57,   suffix: "+", color: C.orange },
+    
   ];
 
   /* ── Features ── */
@@ -1464,7 +1464,7 @@ export default function UserDashboard() {
             <p className="text-xl md:text-2xl mb-14 max-w-3xl mx-auto font-light leading-relaxed"
               style={{ color: "rgba(255,255,255,0.45)" }}>
               Join{" "}
-              <span className="font-bold" style={{ color: C.yellow }}>5,000+ artists</span>{" "}
+              <span className="font-bold" style={{ color: C.yellow }}>164+ artists</span>{" "}
               who've found their musical home at IMC —
               <br className="hidden md:block" />
               Pune's most trusted music hub.

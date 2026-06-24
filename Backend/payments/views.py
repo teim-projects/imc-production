@@ -129,8 +129,10 @@ def create_payment(request):
             registration = Singer.objects.get(
                 id=registration_id
             )
-
-            amount = Decimal("3000.00")
+        
+            print("Singer Rate =", registration.rate)
+        
+            amount = Decimal(str(registration.rate))
             customer_name = registration.name
 
         # =========================================

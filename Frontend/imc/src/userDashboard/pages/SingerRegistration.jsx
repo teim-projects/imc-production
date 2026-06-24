@@ -870,16 +870,20 @@ function RegistrationForm({
                 className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
               />
             </div>
+            {/* -------- Annual Fee - replaced with select dropdown -------- */}
             <div>
               <label className="block text-gray-700 font-medium mb-3">
                 Annual Fee
               </label>
-              <input
-                type="text"
+              <select
                 value={form.rate}
                 onChange={(e) => onFormChange("rate", e.target.value)}
-                className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
-              />
+                className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300"
+              >
+                <option value="1000">₹1000</option>
+                <option value="2000">₹2000</option>
+                <option value="3000">₹3000</option>
+              </select>
             </div>
             <div>
               <label className="block text-gray-700 font-medium mb-3">
