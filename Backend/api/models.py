@@ -961,18 +961,19 @@ class SingingClass(models.Model):
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
 
-    # Batch selected by student
     batch = models.ForeignKey(
         "Batch",
         on_delete=models.CASCADE,
         related_name="admissions"
     )
 
-    # Student info
+    # Student Info
     first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True)
 
-    last_name = models.CharField(
-        max_length=100,
+    # NEW FIELD
+    birth_date = models.DateField(
+        null=True,
         blank=True
     )
 
@@ -983,74 +984,52 @@ class SingingClass(models.Model):
         null=True
     )
 
-    address1 = models.CharField(
-        max_length=255,
+    address1 = models.CharField(max_length=255, blank=True)
+    address2 = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+
+    # Student class joining date
+    start_date = models.DateField(
+        null=True,
         blank=True
     )
 
-    address2 = models.CharField(
-        max_length=255,
+    # Fee month date (e.g. July 2026 fee)
+    fee_month_date = models.DateField(
+        null=True,
         blank=True
     )
 
-    city = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
-    state = models.CharField(
-        max_length=100,
-        blank=True
-    )
-
-    postal_code = models.CharField(
-        max_length=20,
-        blank=True
-    )
-
-    # Fee stored in DB
     fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
 
-    agreed_terms = models.BooleanField(
-        default=False
-    )
+    agreed_terms = models.BooleanField(default=False)
 
-    # ADMISSION STATUS
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
     )
 
-    # PAYMENT STATUS
     payment_status = models.CharField(
         max_length=20,
         default="pending"
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-
-        """
-        Automatically set fee from Batch → Class
-        to prevent amount manipulation
-        """
-
         if self.batch and self.batch.class_obj:
-
             self.fee = self.batch.class_obj.fee
 
         super().save(*args, **kwargs)
 
     def __str__(self):
-
         return f"{self.first_name} {self.last_name} - {self.batch}"
 
 
