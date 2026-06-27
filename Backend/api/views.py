@@ -1002,7 +1002,7 @@ class DashboardSummary(APIView):
                 try:
                     monthly_data = (
                         Payment.objects
-                        .annotate(month=TruncMonth("created_at"))
+                        .annotate(month=TruncMonth("created_at"))   # ✅ changed from "date"
                         .values("month")
                         .annotate(total=Sum("amount"))
                         .order_by("month")
@@ -1123,7 +1123,7 @@ class DashboardSummary(APIView):
                 "sound_count": sound_count,
                 
                 # Chart Data
-                "chart_data": monthly_chart,
+                "chartData": monthly_chart,   # ✅ changed from "chart_data"
                 
                 # Recent activities
                 "recent_bookings": recent,
