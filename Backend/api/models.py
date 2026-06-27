@@ -285,6 +285,11 @@ class Studio(models.Model):
         blank=True,
         null=True
     )
+    
+    payment_status = models.CharField(
+    max_length=20,
+    default="pending"
+    )
 
 
     payment_methods = models.CharField(
