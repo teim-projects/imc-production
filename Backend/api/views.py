@@ -996,28 +996,28 @@ class DashboardSummary(APIView):
             # MONTHLY CHART DATA
             # ==================================
             
-            monthly_chart = []
-            
-            if Payment:
-                try:
-                    monthly_data = (
-                        Payment.objects
-                        .annotate(month=TruncMonth("date"))
-                        .values("month")
-                        .annotate(total=Sum("amount"))
-                        .order_by("month")
-                    )
+        monthly_chart = []
 
-                    monthly_chart = [
-                        {
-                            "name": item["month"].strftime("%b"),
-                            "value": float(item["total"])
-                        }
-                        for item in monthly_data
-                    ]
-                except Exception as e:
-                    logger.warning("Monthly chart error: %s", e)
-
+        if Payment:
+            try:
+                monthly_data = (
+                    Payment.objects
+                    .annotate(month=TruncMonth("created_at"))
+                    .values("month")
+                    .annotate(total=Sum("amount"))
+                    .order_by("month")
+                )
+        
+                monthly_chart = [
+                    {
+                        "name": item["month"].strftime("%b"),
+                        "value": float(item["total"])
+                    }
+                    for item in monthly_data
+                ]
+        
+            except Exception as e:
+                logger.warning("Monthly chart error: %s", e)
             # ==================================
             # RECENT ACTIVITIES
             # ==================================
