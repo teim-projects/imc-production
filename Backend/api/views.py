@@ -34,19 +34,19 @@ from .models import (
     # Photography (old schema)
     PhotographyBooking,
     # Sound service
-    Sound,
+    Sound,   StudioSlot,   # <-- Add this
 )
 
 from .serializers import (
     # Studio
     StudioMasterSerializer, StudioSerializer,
     # CRM modules
-    PrivateBookingSerializer, EventSerializer, PaymentSerializer, VideographySerializer,
+    PrivateBookingSerializer, EventSerializer, PaymentSerializer, StudioSlotSerializer, VideographySerializer,
     # Auth helpers
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
 
     # Photography (old schema)
-    PhotographyBookingSerializer,
+    PhotographyBookingSerializer,StudioSlotSerializer,   # <-- Add this
     # Sound service
     SoundSerializer,
 )
@@ -1339,3 +1339,12 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
+    
+    
+    
+
+# views.py
+
+class StudioSlotViewSet(viewsets.ModelViewSet):
+    queryset = StudioSlot.objects.all()
+    serializer_class = StudioSlotSerializer

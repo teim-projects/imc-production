@@ -4,7 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import DashboardSummary, EventBookingViewSet
+from .views import DashboardSummary, EventBookingViewSet, StudioSlotViewSet
 from .views import SingingClassAdmissionViewSet
 
 
@@ -89,6 +89,13 @@ router.register(r"singing-classes", SingingClassAdmissionViewSet, basename="sing
 router.register("teachers", TeacherViewSet)
 router.register("batches", BatchViewSet, basename="batches")
 router.register("classes", ClassViewSet)
+# urls.py
+
+router.register(
+    r"studio-slots",
+    StudioSlotViewSet,
+    basename="studio-slots"
+)
 
 
 
@@ -111,6 +118,7 @@ urlpatterns = [
     path("studio-master/<int:studio_pk>/images/", StudioImageUploadView.as_view(), name="studio-image-upload"),
     path("studio-master/<int:studio_pk>/images/<int:image_pk>/", StudioImageUploadView.as_view(), name="studio-image-delete"),
     path("dashboard/", DashboardSummary.as_view(), name="dashboard_summary"),
+    
     
     
 ]

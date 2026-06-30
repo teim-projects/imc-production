@@ -209,6 +209,19 @@ class Studio(models.Model):
     max_length=20,
     default="pending"
     )
+    
+ 
+    STATUS_CHOICES = (
+        ("available", "Available"),
+        ("booked", "Booked"),
+        ("blocked", "Blocked"),
+    )
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="booked"
+    )
 
     # Meta
     created_at = models.DateTimeField(auto_now_add=True)
@@ -289,6 +302,20 @@ class Studio(models.Model):
     payment_status = models.CharField(
     max_length=20,
     default="pending"
+    )
+    
+
+
+    STATUS_CHOICES = (
+        ("available", "Available"),
+        ("booked", "Booked"),
+        ("blocked", "Blocked"),
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="booked"
     )
 
 
@@ -1162,3 +1189,115 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title
+    
+    
+    
+
+# api/models.py
+
+from django.db import models
+from django.conf import settings
+
+
+class StudioSlot(models.Model):
+    STATUS_CHOICES = (
+        ("available", "Available"),
+        ("booked", "Booked"),
+        ("blocked", "Blocked"),
+    )
+
+    STUDIO_CHOICES = (
+        ("Studio A", "Studio A"),
+        ("Studio B", "Studio B"),
+        ("Studio C", "Studio C"),
+    )
+
+    studio_name = models.CharField(
+        max_length=100,
+        db_index=True
+    )
+
+    slot_date = models.DateField(
+        db_index=True
+    )
+
+    slot_time = models.TimeField(
+        db_index=True
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="available",
+        db_index=True
+    )
+
+    booking = models.ForeignKey(
+        "Studio",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="calendar_slot"
+    )
+
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="updated_studio_slots"
+    )
+
+    remarks = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        db_table = "studio_slots"
+
+        ordering = [
+            "slot_date",
+            "slot_time"
+        ]
+
+        unique_together = (
+            "studio_name",
+            "slot_date",
+            "slot_time",
+        )
+
+        indexes = [
+            models.Index(fields=["studio_name"]),
+            models.Index(fields=["slot_date"]),
+            models.Index(fields=["slot_time"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.studio_name} | "
+            f"{self.slot_date} | "
+            f"{self.slot_time} | "
+            f"{self.status}"
+        )
+
+    @property
+    def is_available(self):
+        return self.status == "available"
+
+    @property
+    def is_booked(self):
+        return self.status == "booked"
+
+    @property
+    def is_blocked(self):
+        return self.status == "blocked"
