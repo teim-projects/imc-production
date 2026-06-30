@@ -26,7 +26,8 @@ from .models import (
     # CRM modules
     PrivateBooking,
     PhotographyBooking,
-    Event,  Payment, Videography,
+    Event,  Payment,
+    StudioSlot, Videography,
    
     # Sound service
     Sound,
@@ -915,4 +916,14 @@ from .models import EventBooking
 class EventBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventBooking
+        fields = "__all__"
+        
+        
+        
+
+# serializers.py
+
+class StudioSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudioSlot
         fields = "__all__"

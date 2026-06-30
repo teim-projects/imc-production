@@ -76,7 +76,7 @@ const humanizeErr = (err) => {
   return err?.message || "Unknown error";
 };
 
-// Function to get payment status chip styles
+// Payment status chip styles
 const getPaymentStatusChipStyles = (status) => {
   const isPaid = status === "paid";
   return {
@@ -87,6 +87,25 @@ const getPaymentStatusChipStyles = (status) => {
     display: "inline-block",
     backgroundColor: isPaid ? "#dcfce7" : "#fee2e2",
     color: isPaid ? "#166534" : "#991b1b",
+  };
+};
+
+// Slot status chip styles (available/booked/blocked)
+const getSlotStatusChipStyles = (status) => {
+  const colorMap = {
+    available: { bg: "#dcfce7", text: "#166534" },
+    booked: { bg: "#e0f2fe", text: "#1e3a8a" },
+    blocked: { bg: "#fef3c7", text: "#92400e" },
+  };
+  const style = colorMap[status] || colorMap.booked;
+  return {
+    padding: "4px 10px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    display: "inline-block",
+    backgroundColor: style.bg,
+    color: style.text,
   };
 };
 
@@ -118,7 +137,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     duration: 1,
     payment_methods: [],
     custom_price: "",
-    payment_status: "pending", // Add payment status field
+    payment_status: "pending",
   };
   const [formData, setFormData] = useState(emptyForm);
 
@@ -184,7 +203,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           (r.studio_name || "").toLowerCase().includes(q) ||
           (r.email || "").toLowerCase().includes(q) ||
           (r.contact_number || "").toLowerCase().includes(q) ||
-          (r.payment_status || "").toLowerCase().includes(q) // Add payment status to search
+          (r.payment_status || "").toLowerCase().includes(q) ||
+          (r.status || "").toLowerCase().includes(q)
       );
     }
     return rows;
@@ -207,12 +227,14 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     if (!formData.date || !formData.studio_id) return base;
 
     const master = masters.find((m) => String(m.id) === String(formData.studio_id));
+    // Only consider bookings that are NOT 'available'
     const taken = bookings.filter(
       (b) =>
         b.date === formData.date &&
         ((master &&
           (b.studio_name || "").toLowerCase() === (master.name || "").toLowerCase()) ||
-          String(b.studio_id || "") === String(formData.studio_id))
+          String(b.studio_id || "") === String(formData.studio_id)) &&
+        b.status !== "available"
     );
 
     return base.map((slotObj) => {
@@ -225,7 +247,11 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           Number(b.duration) || 1
         );
       });
-      return { ...slotObj, booked: overlappedBy.length > 0, sources: overlappedBy };
+      return {
+        ...slotObj,
+        booked: overlappedBy.length > 0,
+        sources: overlappedBy,
+      };
     });
   }, [allSlots, formData.date, formData.studio_id, bookings, masters]);
 
@@ -333,7 +359,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       duration: row.duration ?? 1,
       payment_methods: Array.isArray(row.payment_methods) ? row.payment_methods : [],
       custom_price: row.price_per_hour ?? row.price ?? (master?.hourly_rate ?? ""),
-      payment_status: row.payment_status || "pending", // Add payment status to edit
+      payment_status: row.payment_status || "pending",
     });
     setSelectedRange([]);
     clearStatus();
@@ -349,6 +375,59 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       const after = bookings.length - 1;
       const pages = Math.max(1, Math.ceil(after / pageSize));
       if (page > pages) setPage(pages);
+    } catch (err) {
+      setError(humanizeErr(err));
+    }
+  };
+
+  // ---------- SLOT ADMIN FUNCTIONS ----------
+  const openSlot = async (id) => {
+    if (!window.confirm("Make this slot available?")) return;
+    clearStatus();
+    try {
+      await api.patch(`${BOOKINGS_URL}${id}/`, { status: "available" });
+      await fetchAll();
+      toast("✅ Slot is now available");
+    } catch (err) {
+      setError(humanizeErr(err));
+    }
+  };
+
+  const blockSlot = async (id) => {
+    if (!window.confirm("Block this slot?")) return;
+    clearStatus();
+    try {
+      await api.patch(`${BOOKINGS_URL}${id}/`, { status: "blocked" });
+      await fetchAll();
+      toast("🚫 Slot blocked");
+    } catch (err) {
+      setError(humanizeErr(err));
+    }
+  };
+
+  const createBlockedSlot = async (time) => {
+    if (!formData.studio_name || !formData.date) {
+      toast("Select studio and date first");
+      return;
+    }
+    if (!window.confirm(`Block ${format12(time)}?`)) return;
+    clearStatus();
+    try {
+      await api.post(BOOKINGS_URL, {
+        customer: "ADMIN BLOCK",
+        studio_name: formData.studio_name,
+        studio_id: formData.studio_id,
+        date: formData.date,
+        time_slot: time,
+        duration: 1,
+        status: "blocked",
+        payment_status: "pending",
+        payment_methods: [],
+        price: 0,
+        price_per_hour: 0,
+      });
+      await fetchAll();
+      toast("🚫 Slot blocked");
     } catch (err) {
       setError(humanizeErr(err));
     }
@@ -396,6 +475,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       price: priceToSend,
       studio_name: formData.studio_name,
       payment_status: formData.payment_status || "pending",
+      // status not sent; default 'booked' will be used on creation
     };
 
     setSaving(true);
@@ -452,7 +532,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       "Price (₹/hr)",
       "Total Amount (₹)",
       "Payment Methods",
-      "Payment Status", // Add payment status header
+      "Payment Status",
+      "Slot Status",
       "Contact Number",
       "Email",
     ];
@@ -475,7 +556,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
           Array.isArray(b.payment_methods) && b.payment_methods.length
             ? `"${b.payment_methods.join(", ")}"`
             : "-",
-          b.payment_status === "paid" ? "Paid" : "Pending", // Payment status
+          b.payment_status === "paid" ? "Paid" : "Pending",
+          b.status || "booked",
           b.contact_number || "-",
           b.email || "-",
         ];
@@ -671,7 +753,6 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                 </div>
               </label>
 
-              {/* Payment Status Field - NEW */}
               <label>
                 Payment Status
                 <div className="pf-methods">
@@ -742,7 +823,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                         role="list"
                         style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
                       >
-                        {slotsInfo.map(({ time, booked }) => {
+                        {slotsInfo.map(({ time, booked, sources }) => {
                           const isSelectedStart = formData.time_slot === time;
                           const inSelectedRange = selectedRange.includes(time);
                           const validStart = canStartAt(time);
@@ -754,8 +835,16 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                             inSelectedRange ? "selected-range" : "",
                           ].join(" ");
 
+                          // Determine status label
+                          let status = "";
+                          let label = "";
+                          if (booked && sources && sources.length > 0) {
+                            status = sources[0].status || "booked";
+                            label = status === "blocked" ? "blocked" : "booked";
+                          }
+
                           const title = booked
-                            ? "Already booked"
+                            ? label === "blocked" ? "Blocked" : "Already booked"
                             : inSelectedRange
                             ? `Covers ${selectedRange.length} slot(s)`
                             : `Start at ${format12(time)}`;
@@ -772,14 +861,67 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                               }}
                               disabled={booked || !validStart}
                               title={title}
+                              style={{ flexDirection: "column", alignItems: "center" }}
                             >
                               <div style={{ fontWeight: 800 }}>{format12(time)}</div>
                               {booked && (
-                                <div style={{ fontSize: 11, color: "#9aa6b2" }}>booked</div>
+                                <div style={{ fontSize: 11, color: "#9aa6b2" }}>
+                                  {label}
+                                </div>
                               )}
                               {!booked && !validStart && (
                                 <div style={{ fontSize: 11, color: "#c07" }}>
                                   not enough free slots
+                                </div>
+                              )}
+
+                              {/* ADMIN CONTROLS INSIDE SLOT - UPDATED AS PER REQUEST */}
+                              {booked && sources && sources.length > 0 && (
+                                <>
+                                  {status === "booked" && (
+                                    <div style={{ marginTop: 5 }}>
+                                      <span
+                                        style={{
+                                          fontSize: 11,
+                                          color: "#2563eb",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        Booked
+                                      </span>
+                                    </div>
+                                  )}
+                                  {status === "blocked" && (
+                                    <div style={{ marginTop: 5 }}>
+                                      <button
+                                        type="button"
+                                        className="mini"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openSlot(sources[0].id);
+                                        }}
+                                        style={{ fontSize: 10, padding: "2px 6px" }}
+                                      >
+                                        Unblock
+                                      </button>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+
+                              {!booked && (
+                                <div style={{ marginTop: 5 }}>
+                                  <button
+                                    type="button"
+                                    className="mini warning"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      createBlockedSlot(time);
+                                    }}
+                                    style={{ fontSize: 10, padding: "2px 6px" }}
+                                  >
+                                    Block
+                                  </button>
                                 </div>
                               )}
                             </button>
@@ -793,7 +935,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
             </div>
             <p style={{ fontSize: 12, color: "#6b7280", marginTop: 8 }}>
               Selecting a start time will highlight the full reserved range based on the
-              duration.
+              duration. Admin buttons appear directly on each slot.
             </p>
           </section>
 
@@ -827,14 +969,14 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
       )}
 
       {/* ────────────────────────────────────────────────
-          VIEW TABLE – with Payment Status column
+          VIEW TABLE – with Slot Status column and admin actions
       ──────────────────────────────────────────────── */}
       {tab === "VIEW" && (
         <div className="pf-table-card">
           <div className="pf-table-top">
             <input
               className="pf-search"
-              placeholder="Search: customer, studio, email, phone, payment status"
+              placeholder="Search: customer, studio, email, phone, payment status, slot status"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -878,7 +1020,8 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   <th>Price (₹/hr)</th>
                   <th>Total Amount (₹)</th>
                   <th>Payment</th>
-                  <th>Payment Status</th> {/* NEW COLUMN */}
+                  <th>Payment Status</th>
+                  <th>Slot Status</th>
                   <th className="c">Actions</th>
                 </tr>
               </thead>
@@ -909,13 +1052,17 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                           ? s.payment_methods.join(", ")
                           : "-"}
                       </td>
-                      {/* PAYMENT STATUS COLUMN */}
                       <td>
                         <span style={getPaymentStatusChipStyles(s.payment_status)}>
                           {s.payment_status === "paid" ? "Paid" : "Pending"}
                         </span>
                       </td>
-                      <td className="c">
+                      <td>
+                        <span style={getSlotStatusChipStyles(s.status || "booked")}>
+                          {(s.status || "booked").toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="c" style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                         <button
                           className="mini"
                           onClick={() => handleEdit(s)}
@@ -930,13 +1077,37 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                         >
                           Delete
                         </button>
+
+                        {/* Open/Unblock Slot */}
+                        {s.status !== "available" && (
+                          <button
+                            className="mini"
+                            onClick={() => openSlot(s.id)}
+                            disabled={saving}
+                            title="Make this slot available"
+                          >
+                            {s.status === "blocked" ? "Unblock" : "Open Slot"}
+                          </button>
+                        )}
+
+                        {/* Block Slot */}
+                        {s.status !== "blocked" && (
+                          <button
+                            className="mini warning"
+                            onClick={() => blockSlot(s.id)}
+                            disabled={saving}
+                            title="Block this slot"
+                          >
+                            Block Slot
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
                 {!paged.length && (
                   <tr>
-                    <td colSpan="10" className="c muted">
+                    <td colSpan="11" className="c muted">
                       {loading ? "Loading bookings…" : "No bookings found."}
                     </td>
                   </tr>
