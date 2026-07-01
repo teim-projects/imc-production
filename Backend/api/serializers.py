@@ -869,19 +869,32 @@ class ClassSerializer(serializers.ModelSerializer):
             "trainer_name",
         ]
 
-
 from rest_framework import serializers
-from .models import Batch
+from .models import Batch, Class
 
 class BatchSerializer(serializers.ModelSerializer):
-    class_name = serializers.CharField(source="class_obj.name", read_only=True)
+
+    # ✅ IMPORTANT
+    class_obj = serializers.PrimaryKeyRelatedField(
+        queryset=Class.objects.all()
+    )
+
+    class_name = serializers.CharField(
+        source="class_obj.name",
+        read_only=True
+    )
+
     class_fee = serializers.DecimalField(
         source="class_obj.fee",
         max_digits=10,
         decimal_places=2,
         read_only=True
     )
-    trainer_name = serializers.CharField(source="trainer.name", read_only=True)
+
+    trainer_name = serializers.CharField(
+        source="trainer.name",
+        read_only=True
+    )
 
     class Meta:
         model = Batch
@@ -897,7 +910,6 @@ class BatchSerializer(serializers.ModelSerializer):
             "capacity",
             "created_at",
         ]
-
 
 
 from rest_framework import serializers

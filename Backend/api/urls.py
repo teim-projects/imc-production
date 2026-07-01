@@ -97,6 +97,12 @@ router.register(
     basename="studio-slots"
 )
 
+router.register(
+    r"auth/studio-slots",
+    StudioSlotViewSet,
+    basename="auth-studio-slots"
+)
+
 
 
 router.register(r"trainers", TrainerViewSet, basename="trainers")

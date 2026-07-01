@@ -123,12 +123,13 @@ function Sidebar({ openModal, openSubModal, currentKey = null }) {
         subActionKey: "addTrainer",
       },
 
+      // ========== CHANGED: Contact → Studio Calendar ==========
       {
-        name: "Contact",
-        key: "contact",
-        icon: <FaEnvelope />,
-        modal: "contact",                   // normal modal
-        subActionKey: null,
+        name: "Studio Calendar",
+        key: "studioCalendar",
+        icon: <FaCalendarAlt />,   // you can change to FaRegCalendar or FaCalendarCheck if desired
+        modal: null,
+        subActionKey: "studioCalendar",   // parent should handle this to show StudioCalendarManager
       },
     ],
     []

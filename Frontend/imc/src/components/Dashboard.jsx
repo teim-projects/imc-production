@@ -16,7 +16,8 @@ import SingerForm from "./Forms/SingerForm";
 import TrainerForm from "./Forms/TrainerForm";
 import UserForm from "./Forms/UserForm";
 import PrivateBookingForm from "./Forms/PrivateBookingForm";
-import PaymentForm from "./Forms/PaymentForm"; 
+import PaymentForm from "./Forms/PaymentForm";
+import StudioCalendarManager from "./Forms/StudioCalendarManager";  // <-- NEW IMPORT
 
 import { motion } from "framer-motion";
 import {
@@ -46,6 +47,7 @@ import "./Dashboard.css";
 /* ---------------- Allowed keys (keep in sync with Sidebar) ---------------- */
 const ALLOWED_KEYS = new Set([
   null,
+  "studioCalendar",       // <-- NEW
   "studio", "studioMaster", "equipment", "events", "photography", "videography", "sound",
   "singer", "payment", "private",
   "classes", "addClass", "viewClass",
@@ -66,6 +68,7 @@ const ALLOWED_KEYS = new Set([
 const prettyTitle = (k) => {
   if (!k) return "Overview";
   const map = {
+    studioCalendar: "Studio Calendar",   // <-- NEW
     studio: "Studio", studioMaster: "Studio Master", equipment: "Equipment",
     events: "Events", photography: "Photography", videography: "Videography",
     sound: "Sound", singer: "Singer", payment: "Payment", user: "Users", private: "Private Bookings",
@@ -186,6 +189,7 @@ export default function Dashboard() {
 
   const renderForm = () => {
     switch (activeForm) {
+      case "studioCalendar":   return <StudioCalendarManager />;  // <-- NEW CASE
       case "studio":          return <StudioForm onClose={closeForm} />;
       case "studioMaster":    return <StudioMasterForm defaultTab="ADD" />;
       case "equipment":       return <SingingClassForm onClose={closeForm} />;
