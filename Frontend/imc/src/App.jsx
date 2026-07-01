@@ -55,6 +55,9 @@ import PaymentPage from "./userDashboard/payment/PaymentPage";
 import PaymentButton from "./userDashboard/pages/PaymentButton";
 import PaymentSuccess from "./userDashboard/pages/PaymentSuccess";
 
+/* ================= STUDIO CALENDAR ================= */
+import StudioCalendarManager from "./components/Forms/StudioCalendarManager";
+
 /* ================= STYLES ================= */
 import "./App.css";
 
@@ -177,6 +180,16 @@ function Layout() {
             element={
               <AdminRoute>
                 <AnnualFeeWrapper />
+              </AdminRoute>
+            }
+          />
+
+          {/* ========== NEW STUDIO CALENDAR ROUTE ========== */}
+          <Route
+            path="/studio-calendar"
+            element={
+              <AdminRoute>
+                <StudioCalendarManager />
               </AdminRoute>
             }
           />

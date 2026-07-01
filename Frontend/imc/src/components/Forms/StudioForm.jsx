@@ -1,5 +1,6 @@
 // src/components/Forms/StudioForm.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";        // 👈 ADDED
 import axios from "axios";
 import { Download } from "lucide-react";
 import "./Forms.css";
@@ -110,6 +111,8 @@ const getSlotStatusChipStyles = (status) => {
 };
 
 const StudioForm = ({ onClose, viewOnly = false }) => {
+  const location = useLocation();                       // 👈 ADDED
+
   const [tab, setTab] = useState(viewOnly ? "VIEW" : "ADD");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -140,6 +143,19 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     payment_status: "pending",
   };
   const [formData, setFormData] = useState(emptyForm);
+
+  // 👇 PREFILL from location.state (if any)
+  useEffect(() => {
+    if (location.state) {
+      setFormData((prev) => ({
+        ...prev,
+        studio_name: location.state.studio_name || "",
+        date: location.state.date || "",
+        time_slot: location.state.time_slot || "",
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [selectedRange, setSelectedRange] = useState([]);
 
