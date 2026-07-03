@@ -1,4 +1,4 @@
-// Register.jsx
+// src/components/Register.jsx
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -13,8 +13,8 @@ const PHOTO_FIELD_NAME = "profile_photo";
 
 export default function Register() {
   const navigate = useNavigate();
-  // ✅ NEW ENDPOINT
-  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/auth/register/`;
+  // ✅ USE THE OLD PATH – matches backend override
+  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/dj-rest-auth/registration/`;
 
   const [form, setForm] = useState({
     full_name: "",
@@ -103,7 +103,6 @@ export default function Register() {
         data = await res.json();
       } catch (_) {}
 
-      // Debug logs
       console.log("Status:", res.status);
       console.log("Response:", data);
 
@@ -111,7 +110,7 @@ export default function Register() {
         const msg = "🎉 Account created! Redirecting...";
         setMessage(msg);
         setMsgType("success");
-        alert(msg);   // <-- Alert on success
+        alert(msg);
         setTimeout(() => navigate("/dashboard"), 1500);
         return;
       }
@@ -148,7 +147,7 @@ export default function Register() {
       const finalMsg = `❌ ${errorMessage}`;
       setMessage(finalMsg);
       setMsgType("error");
-      alert(finalMsg);   // <-- Alert on error
+      alert(finalMsg);
     } catch (err) {
       const msg = "⚠️ Network error";
       setMessage(msg);
