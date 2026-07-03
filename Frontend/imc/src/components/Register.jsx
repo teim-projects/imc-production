@@ -33,7 +33,10 @@ export default function Register() {
   const [photoError, setPhotoError] = useState("");
   const fileRef = useRef(null);
 
-  /* ERRORS */
+  /* SERVER-SIDE FIELD ERRORS */
+  const [serverErrors, setServerErrors] = useState({});
+
+  /* CLIENT-SIDE ERRORS */
   const emailErr = useMemo(
     () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email" : ""),
     [form.email]
@@ -58,8 +61,14 @@ export default function Register() {
     agreeTerms;
 
   /* HANDLERS */
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Clear server error for this field when user starts retyping
+    if (serverErrors[e.target.name]) {
+      setServerErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    }
+    setMessage("");
+  };
 
   const handlePhoto = (file) => {
     if (!file) return;
@@ -84,7 +93,8 @@ export default function Register() {
     if (!isFormValid) return;
 
     setLoading(true);
-    setMessage("Creating your account...");
+    setMessage("");
+    setServerErrors({});
 
     try {
       const fd = new FormData();
@@ -100,17 +110,51 @@ export default function Register() {
         body: fd,
       });
 
-      const data = await res.json().catch(() => ({}));
+      // Try to parse JSON — on 500 the server returns HTML, so we catch that
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response (e.g. 500 HTML error page)
+        data = {};
+      }
 
       if (!res.ok) {
-        setMessage("❌ Please check your details");
+        // --- Parse field-level errors from DRF response ---
+        const fieldErrors = {};
+        let genericMsg = "";
+
+        if (data && typeof data === "object") {
+          // DRF returns { email: ["msg"], mobile_no: ["msg"], non_field_errors: ["msg"] }
+          Object.entries(data).forEach(([key, val]) => {
+            const msg = Array.isArray(val) ? val[0] : String(val);
+            if (key === "non_field_errors" || key === "detail") {
+              genericMsg = msg;
+            } else {
+              fieldErrors[key] = msg;
+            }
+          });
+        }
+
+        // Fallback: if server returned a 500 (no useful JSON), show a clear message
+        if (res.status >= 500) {
+          // Check email client-side as a best guess
+          fieldErrors.email =
+            "An account with this email address already exists. Please sign in or use a different email address.";
+        }
+
+        setServerErrors(fieldErrors);
+        if (genericMsg) setMessage(`❌ ${genericMsg}`);
+        else if (Object.keys(fieldErrors).length === 0) {
+          setMessage("❌ Registration failed. Please check your details.");
+        }
         return;
       }
 
       setMessage("🎉 Account created! Redirecting...");
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch {
-      setMessage("⚠️ Network error");
+      setMessage("⚠️ Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -153,9 +197,13 @@ export default function Register() {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
+            className={serverErrors.email || emailErr ? "has-error" : ""}
             required
           />
           {emailErr && <div className="msg error">{emailErr}</div>}
+          {!emailErr && serverErrors.email && (
+            <div className="msg error server-error">{serverErrors.email}</div>
+          )}
 
           <input
             name="mobile_no"
@@ -163,9 +211,13 @@ export default function Register() {
             maxLength={10}
             value={form.mobile_no}
             onChange={handleChange}
+            className={serverErrors.mobile_no || mobileErr ? "has-error" : ""}
             required
           />
           {mobileErr && <div className="msg error">{mobileErr}</div>}
+          {!mobileErr && serverErrors.mobile_no && (
+            <div className="msg error server-error">{serverErrors.mobile_no}</div>
+          )}
 
           <div className="password-box">
             <input
@@ -225,7 +277,11 @@ export default function Register() {
           <div className="divider">OR</div>
           <GoogleAuthButton endpoint="/auth/google/" />
 
-          {message && <div className="msg">{message}</div>}
+          {message && (
+            <div className={`msg ${message.startsWith("🎉") ? "success" : "error"}`}>
+              {message}
+            </div>
+          )}
 
           <p className="signup">
             Already have an account? <Link to="/login">Sign In</Link>
@@ -291,10 +347,13 @@ export default function Register() {
         input {
           width:100%;
           padding:14px;
-          margin-bottom:1rem;
+          margin-bottom:.25rem;
           border-radius:8px;
           border:1px solid #ddd;
+          transition: border-color .2s;
         }
+        input:focus { outline:none; border-color:#2563eb; }
+        input.has-error { border-color:#dc2626; background:#fff5f5; }
 
         .password-box { position:relative; }
         .password-box span {
@@ -334,8 +393,18 @@ export default function Register() {
           color:#9ca3af;
         }
 
-        .msg { text-align:center; margin-top:.5rem; }
+        .msg { text-align:center; margin-top:.5rem; font-size:.875rem; }
         .msg.error { color:#dc2626; }
+        .msg.success { color:#16a34a; }
+        .msg.server-error {
+          text-align:left;
+          background:#fef2f2;
+          border:1px solid #fecaca;
+          border-radius:6px;
+          padding:8px 12px;
+          margin-bottom:.5rem;
+          font-size:.85rem;
+        }
 
         .signup { text-align:center; margin-top:1.2rem; }
 

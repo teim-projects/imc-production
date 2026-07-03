@@ -6,6 +6,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DashboardSummary, EventBookingViewSet, StudioSlotViewSet
 from .views import SingingClassAdmissionViewSet
+from .views import CustomRegisterView
 
 
 from .views import (
@@ -113,7 +114,8 @@ urlpatterns = [
 
     # dj-rest-auth
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
-    path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
+    # Custom registration view — returns 400 (not 500) on duplicate email/mobile
+    path("dj-rest-auth/registration/", CustomRegisterView.as_view(), name="rest_register"),
 
     # Social login
     path("auth/google/", GoogleLogin.as_view(), name="google_login"),

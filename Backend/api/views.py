@@ -1348,3 +1348,56 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 class StudioSlotViewSet(viewsets.ModelViewSet):
     queryset = StudioSlot.objects.all()
     serializer_class = StudioSlotSerializer
+
+
+# ====================================================================
+# Custom Registration View — catches IntegrityError (duplicate email/mobile)
+# and returns a clean 400 instead of a 500
+# ====================================================================
+from django.db import IntegrityError
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from dj_rest_auth.registration.views import RegisterView as BaseRegisterView
+
+
+class CustomRegisterView(BaseRegisterView):
+    """
+    Wraps dj-rest-auth RegisterView to intercept any MySQL IntegrityError
+    (duplicate email or mobile_no) and return a user-friendly 400 response
+    instead of a 500 server error.
+    """
+
+    def create(self, request, *args, **kwargs):
+        # Run validate_email before even hitting allauth
+        email = (request.data.get("email") or "").strip().lower()
+        if email and User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {
+                    "email": [
+                        "An account with this email address already exists. "
+                        "Please sign in or use a different email address."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError as e:
+            err_str = str(e).lower()
+            if "email" in err_str:
+                return Response(
+                    {
+                        "email": [
+                            "An account with this email address already exists. "
+                            "Please sign in or use a different email address."
+                        ]
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if "mobile_no" in err_str:
+                return Response(
+                    {"mobile_no": ["An account with this mobile number already exists."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Unknown IntegrityError — re-raise so it still logs properly
+            raise
