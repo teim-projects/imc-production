@@ -26,8 +26,7 @@ from .models import (
     # CRM modules
     PrivateBooking,
     PhotographyBooking,
-    Event,  Payment,
-    StudioSlot, Videography,
+    Event,  Payment, Videography,
    
     # Sound service
     Sound,
@@ -487,87 +486,108 @@ User = get_user_model()
 # ============================================================
 # REGISTER SERIALIZER
 # ============================================================
-# api/serializers.py
 
-import logging
-from django.db import IntegrityError
-from django.contrib.auth import get_user_model
-from rest_framework import serializers
-from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import LoginSerializer   # <-- import
-
-logger = logging.getLogger(__name__)
-User = get_user_model()
-
-# ─── CUSTOM LOGIN SERIALIZER (must be defined) ──────────────
-class CustomLoginSerializer(LoginSerializer):
-    """Extend if needed – currently empty to avoid ImportError."""
-    pass
-
-# ─── CUSTOM REGISTER SERIALIZER ──────────────────────────────
 class CustomRegisterSerializer(RegisterSerializer):
-    username = serializers.CharField(required=False, allow_blank=True)
-    full_name = serializers.CharField(required=True)
-    email = serializers.EmailField(required=True)
-    mobile_no = serializers.CharField(required=True)
+    """
+    Extends dj-rest-auth RegisterSerializer to support:
+    - mobile_no (validated, unique)
+    - profile_photo (optional)
+    """
+    username = None  # disable username completely
+
+    mobile_no = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=15,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="This mobile number is already registered."
+            )
+        ]
+    )
+
     profile_photo = serializers.ImageField(required=False, allow_null=True)
 
-    def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError("This email is already registered.")
-        return value
-
-    def validate_mobile_no(self, value):
-        if User.objects.filter(mobile_no=value).exists():
-            raise serializers.ValidationError("This mobile number is already registered.")
-        return value
+    def validate_mobile_no(self, v: str):
+        v = (v or "").strip()
+        if v == "":
+            return v
+        return _validate_phone(v)
 
     def get_cleaned_data(self):
-        return {
-            "username": self.validated_data.get("email", ""),
-            "email": self.validated_data.get("email", ""),
-            "password1": self.validated_data.get("password1", ""),
-            "mobile_no": self.validated_data.get("mobile_no", ""),
-            "full_name": self.validated_data.get("full_name", ""),
-            "profile_photo": self.validated_data.get("profile_photo", None),
-        }
+        data = super().get_cleaned_data()
+        data["mobile_no"] = self.validated_data.get("mobile_no", "")
+        data["profile_photo"] = self.validated_data.get("profile_photo")
+        return data
 
+    @transaction.atomic
     def save(self, request):
-        try:
-            email = self.validated_data.get("email")
-            mobile_no = self.validated_data.get("mobile_no")
+        # Create user first
+        user = super().save(request)
 
-            if User.objects.filter(email__iexact=email).exists():
-                raise serializers.ValidationError({"email": ["This email is already registered."]})
-            if User.objects.filter(mobile_no=mobile_no).exists():
-                raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
+        # Save mobile
+        user.mobile_no = self.validated_data.get("mobile_no", "")
+        user.save()  # IMPORTANT: ensure PK exists before image save
 
-            user = super().save(request)
+        # Handle profile photo safely
+        photo = (
+            self.validated_data.get("profile_photo")
+            or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
+        )
 
-            user.email = email
-            user.mobile_no = mobile_no
-
-            full_name = self.validated_data.get("full_name", "").strip()
-            if full_name:
-                names = full_name.split(" ", 1)
-                user.first_name = names[0]
-                user.last_name = names[1] if len(names) > 1 else ""
-
-            profile_photo = self.validated_data.get("profile_photo")
-            if profile_photo:
-                user.profile_photo = profile_photo
-
+        if photo:
+            user.profile_photo = photo
             user.save()
-            return user
 
-        except Exception as e:
-            logger.error(f"Registration error: {type(e).__name__} – {str(e)}")
-            error_text = str(e).lower()
-            if "api_customuser.email" in error_text or ("duplicate entry" in error_text and "email" in error_text):
-                raise serializers.ValidationError({"email": ["This email is already registered."]})
-            if "api_customuser.mobile_no" in error_text or ("duplicate entry" in error_text and "mobile_no" in error_text):
-                raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
-            raise serializers.ValidationError({"detail": "Registration failed. Please try again."})
+        try:
+            user.save()
+        except IntegrityError:
+            raise serializers.ValidationError({
+                "mobile_no": ["This mobile number is already registered."]
+            })
+
+        return user
+
+
+# ============================================================
+# LOGIN SERIALIZER (UNCHANGED LOGIC)
+# ============================================================
+
+class CustomLoginSerializer(LoginSerializer):
+    username = None
+    email_or_mobile = serializers.CharField(required=True)
+    password = serializers.CharField(style={'input_type': 'password'})
+
+    def validate(self, attrs):
+        email_or_mobile = attrs.get('email_or_mobile')
+        password = attrs.get('password')
+
+        if not email_or_mobile or not password:
+            raise serializers.ValidationError(
+                "Both email/mobile and password are required."
+            )
+
+        user = authenticate(username=email_or_mobile, password=password)
+
+        if not user:
+            try:
+                if '@' in email_or_mobile:
+                    user = User.objects.get(email=email_or_mobile)
+                else:
+                    user = User.objects.get(mobile_no=email_or_mobile)
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Invalid credentials.")
+
+            if not user.check_password(password):
+                raise serializers.ValidationError("Invalid credentials.")
+
+        if not user.is_active:
+            raise serializers.ValidationError("User account is disabled.")
+
+        attrs['user'] = user
+        return attrs
+
 
 # ============================================================
 # USER DETAILS SERIALIZER (PHOTO PATCH ENABLED)
@@ -848,32 +868,19 @@ class ClassSerializer(serializers.ModelSerializer):
             "trainer_name",
         ]
 
+
 from rest_framework import serializers
-from .models import Batch, Class
+from .models import Batch
 
 class BatchSerializer(serializers.ModelSerializer):
-
-    # ✅ IMPORTANT
-    class_obj = serializers.PrimaryKeyRelatedField(
-        queryset=Class.objects.all()
-    )
-
-    class_name = serializers.CharField(
-        source="class_obj.name",
-        read_only=True
-    )
-
+    class_name = serializers.CharField(source="class_obj.name", read_only=True)
     class_fee = serializers.DecimalField(
         source="class_obj.fee",
         max_digits=10,
         decimal_places=2,
         read_only=True
     )
-
-    trainer_name = serializers.CharField(
-        source="trainer.name",
-        read_only=True
-    )
+    trainer_name = serializers.CharField(source="trainer.name", read_only=True)
 
     class Meta:
         model = Batch
@@ -891,6 +898,7 @@ class BatchSerializer(serializers.ModelSerializer):
         ]
 
 
+
 from rest_framework import serializers
 from .models import AnnualFee
 
@@ -898,23 +906,4 @@ from .models import AnnualFee
 class AnnualFeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnnualFee
-        fields = "__all__"
-
-
-
-from .models import EventBooking
-
-class EventBookingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EventBooking
-        fields = "__all__"
-        
-        
-        
-
-# serializers.py
-
-class StudioSlotSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = StudioSlot
         fields = "__all__"
