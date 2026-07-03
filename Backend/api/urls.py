@@ -111,11 +111,9 @@ router.register(r"trainers", TrainerViewSet, basename="trainers")
 
 urlpatterns = [
     path("", include(router.urls)),
-
-    # dj-rest-auth
+ # dj-rest-auth
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
-    # Custom registration view — returns 400 (not 500) on duplicate email/mobile
-    path("dj-rest-auth/registration/", CustomRegisterView.as_view(), name="rest_register"),
+    path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
 
     # Social login
     path("auth/google/", GoogleLogin.as_view(), name="google_login"),
