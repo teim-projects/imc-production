@@ -483,95 +483,113 @@ class VideographySerializer(serializers.ModelSerializer):
 
 User = get_user_model()
 
-# serializers.py
-from dj_rest_auth.registration.serializers import RegisterSerializer
-from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
-from django.db import transaction
-from django.contrib.auth import get_user_model
 
+# ============================================================
+# REGISTER SERIALIZER
+# ============================================================
+# api/serializers.py
+
+import logging
+from django.db import IntegrityError
+from django.contrib.auth import get_user_model
+from rest_framework import serializers
+from dj_rest_auth.registration.serializers import RegisterSerializer
+from dj_rest_auth.serializers import LoginSerializer      # <-- import base login serializer
+
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
-class CustomRegisterSerializer(RegisterSerializer):
-    username = None
 
-    full_name = serializers.CharField(required=False, allow_blank=True)
-    mobile_no = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=15,
-        validators=[
-            UniqueValidator(
-                queryset=User.objects.all(),
-                message="This mobile number is already registered."
-            )
-        ]
-    )
+# ============================================================
+# CUSTOM LOGIN SERIALIZER (adds any extra fields if needed)
+# ============================================================
+class CustomLoginSerializer(LoginSerializer):
+    """
+    Extend the default LoginSerializer if you need extra fields.
+    For now, it works exactly like the default one.
+    You can add custom validation or fields later.
+    """
+    pass
+
+
+# ============================================================
+# CUSTOM REGISTER SERIALIZER (your existing code)
+# ============================================================
+class CustomRegisterSerializer(RegisterSerializer):
+    username = serializers.CharField(required=False, allow_blank=True)
+    full_name = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    mobile_no = serializers.CharField(required=True)
     profile_photo = serializers.ImageField(required=False, allow_null=True)
 
+    # ---------- FIELD VALIDATION ----------
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value
+
+    def validate_mobile_no(self, value):
+        if User.objects.filter(mobile_no=value).exists():
+            raise serializers.ValidationError("This mobile number is already registered.")
+        return value
+
+    # ---------- CLEANED DATA ----------
     def get_cleaned_data(self):
-        data = super().get_cleaned_data()
-        data['full_name'] = self.validated_data.get('full_name', '')
-        data['mobile_no'] = self.validated_data.get('mobile_no', '')
-        data['profile_photo'] = self.validated_data.get('profile_photo')
-        return data
+        return {
+            "username": self.validated_data.get("email", ""),
+            "email": self.validated_data.get("email", ""),
+            "password1": self.validated_data.get("password1", ""),
+            "mobile_no": self.validated_data.get("mobile_no", ""),
+            "full_name": self.validated_data.get("full_name", ""),
+            "profile_photo": self.validated_data.get("profile_photo", None),
+        }
 
-    @transaction.atomic
+    # ---------- SAVE (with iron‑clad error handling) ----------
     def save(self, request):
-        user = super().save(request)
+        try:
+            email = self.validated_data.get("email")
+            mobile_no = self.validated_data.get("mobile_no")
 
-        full_name = self.validated_data.get('full_name', '')
-        if full_name:
-            parts = full_name.strip().split(' ', 1)
-            user.first_name = parts[0]
-            user.last_name = parts[1] if len(parts) > 1 else ''
+            # Double‑check uniqueness (redundant but safe)
+            if User.objects.filter(email__iexact=email).exists():
+                raise serializers.ValidationError({"email": ["This email is already registered."]})
+            if User.objects.filter(mobile_no=mobile_no).exists():
+                raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
 
-        user.mobile_no = self.validated_data.get('mobile_no', '')
-        photo = self.validated_data.get('profile_photo') or request.FILES.get('profile_photo')
-        if photo:
-            user.profile_photo = photo
+            # Let the parent create the user
+            user = super().save(request)
 
-        user.save()
-        return user
-    
-# ============================================================
-# LOGIN SERIALIZER (UNCHANGED LOGIC)
-# ============================================================
+            # Update extra fields
+            user.email = email
+            user.mobile_no = mobile_no
 
-class CustomLoginSerializer(LoginSerializer):
-    username = None
-    email_or_mobile = serializers.CharField(required=True)
-    password = serializers.CharField(style={'input_type': 'password'})
+            full_name = self.validated_data.get("full_name", "").strip()
+            if full_name:
+                names = full_name.split(" ", 1)
+                user.first_name = names[0]
+                user.last_name = names[1] if len(names) > 1 else ""
 
-    def validate(self, attrs):
-        email_or_mobile = attrs.get('email_or_mobile')
-        password = attrs.get('password')
+            profile_photo = self.validated_data.get("profile_photo")
+            if profile_photo:
+                user.profile_photo = profile_photo
 
-        if not email_or_mobile or not password:
-            raise serializers.ValidationError(
-                "Both email/mobile and password are required."
-            )
+            user.save()
+            return user
 
-        user = authenticate(username=email_or_mobile, password=password)
+        except Exception as e:
+            # Log the real error (check your server logs)
+            logger.error(f"Registration error: {type(e).__name__} – {str(e)}")
 
-        if not user:
-            try:
-                if '@' in email_or_mobile:
-                    user = User.objects.get(email=email_or_mobile)
-                else:
-                    user = User.objects.get(mobile_no=email_or_mobile)
-            except User.DoesNotExist:
-                raise serializers.ValidationError("Invalid credentials.")
+            error_text = str(e).lower()
 
-            if not user.check_password(password):
-                raise serializers.ValidationError("Invalid credentials.")
+            # Detect duplicate email / mobile from the raw database error
+            if "api_customuser.email" in error_text or ("duplicate entry" in error_text and "email" in error_text):
+                raise serializers.ValidationError({"email": ["This email is already registered."]})
+            if "api_customuser.mobile_no" in error_text or ("duplicate entry" in error_text and "mobile_no" in error_text):
+                raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
 
-        if not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
-
-        attrs['user'] = user
-        return attrs
-
+            # Fallback
+            raise serializers.ValidationError({"detail": "Registration failed. Please try again."})
 
 # ============================================================
 # USER DETAILS SERIALIZER (PHOTO PATCH ENABLED)
