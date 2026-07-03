@@ -103,7 +103,23 @@ export default function Register() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setMessage("❌ Please check your details");
+        console.log("Registration Error:", data);
+
+        let errors = [];
+
+        Object.keys(data).forEach((key) => {
+          const value = data[key];
+
+          if (Array.isArray(value)) {
+            errors.push(...value);
+          } else {
+            errors.push(value);
+          }
+        });
+
+        alert(errors.join("\n"));               // popup alert
+        setMessage(`❌ ${errors.join(", ")}`);   // inline message
+
         return;
       }
 

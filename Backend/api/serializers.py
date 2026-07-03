@@ -483,19 +483,19 @@ class VideographySerializer(serializers.ModelSerializer):
 
 User = get_user_model()
 
+# serializers.py
+from dj_rest_auth.registration.serializers import RegisterSerializer
+from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from django.db import transaction
+from django.contrib.auth import get_user_model
 
-# ============================================================
-# REGISTER SERIALIZER
-# ============================================================
+User = get_user_model()
 
 class CustomRegisterSerializer(RegisterSerializer):
-    """
-    Extends dj-rest-auth RegisterSerializer to support:
-    - mobile_no (validated, unique)
-    - profile_photo (optional)
-    """
-    username = None  # disable username completely
+    username = None
 
+    full_name = serializers.CharField(required=False, allow_blank=True)
     mobile_no = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -507,50 +507,33 @@ class CustomRegisterSerializer(RegisterSerializer):
             )
         ]
     )
-
     profile_photo = serializers.ImageField(required=False, allow_null=True)
-
-    def validate_mobile_no(self, v: str):
-        v = (v or "").strip()
-        if v == "":
-            return v
-        return _validate_phone(v)
 
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
-        data["mobile_no"] = self.validated_data.get("mobile_no", "")
-        data["profile_photo"] = self.validated_data.get("profile_photo")
+        data['full_name'] = self.validated_data.get('full_name', '')
+        data['mobile_no'] = self.validated_data.get('mobile_no', '')
+        data['profile_photo'] = self.validated_data.get('profile_photo')
         return data
 
     @transaction.atomic
     def save(self, request):
-        # Create user first
         user = super().save(request)
 
-        # Save mobile
-        user.mobile_no = self.validated_data.get("mobile_no", "")
-        user.save()  # IMPORTANT: ensure PK exists before image save
+        full_name = self.validated_data.get('full_name', '')
+        if full_name:
+            parts = full_name.strip().split(' ', 1)
+            user.first_name = parts[0]
+            user.last_name = parts[1] if len(parts) > 1 else ''
 
-        # Handle profile photo safely
-        photo = (
-            self.validated_data.get("profile_photo")
-            or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
-        )
-
+        user.mobile_no = self.validated_data.get('mobile_no', '')
+        photo = self.validated_data.get('profile_photo') or request.FILES.get('profile_photo')
         if photo:
             user.profile_photo = photo
-            user.save()
 
-        try:
-            user.save()
-        except IntegrityError:
-            raise serializers.ValidationError({
-                "mobile_no": ["This mobile number is already registered."]
-            })
-
+        user.save()
         return user
-
-
+    
 # ============================================================
 # LOGIN SERIALIZER (UNCHANGED LOGIC)
 # ============================================================
