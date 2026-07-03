@@ -483,10 +483,18 @@ class VideographySerializer(serializers.ModelSerializer):
 
 User = get_user_model()
 
-
 # ============================================================
 # REGISTER SERIALIZER
 # ============================================================
+
+from dj_rest_auth.registration.serializers import RegisterSerializer
+from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from django.contrib.auth import get_user_model
+from django.db import transaction, IntegrityError
+
+User = get_user_model()
+
 
 class CustomRegisterSerializer(RegisterSerializer):
     """
@@ -494,7 +502,18 @@ class CustomRegisterSerializer(RegisterSerializer):
     - mobile_no (validated, unique)
     - profile_photo (optional)
     """
-    username = None  # disable username completely
+
+    username = None
+
+    email = serializers.EmailField(
+        required=True,
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message="This email address is already registered."
+            )
+        ]
+    )
 
     mobile_no = serializers.CharField(
         required=False,
@@ -508,49 +527,78 @@ class CustomRegisterSerializer(RegisterSerializer):
         ]
     )
 
-    profile_photo = serializers.ImageField(required=False, allow_null=True)
+    profile_photo = serializers.ImageField(
+        required=False,
+        allow_null=True
+    )
 
-    def validate_mobile_no(self, v: str):
+    def validate_mobile_no(self, v):
         v = (v or "").strip()
+
         if v == "":
             return v
+
         return _validate_phone(v)
 
     def get_cleaned_data(self):
         data = super().get_cleaned_data()
+
         data["mobile_no"] = self.validated_data.get("mobile_no", "")
         data["profile_photo"] = self.validated_data.get("profile_photo")
+
         return data
 
     @transaction.atomic
     def save(self, request):
-        # Create user first
-        user = super().save(request)
-
-        # Save mobile
-        user.mobile_no = self.validated_data.get("mobile_no", "")
-        user.save()  # IMPORTANT: ensure PK exists before image save
-
-        # Handle profile photo safely
-        photo = (
-            self.validated_data.get("profile_photo")
-            or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
-        )
-
-        if photo:
-            user.profile_photo = photo
-            user.save()
-
         try:
+            # create user
+            user = super().save(request)
+
+            # save mobile number
+            user.mobile_no = self.validated_data.get(
+                "mobile_no",
+                ""
+            )
+
+            # profile photo
+            photo = (
+                self.validated_data.get("profile_photo")
+                or (
+                    request.FILES.get("photo")
+                    if request and hasattr(request, "FILES")
+                    else None
+                )
+            )
+
+            if photo:
+                user.profile_photo = photo
+
             user.save()
-        except IntegrityError:
+
+            return user
+
+        except IntegrityError as e:
+            error = str(e).lower()
+
+            if "email" in error:
+                raise serializers.ValidationError({
+                    "email": [
+                        "This email address is already registered."
+                    ]
+                })
+
+            if "mobile_no" in error:
+                raise serializers.ValidationError({
+                    "mobile_no": [
+                        "This mobile number is already registered."
+                    ]
+                })
+
             raise serializers.ValidationError({
-                "mobile_no": ["This mobile number is already registered."]
+                "detail": [
+                    "Registration failed."
+                ]
             })
-
-        return user
-
-
 # ============================================================
 # LOGIN SERIALIZER (UNCHANGED LOGIC)
 # ============================================================
