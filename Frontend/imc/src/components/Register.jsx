@@ -1,7 +1,9 @@
-// src/components/Register.jsx
+// Register.jsx
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import GoogleAuthButton from "./GoogleAuthButton";
 import singerBg from "../assets/newback.jpg";
 
@@ -13,8 +15,7 @@ const PHOTO_FIELD_NAME = "profile_photo";
 
 export default function Register() {
   const navigate = useNavigate();
-  // ✅ USE THE OLD PATH – matches backend override
-  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/dj-rest-auth/registration/`;
+  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/auth/dj-rest-auth/registration/`;
 
   const [form, setForm] = useState({
     full_name: "",
@@ -29,12 +30,13 @@ export default function Register() {
   const [msgType, setMsgType] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Photo state
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoError, setPhotoError] = useState("");
   const fileRef = useRef(null);
 
-  // Validation
+  // Validation errors
   const emailErr = useMemo(
     () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email" : ""),
     [form.email]
@@ -56,6 +58,7 @@ export default function Register() {
     !passwordMatchErr &&
     agreeTerms;
 
+  // Handlers
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handlePhoto = (file) => {
@@ -79,6 +82,7 @@ export default function Register() {
     };
   }, [photoPreview]);
 
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -96,35 +100,49 @@ export default function Register() {
       fd.append("password2", form.password2);
       if (photoFile) fd.append(PHOTO_FIELD_NAME, photoFile);
 
-      const res = await fetch(REGISTER_URL, { method: "POST", body: fd });
+      const res = await fetch(REGISTER_URL, {
+        method: "POST",
+        body: fd,
+      });
 
+      // Try to parse JSON regardless of status
       let data = {};
       try {
         data = await res.json();
-      } catch (_) {}
+      } catch (_) {
+        // if response is not JSON, keep data as {}
+      }
 
-      console.log("Status:", res.status);
-      console.log("Response:", data);
-
+      // ------ SUCCESS (2xx) ------
       if (res.ok) {
-        const msg = "🎉 Account created! Redirecting...";
-        setMessage(msg);
+        toast.success("🎉 Account created! Redirecting...");
+        setMessage("🎉 Account created! Redirecting...");
         setMsgType("success");
-        alert(msg);
         setTimeout(() => navigate("/dashboard"), 1500);
         return;
       }
 
-      // ---- Error handling ----
+      // ------ ERROR (4xx / 5xx) ------
       let errorMessage = "Registration failed";
 
+      // Helper to extract first error from field
       const firstError = (obj) => {
         if (Array.isArray(obj) && obj.length > 0) return obj[0];
         if (typeof obj === "string") return obj;
         return null;
       };
 
-      const errorKeys = ["email", "mobile_no", "password1", "password2", "non_field_errors", "detail", "message", "error"];
+      // Common error keys (dj-rest-auth, DRF, custom)
+      const errorKeys = [
+        "email",
+        "mobile_no",
+        "password1",
+        "password2",
+        "non_field_errors",
+        "detail",
+        "message",
+        "error",
+      ];
       for (const key of errorKeys) {
         const err = data[key];
         if (err) {
@@ -136,48 +154,75 @@ export default function Register() {
         }
       }
 
+      // If still no message, try to stringify the whole data
       if (errorMessage === "Registration failed" && typeof data === "object") {
         errorMessage = JSON.stringify(data);
       }
 
+      // Fallback for non‑JSON responses (e.g., 500 HTML)
       if (errorMessage === "Registration failed" && !res.headers.get("content-type")?.includes("json")) {
         errorMessage = `Server error (${res.status}). Please try again.`;
       }
 
-      const finalMsg = `❌ ${errorMessage}`;
-      setMessage(finalMsg);
+      toast.error(`❌ ${errorMessage}`);
+      setMessage(`❌ ${errorMessage}`);
       setMsgType("error");
-      alert(finalMsg);
     } catch (err) {
-      const msg = "⚠️ Network error";
-      setMessage(msg);
+      toast.error("⚠️ Network error");
+      setMessage("⚠️ Network error");
       setMsgType("error");
-      alert(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  // Render (UI unchanged – I add a ToastContainer and style the message)
   return (
     <div className="login-wrapper">
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
+
+      {/* Left image */}
       <div className="login-hero" style={{ backgroundImage: `url(${singerBg})` }}>
         <div className="hero-overlay">
           <div className="hero-text">
             <h1>Join Live Singer Shows</h1>
-            <p>Create your account to book, manage <br />and explore live music experiences.</p>
+            <p>
+              Create your account to book, manage <br />
+              and explore live music experiences.
+            </p>
           </div>
         </div>
       </div>
 
+      {/* Right form */}
       <div className="login-form-area">
         <form className="login-card" onSubmit={handleSubmit}>
           <h2>Create Account</h2>
           <p className="subtitle">Sign up to get started</p>
 
-          <input name="full_name" placeholder="Full Name" value={form.full_name} onChange={handleChange} required />
-          <input name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+          <input
+            name="full_name"
+            placeholder="Full Name"
+            value={form.full_name}
+            onChange={handleChange}
+            required
+          />
+          <input
+            name="email"
+            placeholder="Email"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
           {emailErr && <div className="msg error">{emailErr}</div>}
-          <input name="mobile_no" placeholder="Mobile Number" maxLength={10} value={form.mobile_no} onChange={handleChange} required />
+          <input
+            name="mobile_no"
+            placeholder="Mobile Number"
+            maxLength={10}
+            value={form.mobile_no}
+            onChange={handleChange}
+            required
+          />
           {mobileErr && <div className="msg error">{mobileErr}</div>}
           <div className="password-box">
             <input
@@ -201,13 +246,27 @@ export default function Register() {
           {passwordMatchErr && <div className="msg error">{passwordMatchErr}</div>}
 
           <div className="photo-upload" onClick={() => fileRef.current?.click()}>
-            {photoPreview ? <img src={photoPreview} alt="preview" /> : <span>Upload Profile Photo (optional)</span>}
-            <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => handlePhoto(e.target.files[0])} />
+            {photoPreview ? (
+              <img src={photoPreview} alt="preview" />
+            ) : (
+              <span>Upload Profile Photo (optional)</span>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={(e) => handlePhoto(e.target.files[0])}
+            />
           </div>
           {photoError && <div className="msg error">{photoError}</div>}
 
           <label className="terms">
-            <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={agreeTerms}
+              onChange={(e) => setAgreeTerms(e.target.checked)}
+            />
             I agree to the Terms
           </label>
 
@@ -230,7 +289,9 @@ export default function Register() {
         </form>
       </div>
 
+      {/* Styles (same as before, but with .msg.error and .msg.success) */}
       <style>{`
+        /* (your existing styles) */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width:100%; height:100%; overflow:hidden; font-family:Inter,system-ui; }
         .login-wrapper {

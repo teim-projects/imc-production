@@ -4,7 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CustomRegisterAPIView, DashboardSummary, EventBookingViewSet, StudioSlotViewSet
+from .views import DashboardSummary, EventBookingViewSet, StudioSlotViewSet
 from .views import SingingClassAdmissionViewSet
 
 
@@ -113,7 +113,7 @@ urlpatterns = [
 
     # dj-rest-auth
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
-    path("dj-rest-auth/registration/", CustomRegisterAPIView.as_view(), name="rest_register"),
+    path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
 
     # Social login
     path("auth/google/", GoogleLogin.as_view(), name="google_login"),
