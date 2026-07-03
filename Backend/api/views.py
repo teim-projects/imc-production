@@ -1352,15 +1352,37 @@ class StudioSlotViewSet(viewsets.ModelViewSet):
     
     
     
-    
-# api/views.py (add these lines)
+# api/views.py
 
-from dj_rest_auth.registration.views import RegisterView
-from .serializers import CustomRegisterSerializer   # ensure this exists
+# ─── existing imports ──────────────────────────────
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .serializers import CustomRegisterSerializer
 
-class CustomRegisterView(RegisterView):
+# ─── ADD THIS CLASS ────────────────────────────────
+class CustomRegisterAPIView(APIView):
     """
-    Override the default registration view to use CustomRegisterSerializer.
-    Prevents IntegrityError by handling duplicates and returning clean errors.
+    Custom registration endpoint – uses CustomRegisterSerializer directly.
+    Handles duplicate email/mobile gracefully – returns 400 with field errors.
     """
-    serializer_class = CustomRegisterSerializer
+    permission_classes = []   # public
+
+    def post(self, request):
+        serializer = CustomRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                user = serializer.save(request)
+                return Response({
+                    "message": "Account created successfully",
+                    "user": {
+                        "email": user.email,
+                        "mobile_no": user.mobile_no,
+                        "full_name": f"{user.first_name} {user.last_name}".strip()
+                    }
+                }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # This will contain duplicate email/mobile errors
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
