@@ -26,7 +26,8 @@ from .models import (
     # CRM modules
     PrivateBooking,
     PhotographyBooking,
-    Event,  Payment, Videography,
+    Event,  Payment,
+    StudioSlot, Videography,
    
     # Sound service
     Sound,
@@ -868,19 +869,32 @@ class ClassSerializer(serializers.ModelSerializer):
             "trainer_name",
         ]
 
-
 from rest_framework import serializers
-from .models import Batch
+from .models import Batch, Class
 
 class BatchSerializer(serializers.ModelSerializer):
-    class_name = serializers.CharField(source="class_obj.name", read_only=True)
+
+    # ✅ IMPORTANT
+    class_obj = serializers.PrimaryKeyRelatedField(
+        queryset=Class.objects.all()
+    )
+
+    class_name = serializers.CharField(
+        source="class_obj.name",
+        read_only=True
+    )
+
     class_fee = serializers.DecimalField(
         source="class_obj.fee",
         max_digits=10,
         decimal_places=2,
         read_only=True
     )
-    trainer_name = serializers.CharField(source="trainer.name", read_only=True)
+
+    trainer_name = serializers.CharField(
+        source="trainer.name",
+        read_only=True
+    )
 
     class Meta:
         model = Batch
@@ -898,7 +912,6 @@ class BatchSerializer(serializers.ModelSerializer):
         ]
 
 
-
 from rest_framework import serializers
 from .models import AnnualFee
 
@@ -906,4 +919,23 @@ from .models import AnnualFee
 class AnnualFeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnnualFee
+        fields = "__all__"
+
+
+
+from .models import EventBooking
+
+class EventBookingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventBooking
+        fields = "__all__"
+        
+        
+        
+
+# serializers.py
+
+class StudioSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudioSlot
         fields = "__all__"
