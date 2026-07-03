@@ -102,79 +102,15 @@ export default function Register() {
 
       const data = await res.json().catch(() => ({}));
 
-      // 🔍 Log the response to see the exact structure – remove later
-      console.log("Registration response:", data);
-
       if (!res.ok) {
-        // ------------------------------------------------------------------
-        // 1. Check for an email-already-exists error in ANY field
-        // ------------------------------------------------------------------
-        let isDuplicateEmail = false;
-        let isDuplicateMobile = false;
-
-        // Recursively search all values in the error object for keywords
-        const searchForDuplicate = (obj) => {
-          if (!obj) return false;
-          if (typeof obj === "string") {
-            const lower = obj.toLowerCase();
-            return (
-              lower.includes("already") ||
-              lower.includes("taken") ||
-              lower.includes("unique") ||
-              lower.includes("exists")
-            );
-          }
-          if (Array.isArray(obj)) {
-            return obj.some((item) => searchForDuplicate(item));
-          }
-          if (typeof obj === "object") {
-            return Object.values(obj).some((val) => searchForDuplicate(val));
-          }
-          return false;
-        };
-
-        // Also check for specific field names (if backend returns structured errors)
-        if (data.email) {
-          isDuplicateEmail = true;
-        } else if (data.mobile_no) {
-          isDuplicateMobile = true;
-        }
-
-        // If not found by field, do the generic recursive search
-        if (!isDuplicateEmail && !isDuplicateMobile) {
-          const hasDuplicate = searchForDuplicate(data);
-          // Assume it's email if not mobile-specific – adjust as needed
-          if (hasDuplicate) {
-            // Check if the error mentions "mobile" to differentiate
-            const str = JSON.stringify(data).toLowerCase();
-            if (str.includes("mobile")) {
-              isDuplicateMobile = true;
-            } else {
-              isDuplicateEmail = true;
-            }
-          }
-        }
-
-        if (isDuplicateEmail) {
-          const msg = "⚠️ This email is already registered. Please login or use a different email.";
-          setMessage(msg);
-          alert("Email already exists!\nPlease log in or use another email.");
-        } else if (isDuplicateMobile) {
-          const msg = "⚠️ This mobile number is already registered. Please use a different number.";
-          setMessage(msg);
-          alert("Mobile number already exists!\nPlease use another number.");
-        } else {
-          setMessage("❌ Please check your details.");
-          alert("Registration failed. Please check your input.");
-        }
+        setMessage("❌ Please check your details");
         return;
       }
 
       setMessage("🎉 Account created! Redirecting...");
       setTimeout(() => navigate("/dashboard"), 1500);
-    } catch (err) {
+    } catch {
       setMessage("⚠️ Network error");
-      alert("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
