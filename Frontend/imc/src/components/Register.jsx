@@ -1,18 +1,20 @@
+// Register.jsx
+
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import GoogleAuthButton from "./GoogleAuthButton";
 import singerBg from "../assets/newback.jpg";
 
-/* ===== VALIDATION ===== */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 const PHONE_RE = /^[0-9]{10}$/;
 const MAX_PHOTO_MB = 5;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const PHOTO_FIELD_NAME = "photo";
+const PHOTO_FIELD_NAME = "profile_photo";
 
 export default function Register() {
   const navigate = useNavigate();
-  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/auth/dj-rest-auth/registration/`;
+  // ✅ NEW ENDPOINT
+  const REGISTER_URL = `${import.meta.env.VITE_BASE_API_URL}/auth/register/`;
 
   const [form, setForm] = useState({
     full_name: "",
@@ -21,29 +23,26 @@ export default function Register() {
     password1: "",
     password2: "",
   });
-
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [msgType, setMsgType] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  /* PHOTO */
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoError, setPhotoError] = useState("");
   const fileRef = useRef(null);
 
-  /* ERRORS */
+  // Validation
   const emailErr = useMemo(
     () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email" : ""),
     [form.email]
   );
-
   const mobileErr = useMemo(
     () => (form.mobile_no && !PHONE_RE.test(form.mobile_no) ? "10-digit number required" : ""),
     [form.mobile_no]
   );
-
   const passwordMatchErr = useMemo(
     () => (form.password2 && form.password1 !== form.password2 ? "Passwords do not match" : ""),
     [form.password1, form.password2]
@@ -57,17 +56,18 @@ export default function Register() {
     !passwordMatchErr &&
     agreeTerms;
 
-  /* HANDLERS */
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handlePhoto = (file) => {
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type))
-      return setPhotoError("Only JPG, PNG, WebP allowed");
-    if (file.size > MAX_PHOTO_MB * 1024 * 1024)
-      return setPhotoError(`Max ${MAX_PHOTO_MB}MB`);
-
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setPhotoError("Only JPG, PNG, WebP allowed");
+      return;
+    }
+    if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+      setPhotoError(`Max ${MAX_PHOTO_MB}MB`);
+      return;
+    }
     setPhotoError("");
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
@@ -84,7 +84,8 @@ export default function Register() {
     if (!isFormValid) return;
 
     setLoading(true);
-    setMessage("Creating your account...");
+    setMessage("");
+    setMsgType("");
 
     try {
       const fd = new FormData();
@@ -95,38 +96,64 @@ export default function Register() {
       fd.append("password2", form.password2);
       if (photoFile) fd.append(PHOTO_FIELD_NAME, photoFile);
 
-      const res = await fetch(REGISTER_URL, {
-        method: "POST",
-        body: fd,
-      });
+      const res = await fetch(REGISTER_URL, { method: "POST", body: fd });
 
-      const data = await res.json().catch(() => ({}));
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (_) {}
 
-      if (!res.ok) {
-        console.log("Registration Error:", data);
+      // Debug logs
+      console.log("Status:", res.status);
+      console.log("Response:", data);
 
-        let errors = [];
-
-        Object.keys(data).forEach((key) => {
-          const value = data[key];
-
-          if (Array.isArray(value)) {
-            errors.push(...value);
-          } else {
-            errors.push(value);
-          }
-        });
-
-        alert(errors.join("\n"));               // popup alert
-        setMessage(`❌ ${errors.join(", ")}`);   // inline message
-
+      if (res.ok) {
+        const msg = "🎉 Account created! Redirecting...";
+        setMessage(msg);
+        setMsgType("success");
+        alert(msg);   // <-- Alert on success
+        setTimeout(() => navigate("/dashboard"), 1500);
         return;
       }
 
-      setMessage("🎉 Account created! Redirecting...");
-      setTimeout(() => navigate("/dashboard"), 1500);
-    } catch {
-      setMessage("⚠️ Network error");
+      // ---- Error handling ----
+      let errorMessage = "Registration failed";
+
+      const firstError = (obj) => {
+        if (Array.isArray(obj) && obj.length > 0) return obj[0];
+        if (typeof obj === "string") return obj;
+        return null;
+      };
+
+      const errorKeys = ["email", "mobile_no", "password1", "password2", "non_field_errors", "detail", "message", "error"];
+      for (const key of errorKeys) {
+        const err = data[key];
+        if (err) {
+          const msg = firstError(err);
+          if (msg) {
+            errorMessage = msg;
+            break;
+          }
+        }
+      }
+
+      if (errorMessage === "Registration failed" && typeof data === "object") {
+        errorMessage = JSON.stringify(data);
+      }
+
+      if (errorMessage === "Registration failed" && !res.headers.get("content-type")?.includes("json")) {
+        errorMessage = `Server error (${res.status}). Please try again.`;
+      }
+
+      const finalMsg = `❌ ${errorMessage}`;
+      setMessage(finalMsg);
+      setMsgType("error");
+      alert(finalMsg);   // <-- Alert on error
+    } catch (err) {
+      const msg = "⚠️ Network error";
+      setMessage(msg);
+      setMsgType("error");
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -134,55 +161,25 @@ export default function Register() {
 
   return (
     <div className="login-wrapper">
-      {/* LEFT IMAGE */}
-      <div
-        className="login-hero"
-        style={{ backgroundImage: `url(${singerBg})` }}
-      >
+      <div className="login-hero" style={{ backgroundImage: `url(${singerBg})` }}>
         <div className="hero-overlay">
           <div className="hero-text">
             <h1>Join Live Singer Shows</h1>
-            <p>
-              Create your account to book, manage <br />
-              and explore live music experiences.
-            </p>
+            <p>Create your account to book, manage <br />and explore live music experiences.</p>
           </div>
         </div>
       </div>
 
-      {/* RIGHT FORM */}
       <div className="login-form-area">
         <form className="login-card" onSubmit={handleSubmit}>
           <h2>Create Account</h2>
           <p className="subtitle">Sign up to get started</p>
 
-          <input
-            name="full_name"
-            placeholder="Full Name"
-            value={form.full_name}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
+          <input name="full_name" placeholder="Full Name" value={form.full_name} onChange={handleChange} required />
+          <input name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
           {emailErr && <div className="msg error">{emailErr}</div>}
-
-          <input
-            name="mobile_no"
-            placeholder="Mobile Number"
-            maxLength={10}
-            value={form.mobile_no}
-            onChange={handleChange}
-            required
-          />
+          <input name="mobile_no" placeholder="Mobile Number" maxLength={10} value={form.mobile_no} onChange={handleChange} required />
           {mobileErr && <div className="msg error">{mobileErr}</div>}
-
           <div className="password-box">
             <input
               type={showPassword ? "text" : "password"}
@@ -194,7 +191,6 @@ export default function Register() {
             />
             <span onClick={() => setShowPassword(!showPassword)}>👁</span>
           </div>
-
           <input
             type="password"
             name="password2"
@@ -205,43 +201,29 @@ export default function Register() {
           />
           {passwordMatchErr && <div className="msg error">{passwordMatchErr}</div>}
 
-          {/* PHOTO */}
-          <div
-            className="photo-upload"
-            onClick={() => fileRef.current?.click()}
-          >
-            {photoPreview ? (
-              <img src={photoPreview} alt="preview" />
-            ) : (
-              <span>Upload Profile Photo (optional)</span>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              hidden
-              accept="image/*"
-              onChange={(e) => handlePhoto(e.target.files[0])}
-            />
+          <div className="photo-upload" onClick={() => fileRef.current?.click()}>
+            {photoPreview ? <img src={photoPreview} alt="preview" /> : <span>Upload Profile Photo (optional)</span>}
+            <input ref={fileRef} type="file" hidden accept="image/*" onChange={(e) => handlePhoto(e.target.files[0])} />
           </div>
           {photoError && <div className="msg error">{photoError}</div>}
 
           <label className="terms">
-            <input
-              type="checkbox"
-              checked={agreeTerms}
-              onChange={(e) => setAgreeTerms(e.target.checked)}
-            />
+            <input type="checkbox" checked={agreeTerms} onChange={(e) => setAgreeTerms(e.target.checked)} />
             I agree to the Terms
           </label>
 
-          <button disabled={!isFormValid || loading}>
+          <button type="submit" disabled={!isFormValid || loading}>
             {loading ? "Creating..." : "Create Account"}
           </button>
 
           <div className="divider">OR</div>
           <GoogleAuthButton endpoint="/auth/google/" />
 
-          {message && <div className="msg">{message}</div>}
+          {message && (
+            <div className={`msg ${msgType}`} style={{ marginTop: "1rem" }}>
+              {message}
+            </div>
+          )}
 
           <p className="signup">
             Already have an account? <Link to="/login">Sign In</Link>
@@ -249,24 +231,20 @@ export default function Register() {
         </form>
       </div>
 
-      {/* SAME STYLE AS LOGIN */}
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { width:100%; height:100%; overflow:hidden; font-family:Inter,system-ui; }
-
         .login-wrapper {
           display:grid;
           grid-template-columns:1.2fr 1fr;
           width:100vw;
           height:100vh;
         }
-
         .login-hero {
           background-size:cover;
           background-position:center;
           position:relative;
         }
-
         .hero-overlay {
           position:absolute;
           inset:0;
@@ -276,25 +254,14 @@ export default function Register() {
           text-align:center;
           color:white;
         }
-
-        .hero-text h1 {
-          font-size:3.2rem;
-          font-weight:800;
-          text-shadow:0 6px 20px rgba(0,0,0,.6);
-        }
-
-        .hero-text p {
-          margin-top:1rem;
-          font-size:1.2rem;
-        }
-
+        .hero-text h1 { font-size:3.2rem; font-weight:800; text-shadow:0 6px 20px rgba(0,0,0,.6); }
+        .hero-text p { margin-top:1rem; font-size:1.2rem; }
         .login-form-area {
           display:flex;
           align-items:center;
           justify-content:center;
           background:#f9fafb;
         }
-
         .login-card {
           max-width:420px;
           width:100%;
@@ -303,23 +270,9 @@ export default function Register() {
           background:white;
           box-shadow:0 30px 60px rgba(0,0,0,.12);
         }
-
-        input {
-          width:100%;
-          padding:14px;
-          margin-bottom:1rem;
-          border-radius:8px;
-          border:1px solid #ddd;
-        }
-
+        input { width:100%; padding:14px; margin-bottom:1rem; border-radius:8px; border:1px solid #ddd; }
         .password-box { position:relative; }
-        .password-box span {
-          position:absolute;
-          right:14px;
-          top:14px;
-          cursor:pointer;
-        }
-
+        .password-box span { position:absolute; right:14px; top:14px; cursor:pointer; }
         .photo-upload {
           padding:14px;
           border:1px dashed #aaa;
@@ -328,12 +281,7 @@ export default function Register() {
           margin-bottom:1rem;
           cursor:pointer;
         }
-
-        .photo-upload img {
-          width:100%;
-          border-radius:8px;
-        }
-
+        .photo-upload img { width:100%; border-radius:8px; }
         button {
           width:100%;
           padding:14px;
@@ -343,18 +291,11 @@ export default function Register() {
           border-radius:8px;
           cursor:pointer;
         }
-
-        .divider {
-          text-align:center;
-          margin:1.5rem 0;
-          color:#9ca3af;
-        }
-
-        .msg { text-align:center; margin-top:.5rem; }
-        .msg.error { color:#dc2626; }
-
+        .divider { text-align:center; margin:1.5rem 0; color:#9ca3af; }
+        .msg { text-align:center; margin-top:.5rem; padding:0.5rem; border-radius:6px; }
+        .msg.error { background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; }
+        .msg.success { background:#d1fae5; color:#065f46; border:1px solid #6ee7b7; }
         .signup { text-align:center; margin-top:1.2rem; }
-
         @media(max-width:900px){
           .login-wrapper { grid-template-columns:1fr; }
           .login-hero { display:none; }

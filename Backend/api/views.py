@@ -1348,3 +1348,19 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 class StudioSlotViewSet(viewsets.ModelViewSet):
     queryset = StudioSlot.objects.all()
     serializer_class = StudioSlotSerializer
+    
+    
+    
+    
+    
+# api/views.py (add these lines)
+
+from dj_rest_auth.registration.views import RegisterView
+from .serializers import CustomRegisterSerializer   # ensure this exists
+
+class CustomRegisterView(RegisterView):
+    """
+    Override the default registration view to use CustomRegisterSerializer.
+    Prevents IntegrityError by handling duplicates and returning clean errors.
+    """
+    serializer_class = CustomRegisterSerializer
