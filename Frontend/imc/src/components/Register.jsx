@@ -45,7 +45,7 @@ export default function Register() {
   );
 
   const passwordMatchErr = useMemo(
-    () => (form.password2 && form.password1 !== form.password2 ? "Passwords do not match" : ""),
+    () => (form.password2 && form.password1 !== form.password2 ? "Passwords do not match check" : ""),
     [form.password1, form.password2]
   );
 
