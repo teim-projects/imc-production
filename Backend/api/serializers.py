@@ -1,4 +1,4 @@
-# api/serializers.py
+﻿# api/serializers.py
 from decimal import Decimal, InvalidOperation
 import re
 from datetime import date
@@ -54,7 +54,7 @@ def _validate_phone(value: str):
     if value in (None, ""):
         return value
     if not phone_regex.fullmatch(value.strip()):
-        raise serializers.ValidationError("Enter a valid phone number (7–15 digits, optional +).")
+        raise serializers.ValidationError("Enter a valid phone number (7ΓÇô15 digits, optional +).")
     return value
 
 def _ensure_hms(t: str) -> str:
@@ -377,7 +377,7 @@ class EventSerializer(serializers.ModelSerializer):
         for field in ["ticket_price", "basic_price", "premium_price", "vip_price"]:
             val = current(field)
             if val is not None and val < 0:
-                raise serializers.ValidationError({field: "Must be ≥ 0."})
+                raise serializers.ValidationError({field: "Must be ΓëÑ 0."})
 
         # seats
         total = current("total_seats") or 0
@@ -394,7 +394,7 @@ class EventSerializer(serializers.ModelSerializer):
             ("vip_seats", vip),
         ]:
             if val < 0:
-                raise serializers.ValidationError({field_name: "Must be ≥ 0."})
+                raise serializers.ValidationError({field_name: "Must be ΓëÑ 0."})
 
         if available > total:
             raise serializers.ValidationError(
@@ -503,12 +503,21 @@ class CustomRegisterSerializer(RegisterSerializer):
         validators=[
             UniqueValidator(
                 queryset=User.objects.all(),
-                message="This mobile number is already registered."
+                message="An account with this mobile number already exists."
             )
         ]
     )
 
     profile_photo = serializers.ImageField(required=False, allow_null=True)
+
+    def validate_email(self, value):
+        value = (value or "").strip().lower()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(
+                "An account with this email address already exists. "
+                "Please sign in or use a different email address."
+            )
+        return value
 
     def validate_mobile_no(self, v: str):
         v = (v or "").strip()
@@ -522,31 +531,42 @@ class CustomRegisterSerializer(RegisterSerializer):
         data["profile_photo"] = self.validated_data.get("profile_photo")
         return data
 
-    @transaction.atomic
     def save(self, request):
-        # Create user first
-        user = super().save(request)
+        try:
+            user = super().save(request)
+        except IntegrityError as e:
+            err = str(e).lower()
+            if "email" in err:
+                raise serializers.ValidationError({
+                    "email": ["An account with this email address already exists. "
+                              "Please sign in or use a different email address."]
+                })
+            if "mobile_no" in err:
+                raise serializers.ValidationError({
+                    "mobile_no": ["An account with this mobile number already exists."]
+                })
+            raise
 
         # Save mobile
         user.mobile_no = self.validated_data.get("mobile_no", "")
-        user.save()  # IMPORTANT: ensure PK exists before image save
 
         # Handle profile photo safely
         photo = (
             self.validated_data.get("profile_photo")
             or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
         )
-
         if photo:
             user.profile_photo = photo
-            user.save()
 
         try:
             user.save()
-        except IntegrityError:
-            raise serializers.ValidationError({
-                "mobile_no": ["This mobile number is already registered."]
-            })
+        except IntegrityError as e:
+            err = str(e).lower()
+            if "mobile_no" in err:
+                raise serializers.ValidationError({
+                    "mobile_no": ["An account with this mobile number already exists."]
+                })
+            raise
 
         return user
 
@@ -588,7 +608,6 @@ class CustomLoginSerializer(LoginSerializer):
 
         attrs['user'] = user
         return attrs
-
 
 
 # ============================================================
@@ -783,7 +802,7 @@ class SingerSerializer(serializers.ModelSerializer):
         model = Singer
         fields = "__all__"
 
-    # ✅ DO NOT mutate raw multipart data
+    # Γ£à DO NOT mutate raw multipart data
     def to_internal_value(self, data):
         ret = super().to_internal_value(data)
 
@@ -796,7 +815,7 @@ class SingerSerializer(serializers.ModelSerializer):
 
     
 
-        # empty string → None (numeric/date fields only)
+        # empty string ΓåÆ None (numeric/date fields only)
         for field in ["experience", "rate", "birth_date"]:
             if field in ret and ret[field] in ["", None]:
                 ret[field] = None
@@ -875,7 +894,7 @@ from .models import Batch, Class
 
 class BatchSerializer(serializers.ModelSerializer):
 
-    # ✅ IMPORTANT
+    # Γ£à IMPORTANT
     class_obj = serializers.PrimaryKeyRelatedField(
         queryset=Class.objects.all()
     )

@@ -1,4 +1,4 @@
-# api/views.py
+﻿# api/views.py
 from datetime import timedelta
 import os
 
@@ -64,7 +64,7 @@ class DefaultPagination(PageNumberPagination):
 
 
 # ====================================================================
-# Google OAuth2 Login → JWT (safe stub)
+# Google OAuth2 Login ΓåÆ JWT (safe stub)
 # ====================================================================
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
@@ -74,14 +74,14 @@ class GoogleLogin(SocialLoginView):
 
     def post(self, request, *args, **kwargs):
         """
-        Verify Google token → get/create user → issue JWT tokens.
+        Verify Google token ΓåÆ get/create user ΓåÆ issue JWT tokens.
         """
         token = request.data.get("access_token")
         if not token:
             return Response({"error": "Missing access_token"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # ✅ Verify token with Google
+            # Γ£à Verify token with Google
             idinfo = id_token.verify_oauth2_token(
                 token,
                 requests.Request(),
@@ -93,7 +93,7 @@ class GoogleLogin(SocialLoginView):
             name = idinfo.get("name", "")
             picture = idinfo.get("picture", "")
 
-            # ✅ Get or create user
+            # Γ£à Get or create user
             user, created = User.objects.get_or_create(email=email)
             if created:
                 user.is_active = True
@@ -103,7 +103,7 @@ class GoogleLogin(SocialLoginView):
                     user.profile_photo = picture
                 user.save()
 
-            # ✅ Generate JWT tokens for this user
+            # Γ£à Generate JWT tokens for this user
             refresh = RefreshToken.for_user(user)
             data = {
                 "access": str(refresh.access_token),
@@ -345,7 +345,7 @@ class PrivateBookingViewSet(viewsets.ModelViewSet):
     queryset = PrivateBooking.objects.all().order_by("-id")
     serializer_class = PrivateBookingSerializer
 
-    # 🔥 IMPORTANT → Prevent 401
+    # ≡ƒöÑ IMPORTANT ΓåÆ Prevent 401
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -420,8 +420,8 @@ class EventViewSet(viewsets.ModelViewSet):
         "date",
         "time_slot",
         "created_at",
-        "total_seats",      # ⭐ seats
-        "available_seats",  # ⭐ seats
+        "total_seats",      # Γ¡É seats
+        "available_seats",  # Γ¡É seats
         "basic_price",
         "premium_price",
         "vip_price",
@@ -450,10 +450,10 @@ class PhotographyBookingViewSet(viewsets.ModelViewSet):
     queryset = PhotographyBooking.objects.all().order_by("-date", "-created_at")
     serializer_class = PhotographyBookingSerializer
 
-    # 🔥 PUBLIC (no login required)
+    # ≡ƒöÑ PUBLIC (no login required)
     permission_classes = [permissions.AllowAny]
 
-    # 🔥 JSON ONLY (this fixes 415 error)
+    # ≡ƒöÑ JSON ONLY (this fixes 415 error)
     parser_classes = [parsers.JSONParser]
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -615,8 +615,8 @@ from .serializers import SingerSerializer
 # -----------------------------
 class SingerPermission(permissions.BasePermission):
     """
-    GET, POST  → Public
-    PUT, PATCH, DELETE → Staff only
+    GET, POST  ΓåÆ Public
+    PUT, PATCH, DELETE ΓåÆ Staff only
     """
     def has_permission(self, request, view):
         if request.method in ["GET", "POST"]:
@@ -633,16 +633,16 @@ class SingerViewSet(viewsets.ModelViewSet):
     /api/auth/singer/
     """
 
-    # ✅ FIXED ORDER → 1,2,3,4 (Ascending ID)
+    # Γ£à FIXED ORDER ΓåÆ 1,2,3,4 (Ascending ID)
     queryset = Singer.objects.all().order_by("id")
 
     serializer_class = SingerSerializer
     permission_classes = [SingerPermission]
 
-    # ✅ REQUIRED FOR JSON + FORM + VIDEO
+    # Γ£à REQUIRED FOR JSON + FORM + VIDEO
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
-    # 🔍 Search
+    # ≡ƒöì Search
     filter_backends = [filters.SearchFilter]
     search_fields = ["id", "name", "city", "genre", "mobile"]
 
@@ -819,7 +819,7 @@ class DashboardSummary(APIView):
                 cust_val = getattr(obj, customer_field) if customer_field else None
 
                 # customer text
-                cust_text = "—"
+                cust_text = "ΓÇö"
                 try:
                     if cust_val:
                         if hasattr(cust_val, "email"):
@@ -829,7 +829,7 @@ class DashboardSummary(APIView):
                         else:
                             cust_text = str(cust_val)
                 except Exception:
-                    cust_text = "—"
+                    cust_text = "ΓÇö"
 
                 out.append({
                     "type": type_name,
@@ -1002,7 +1002,7 @@ class DashboardSummary(APIView):
                 try:
                     monthly_data = (
                         Payment.objects
-                        .annotate(month=TruncMonth("created_at"))   # ✅ changed from "date"
+                        .annotate(month=TruncMonth("created_at"))   # Γ£à changed from "date"
                         .values("month")
                         .annotate(total=Sum("amount"))
                         .order_by("month")
@@ -1123,7 +1123,7 @@ class DashboardSummary(APIView):
                 "sound_count": sound_count,
                 
                 # Chart Data
-                "chartData": monthly_chart,   # ✅ changed from "chart_data"
+                "chartData": monthly_chart,   # Γ£à changed from "chart_data"
                 
                 # Recent activities
                 "recent_bookings": recent,
@@ -1194,7 +1194,7 @@ class SingingClassAdmissionViewSet(viewsets.ModelViewSet):
 
     serializer_class = SingingClassSerializer
 
-    # ✅ IMPORTANT FIX (prevents 401 Unauthorized)
+    # Γ£à IMPORTANT FIX (prevents 401 Unauthorized)
     authentication_classes = []   # <-- REQUIRED
     permission_classes = [permissions.AllowAny]
 
@@ -1306,7 +1306,7 @@ class ClassViewSet(ModelViewSet):
 
 class BatchViewSet(ModelViewSet):
     queryset = Batch.objects.select_related('class_obj', 'trainer').all()
-    serializer_class = BatchSerializer  # ← ABSOLUTELY REQUIRED
+    serializer_class = BatchSerializer  # ΓåÉ ABSOLUTELY REQUIRED
 
 
 
@@ -1348,4 +1348,3 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 class StudioSlotViewSet(viewsets.ModelViewSet):
     queryset = StudioSlot.objects.all()
     serializer_class = StudioSlotSerializer
-

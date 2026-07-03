@@ -1,4 +1,4 @@
-# api/urls.py
+﻿# api/urls.py
 from django import views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -6,7 +6,6 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DashboardSummary, EventBookingViewSet, StudioSlotViewSet
 from .views import SingingClassAdmissionViewSet
-from .views import CustomRegisterView
 
 
 from .views import (
@@ -111,7 +110,8 @@ router.register(r"trainers", TrainerViewSet, basename="trainers")
 
 urlpatterns = [
     path("", include(router.urls)),
- # dj-rest-auth
+
+    # dj-rest-auth
     path("dj-rest-auth/", include("dj_rest_auth.urls")),
     path("dj-rest-auth/registration/", include("dj_rest_auth.registration.urls")),
 
