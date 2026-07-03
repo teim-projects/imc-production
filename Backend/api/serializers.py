@@ -494,27 +494,17 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import LoginSerializer      # <-- import base login serializer
+from dj_rest_auth.serializers import LoginSerializer   # <-- import
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
-
-# ============================================================
-# CUSTOM LOGIN SERIALIZER (adds any extra fields if needed)
-# ============================================================
+# ─── CUSTOM LOGIN SERIALIZER (must be defined) ──────────────
 class CustomLoginSerializer(LoginSerializer):
-    """
-    Extend the default LoginSerializer if you need extra fields.
-    For now, it works exactly like the default one.
-    You can add custom validation or fields later.
-    """
+    """Extend if needed – currently empty to avoid ImportError."""
     pass
 
-
-# ============================================================
-# CUSTOM REGISTER SERIALIZER (your existing code)
-# ============================================================
+# ─── CUSTOM REGISTER SERIALIZER ──────────────────────────────
 class CustomRegisterSerializer(RegisterSerializer):
     username = serializers.CharField(required=False, allow_blank=True)
     full_name = serializers.CharField(required=True)
@@ -522,7 +512,6 @@ class CustomRegisterSerializer(RegisterSerializer):
     mobile_no = serializers.CharField(required=True)
     profile_photo = serializers.ImageField(required=False, allow_null=True)
 
-    # ---------- FIELD VALIDATION ----------
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("This email is already registered.")
@@ -533,7 +522,6 @@ class CustomRegisterSerializer(RegisterSerializer):
             raise serializers.ValidationError("This mobile number is already registered.")
         return value
 
-    # ---------- CLEANED DATA ----------
     def get_cleaned_data(self):
         return {
             "username": self.validated_data.get("email", ""),
@@ -544,22 +532,18 @@ class CustomRegisterSerializer(RegisterSerializer):
             "profile_photo": self.validated_data.get("profile_photo", None),
         }
 
-    # ---------- SAVE (with iron‑clad error handling) ----------
     def save(self, request):
         try:
             email = self.validated_data.get("email")
             mobile_no = self.validated_data.get("mobile_no")
 
-            # Double‑check uniqueness (redundant but safe)
             if User.objects.filter(email__iexact=email).exists():
                 raise serializers.ValidationError({"email": ["This email is already registered."]})
             if User.objects.filter(mobile_no=mobile_no).exists():
                 raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
 
-            # Let the parent create the user
             user = super().save(request)
 
-            # Update extra fields
             user.email = email
             user.mobile_no = mobile_no
 
@@ -577,18 +561,12 @@ class CustomRegisterSerializer(RegisterSerializer):
             return user
 
         except Exception as e:
-            # Log the real error (check your server logs)
             logger.error(f"Registration error: {type(e).__name__} – {str(e)}")
-
             error_text = str(e).lower()
-
-            # Detect duplicate email / mobile from the raw database error
             if "api_customuser.email" in error_text or ("duplicate entry" in error_text and "email" in error_text):
                 raise serializers.ValidationError({"email": ["This email is already registered."]})
             if "api_customuser.mobile_no" in error_text or ("duplicate entry" in error_text and "mobile_no" in error_text):
                 raise serializers.ValidationError({"mobile_no": ["This mobile number is already registered."]})
-
-            # Fallback
             raise serializers.ValidationError({"detail": "Registration failed. Please try again."})
 
 # ============================================================
