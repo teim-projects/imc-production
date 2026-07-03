@@ -477,6 +477,7 @@ class VideographySerializer(serializers.ModelSerializer):
         return data
 
 
+
 # =====================================================================
 # ===================== Authentication Serializers ====================
 # =====================================================================
@@ -503,21 +504,12 @@ class CustomRegisterSerializer(RegisterSerializer):
         validators=[
             UniqueValidator(
                 queryset=User.objects.all(),
-                message="An account with this mobile number already exists."
+                message="This mobile number is already registered."
             )
         ]
     )
 
     profile_photo = serializers.ImageField(required=False, allow_null=True)
-
-    def validate_email(self, value):
-        value = (value or "").strip().lower()
-        if User.objects.filter(email__iexact=value).exists():
-            raise serializers.ValidationError(
-                "An account with this email address already exists. "
-                "Please sign in or use a different email address."
-            )
-        return value
 
     def validate_mobile_no(self, v: str):
         v = (v or "").strip()
@@ -531,42 +523,31 @@ class CustomRegisterSerializer(RegisterSerializer):
         data["profile_photo"] = self.validated_data.get("profile_photo")
         return data
 
+    @transaction.atomic
     def save(self, request):
-        try:
-            user = super().save(request)
-        except IntegrityError as e:
-            err = str(e).lower()
-            if "email" in err:
-                raise serializers.ValidationError({
-                    "email": ["An account with this email address already exists. "
-                              "Please sign in or use a different email address."]
-                })
-            if "mobile_no" in err:
-                raise serializers.ValidationError({
-                    "mobile_no": ["An account with this mobile number already exists."]
-                })
-            raise
+        # Create user first
+        user = super().save(request)
 
         # Save mobile
         user.mobile_no = self.validated_data.get("mobile_no", "")
+        user.save()  # IMPORTANT: ensure PK exists before image save
 
         # Handle profile photo safely
         photo = (
             self.validated_data.get("profile_photo")
             or (request.FILES.get("photo") if request and hasattr(request, "FILES") else None)
         )
+
         if photo:
             user.profile_photo = photo
+            user.save()
 
         try:
             user.save()
-        except IntegrityError as e:
-            err = str(e).lower()
-            if "mobile_no" in err:
-                raise serializers.ValidationError({
-                    "mobile_no": ["An account with this mobile number already exists."]
-                })
-            raise
+        except IntegrityError:
+            raise serializers.ValidationError({
+                "mobile_no": ["This mobile number is already registered."]
+            })
 
         return user
 
@@ -652,7 +633,6 @@ class CustomUserDetailsSerializer(UserDetailsSerializer):
 
         instance.save()
         return instance
-
 # ---------------------------------------------------------------------
 # Password Reset (request & confirm)
 # ---------------------------------------------------------------------

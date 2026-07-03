@@ -100,35 +100,17 @@ export default function Register() {
         body: fd,
       });
 
-      let data = {};
-      try { data = await res.json(); } catch { data = {}; }
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        console.log("Registration Error:", data);
-
-        const errors = [];
-        Object.keys(data).forEach((key) => {
-          const value = data[key];
-          if (Array.isArray(value)) {
-            errors.push(...value);
-          } else {
-            errors.push(String(value));
-          }
-        });
-
-        if (errors.length === 0) {
-          errors.push("Registration failed. This email may already be registered.");
-        }
-
-        alert(errors.join("\n"));
-        setMessage("Registration failed. Please check the details.");
+        setMessage("❌ Please check your details");
         return;
       }
 
-      setMessage("Account created! Redirecting...");
+      setMessage("🎉 Account created! Redirecting...");
       setTimeout(() => navigate("/dashboard"), 1500);
     } catch {
-      setMessage("Network error. Please check your connection.");
+      setMessage("⚠️ Network error");
     } finally {
       setLoading(false);
     }
@@ -194,7 +176,7 @@ export default function Register() {
               onChange={handleChange}
               required
             />
-            <span onClick={() => setShowPassword(!showPassword)}>≡ƒæü</span>
+            <span onClick={() => setShowPassword(!showPassword)}>👁</span>
           </div>
 
           <input
