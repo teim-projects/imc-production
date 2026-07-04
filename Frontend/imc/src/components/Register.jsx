@@ -35,7 +35,7 @@ export default function Register() {
 
   /* ERRORS */
   const emailErr = useMemo(
-    () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email" : ""),
+    () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email .." : ""),
     [form.email]
   );
 
