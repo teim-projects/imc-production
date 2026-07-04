@@ -129,7 +129,7 @@ export default function MyBookings() {
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center py-20">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-amber-500 border-t-transparent mb-6"></div>
-          <p className="text-2xl text-gray-700 font-medium">Loading your bookings...</p>
+          <p className="text-2xl text-gray-700 font-medium">Loading your bookings.....</p>
         </div>
       </div>
     );
