@@ -1,135 +1,545 @@
 import uuid
 import json
 import requests
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from .utils import get_headers
+from decimal import Decimal
 
-BASE_URL = "https://smartgateway.hdfcuat.bank.in"  # SANDBOX
+from django.conf import settings          # <-- ADDED
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST, require_GET
+
+from .utils import get_headers
+from .models import Payment
+from api.models import (
+    SingingClass,
+    Studio,
+    EventBooking,
+    PrivateBooking,
+    PhotographyBooking,
+    Singer,
+    Sound,
+    Videography,
+)
+
+# ============================================================
+# CONFIGURATION FROM SETTINGS (no more hardcoded credentials)
+# ============================================================
+BASE_URL = settings.SMARTGATEWAY_BASE_URL
+PAYMENT_PAGE_CLIENT_ID = settings.SMARTGATEWAY_CLIENT_ID
+
+# You may want to move these to settings.py later, but keep as is for now
+CUSTOMER_ID = "imc_user_101"
+CUSTOMER_EMAIL = "user@imc.com"
+CUSTOMER_PHONE = "9999999999"
+RETURN_URL = "https://www.imcpune.in/api/payments/payment/return/"
+SUCCESS_REDIRECT_BASE = "https://www.imcpune.in/payment-success"
 
 
 def generate_order_id():
     return f"IMC{uuid.uuid4().hex[:16]}"
 
 
-# ==============================
-# 1️⃣ CREATE PAYMENT LINK
-# ==============================
-@csrf_exempt
-def create_payment(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Invalid method"}, status=405)
+# ============================================================
+# CREATE PAYMENT
+# ============================================================
 
-    body = json.loads(request.body) if request.body else {}
-    amount = body.get("amount", 1.00)
+@csrf_exempt
+@require_POST
+def create_payment(request):
+
+    try:
+        body = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+
+    service = body.get("service")
+    registration_id = body.get("registration_id")
+
+    if not service:
+        return JsonResponse({"error": "service required"}, status=400)
+
+    try:
+
+        # =========================================
+        # SINGING CLASS PAYMENT
+        # =========================================
+        if service == "singing_classes":
+
+            registration = SingingClass.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.fee
+            customer_name = f"{registration.first_name} {registration.last_name}"
+
+        # =========================================
+        # STUDIO BOOKING
+        # =========================================
+        elif service == "studio_booking":
+
+            registration = Studio.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.total_amount
+            customer_name = registration.customer
+
+        # =========================================
+        # EVENT BOOKING
+        # =========================================
+        elif service == "auditorium_music_shows":
+
+            registration = EventBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.total_amount
+            customer_name = registration.customer_name
+
+        # =========================================
+        # PRIVATE EVENT
+        # =========================================
+        elif service == "private_music_events":
+
+            registration = PrivateBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = Decimal("5000.00")
+            customer_name = registration.customer
+
+        # =========================================
+        # PHOTOGRAPHY
+        # =========================================
+        elif service == "photography_service":
+
+            registration = PhotographyBooking.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.package_price
+            customer_name = registration.client
+
+        # =========================================
+        # SINGER
+        # =========================================
+        elif service == "singer_registration":
+
+            registration = Singer.objects.get(
+                id=registration_id
+            )
+        
+            print("Singer Rate =", registration.rate)
+        
+            amount = Decimal(str(registration.rate))
+            customer_name = registration.name
+
+        # =========================================
+        # SOUND
+        # =========================================
+        elif service == "sound_service":
+
+            registration = Sound.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.price
+            customer_name = registration.client_name
+
+        # =========================================
+        # VIDEOGRAPHY
+        # =========================================
+        elif service == "videography_service":
+
+            registration = Videography.objects.get(
+                id=registration_id
+            )
+
+            amount = registration.package_price
+            customer_name = registration.client_name
+
+        else:
+            return JsonResponse(
+                {"error": "Invalid service"},
+                status=400
+            )
+
+    except Exception as e:
+        return JsonResponse(
+            {"error": str(e)},
+            status=400
+        )
 
     order_id = generate_order_id()
 
     payload = {
         "order_id": order_id,
-        "amount": f"{float(amount):.2f}",
-        "customer_id": "imc_user_101",
-        "customer_email": "user@imc.com",
-        "customer_phone": "9999999999",
-        "payment_page_client_id": "hdfcmaster",
+        "amount": f"{amount:.2f}",
+        "customer_id": CUSTOMER_ID,
+        "customer_email": CUSTOMER_EMAIL,
+        "customer_phone": CUSTOMER_PHONE,
+        "payment_page_client_id": PAYMENT_PAGE_CLIENT_ID,
         "action": "paymentPage",
-        "return_url": "http://localhost:8000/api/payments/payment/return/",
+        "return_url": RETURN_URL,
         "currency": "INR",
-        "description": "IMC Membership Fee"
+        "description": f"Payment for {service}",
     }
 
-    res = requests.post(
-        f"{BASE_URL}/session",
-        headers=get_headers("imc_user_101"),
-        json=payload,
-        timeout=30
-    )
+    try:
+        print("PAYMENT PAYLOAD:", payload)
 
-    data = res.json()
-    data["order_id"] = order_id
+        resp = requests.post(
+            f"{BASE_URL}/session",
+            headers=get_headers(CUSTOMER_ID),
+            json=payload,
+            timeout=30,
+        )
 
-    return JsonResponse(data, safe=False)
+        print("GATEWAY STATUS:", resp.status_code)
+        print("GATEWAY RESPONSE:", resp.text)
+
+        resp.raise_for_status()
+        data = resp.json()
+
+        Payment.objects.create(
+            registration_id=registration_id,
+            customer_name=customer_name,
+            order_id=order_id,
+            amount=amount,
+            service=service,
+            status=data.get("status", "INITIATED"),
+            raw_response=data
+        )
+
+        data["order_id"] = order_id
+        return JsonResponse(data)
+
+    except Exception as e:
+        print("CREATE PAYMENT ERROR:", str(e))
+        return JsonResponse({"error": str(e)}, status=500)
 
 
-# ==============================
-# 2️⃣ RETURN URL (Gateway → Backend)
-# ==============================
+# ============================================================
+# PAYMENT RETURN
+# ============================================================
+
 @csrf_exempt
 def payment_return(request):
-    if request.method != "POST":
-        return HttpResponse("Invalid Method", status=405)
 
-    order_id = request.POST.get("order_id")
-
-    if not order_id:
-        return JsonResponse({"error": "order_id missing"}, status=400)
-
-    return verify_payment(order_id)
-
-
-# ==============================
-# 3️⃣ VERIFY PAYMENT STATUS
-# ==============================
-def verify_payment(order_id):
-    res = requests.get(
-        f"{BASE_URL}/orders/{order_id}",
-        headers=get_headers("imc_user_101"),
-        timeout=30
+    order_id = (
+        request.POST.get("order_id")
+        or request.GET.get("order_id")
+        or request.POST.get("id")
+        or request.GET.get("id")
     )
 
-    data = res.json()
-    status = data.get("status")
+    if not order_id:
+        return redirect(f"{SUCCESS_REDIRECT_BASE}?status=failed")
 
-    if status == "CHARGED":
-        success = True
-        message = "Payment Successful"
-    elif status in ["PENDING", "PENDING_VBV"]:
-        success = False
-        message = "Payment Pending. Approve in UPI app."
-    else:
-        success = False
-        message = "Payment Failed / Cancelled"
+    verify_payment(order_id)
 
-    return JsonResponse({
-        "success": success,
-        "order_id": order_id,
-        "gateway_status": status,
-        "message": message,
-        "data": data
-    })
+    return redirect(f"{SUCCESS_REDIRECT_BASE}?order_id={order_id}")
 
 
-# ==============================
-# 4️⃣ CHECK STATUS (Frontend Polling)
-# ==============================
+# ============================================================
+# VERIFY PAYMENT
+# ============================================================
+
+def verify_payment(order_id):
+
+    try:
+        resp = requests.get(
+            f"{BASE_URL}/orders/{order_id}",
+            headers=get_headers(CUSTOMER_ID),
+            timeout=30,
+        )
+
+        resp.raise_for_status()
+        data = resp.json()
+
+        payment = Payment.objects.filter(order_id=order_id).first()
+        if not payment:
+            return "FAILED"
+
+        gateway_amount = Decimal(str(data.get("amount", "0")))
+        if gateway_amount != payment.amount:
+            print("SECURITY ALERT: Amount mismatch")
+            payment.status = "FAILED"
+            payment.raw_response = data
+            payment.save()
+            return "FAILED"
+
+        payment.txn_id = data.get("txn_id")
+        payment.txn_uuid = data.get("txn_uuid")
+        payment.status = data.get("status", "FAILED")
+        payment.payment_method = data.get("payment_method")
+        payment.payer_vpa = data.get("payer_vpa")
+        payment.raw_response = data
+        payment.save()
+
+        # ======================================
+        # DYNAMIC PAYMENT STATUS UPDATE
+        # ======================================
+        if payment.status == "CHARGED":
+            if payment.service == "singing_classes":
+                obj = SingingClass.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+            elif payment.service == "studio_booking":
+                obj = Studio.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "auditorium_music_shows":
+                obj = EventBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+            elif payment.service == "private_music_events":
+                obj = PrivateBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "photography_service":
+                obj = PhotographyBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "singer_registration":
+                obj = Singer.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "sound_service":
+                obj = Sound.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "videography_service":
+                obj = Videography.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+        return payment.status
+
+    except Exception as e:
+        print("VERIFY ERROR:", e)
+        return "FAILED"
+
+
+# ============================================================
+# CHECK PAYMENT STATUS
+# ============================================================
+
 @csrf_exempt
+@require_GET
 def check_status(request):
+
     order_id = request.GET.get("order_id")
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
-    return verify_payment(order_id)
+    verify_payment(order_id)
+
+    payment = Payment.objects.filter(order_id=order_id).first()
+    if not payment:
+        return JsonResponse({"error": "Payment not found"}, status=404)
+
+    return JsonResponse({
+        "success": payment.status == "CHARGED",
+        "order_id": payment.order_id,
+        "service": payment.service,
+        "status": payment.status,
+        "txn_id": payment.txn_id,
+        "txn_uuid": payment.txn_uuid,
+        "amount": float(payment.amount),
+        "payment_method": payment.payment_method,
+        "payer_vpa": payment.payer_vpa
+    })
 
 
-# ==============================
-# 5️⃣ REFUND PAYMENT
-# ==============================
+# ============================================================
+# WEBHOOK
+# ============================================================
+
 @csrf_exempt
+@require_POST
+def payment_webhook(request):
+
+    try:
+        data = json.loads(request.body)
+    except:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    order_id = data.get("order_id")
+    if not order_id:
+        return JsonResponse({"error": "Missing order_id"}, status=400)
+
+    payment = Payment.objects.filter(order_id=order_id).first()
+    if payment:
+        gateway_amount = Decimal(str(data.get("amount", "0")))
+        if gateway_amount != payment.amount:
+            payment.status = "FAILED"
+            payment.raw_response = data
+            payment.save()
+            return JsonResponse({"error": "Amount mismatch"}, status=400)
+
+        payment.txn_id = data.get("txn_id")
+        payment.txn_uuid = data.get("txn_uuid")
+        payment.status = data.get("status", "UNKNOWN")
+        payment.payment_method = data.get("payment_method")
+        payment.payer_vpa = data.get("payer_vpa")
+        payment.raw_response = data
+        payment.save()
+
+        if payment.status == "CHARGED":
+            if payment.service == "singing_classes":
+                obj = SingingClass.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+            elif payment.service == "studio_booking":
+                obj = Studio.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "auditorium_music_shows":
+                obj = EventBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.status = "confirmed"
+                    obj.save()
+            elif payment.service == "private_music_events":
+                obj = PrivateBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "photography_service":
+                obj = PhotographyBooking.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "singer_registration":
+                obj = Singer.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "sound_service":
+                obj = Sound.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+            elif payment.service == "videography_service":
+                obj = Videography.objects.filter(id=payment.registration_id).first()
+                if obj:
+                    obj.payment_status = "paid"
+                    obj.save()
+
+    return JsonResponse({"message": "Webhook processed"})
+
+
+# ============================================================
+# REFUND
+# ============================================================
+
+@csrf_exempt
+@require_GET
 def refund_payment(request):
+
     order_id = request.GET.get("order_id")
     if not order_id:
         return JsonResponse({"error": "order_id required"}, status=400)
 
     payload = {
-        "unique_request_id": f"REFUND{uuid.uuid4().hex[:10]}",
-        "amount": 1.00
+        "unique_request_id": f"REF-{uuid.uuid4().hex[:10]}",
+        "amount": ""
     }
 
-    res = requests.post(
-        f"{BASE_URL}/orders/{order_id}/refunds",
-        headers=get_headers("imc_user_101"),
-        json=payload,
-        timeout=30
-    )
+    try:
+        resp = requests.post(
+            f"{BASE_URL}/orders/{order_id}/refunds",
+            headers=get_headers(CUSTOMER_ID),
+            json=payload,
+            timeout=30
+        )
+        resp.raise_for_status()
+        return JsonResponse(resp.json())
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-    return JsonResponse(res.json(), safe=False)
+
+# ============================================================
+# PAYMENT REPORT (JSON API)
+# ============================================================
+
+def get_customer_name(payment):
+    try:
+        if payment.service == "singing_classes":
+            obj = SingingClass.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return f"{obj.first_name} {obj.last_name}"
+        elif payment.service == "studio_booking":
+            obj = Studio.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.customer
+        elif payment.service == "auditorium_music_shows":
+            obj = EventBooking.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.customer_name
+        elif payment.service == "private_music_events":
+            obj = PrivateBooking.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.customer
+        elif payment.service == "photography_service":
+            obj = PhotographyBooking.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.client
+        elif payment.service == "singer_registration":
+            obj = Singer.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.name
+        elif payment.service == "sound_service":
+            obj = Sound.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.client_name
+        elif payment.service == "videography_service":
+            obj = Videography.objects.filter(id=payment.registration_id).first()
+            if obj:
+                return obj.client_name
+    except Exception as e:
+        print("Customer Name Error:", e)
+    return "N/A"
+
+
+def payment_report(request):
+    try:
+        payments = Payment.objects.all().order_by("-created_at")
+        data = []
+        for p in payments:
+            data.append({
+                "name": get_customer_name(p),
+                "order_id": p.order_id,
+                "service": p.service,
+                "amount": float(p.amount),
+                "status": p.status,
+                "payment_method": p.payment_method,
+                "txn_id": p.txn_id,
+                "payer_vpa": p.payer_vpa,
+                "created_at": p.created_at.strftime("%d-%m-%Y %H:%M")
+            })
+        return JsonResponse({
+            "success": True,
+            "count": len(data),
+            "payments": data
+        })
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=500)
