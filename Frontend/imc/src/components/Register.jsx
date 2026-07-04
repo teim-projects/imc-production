@@ -34,6 +34,9 @@ export default function Register() {
   const fileRef = useRef(null);
 
   /* ERRORS */
+  const [emailServerErr, setEmailServerErr] = useState("");
+  const [mobileServerErr, setMobileServerErr] = useState("");
+
   const emailErr = useMemo(
     () => (form.email && !EMAIL_RE.test(form.email) ? "Invalid email" : ""),
     [form.email]
@@ -58,8 +61,12 @@ export default function Register() {
     agreeTerms;
 
   /* HANDLERS */
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+    if (name === "email") setEmailServerErr("");
+    if (name === "mobile_no") setMobileServerErr("");
+  };
 
   const handlePhoto = (file) => {
     if (!file) return;
@@ -84,7 +91,9 @@ export default function Register() {
     if (!isFormValid) return;
 
     setLoading(true);
-    setMessage("Creating your account...");
+    setMessage("");
+    setEmailServerErr("");
+    setMobileServerErr("");
 
     try {
       const fd = new FormData();
@@ -103,7 +112,25 @@ export default function Register() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setMessage("❌ Please check your details");
+        // Map known field errors to friendly messages
+        const emailMsg =
+          data?.email?.[0] ||
+          (data?.email && typeof data.email === "string" ? data.email : null);
+        const mobileMsg =
+          data?.mobile_no?.[0] ||
+          (data?.mobile_no && typeof data.mobile_no === "string" ? data.mobile_no : null);
+
+        if (emailMsg) {
+          setEmailServerErr(
+            "An account with this email address already exists. Please sign in or use a different email address."
+          );
+        }
+        if (mobileMsg) {
+          setMobileServerErr("An account with this mobile number already exists.");
+        }
+        if (!emailMsg && !mobileMsg) {
+          setMessage("❌ Please check your details.");
+        }
         return;
       }
 
@@ -153,9 +180,15 @@ export default function Register() {
             placeholder="Email"
             value={form.email}
             onChange={handleChange}
+            style={emailServerErr ? { borderColor: "#dc2626" } : {}}
             required
           />
           {emailErr && <div className="msg error">{emailErr}</div>}
+          {!emailErr && emailServerErr && (
+            <div className="msg error" style={{ marginBottom: "0.75rem" }}>
+              {emailServerErr}
+            </div>
+          )}
 
           <input
             name="mobile_no"
@@ -163,9 +196,15 @@ export default function Register() {
             maxLength={10}
             value={form.mobile_no}
             onChange={handleChange}
+            style={mobileServerErr ? { borderColor: "#dc2626" } : {}}
             required
           />
           {mobileErr && <div className="msg error">{mobileErr}</div>}
+          {!mobileErr && mobileServerErr && (
+            <div className="msg error" style={{ marginBottom: "0.75rem" }}>
+              {mobileServerErr}
+            </div>
+          )}
 
           <div className="password-box">
             <input
