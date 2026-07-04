@@ -103,6 +103,18 @@ export default function Register() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        // Extract error messages from server response
+        let alertMsg = "An account with this email address already exists. Please sign in or use a different email address.";
+
+        if (data && typeof data === "object") {
+          const msgs = [];
+          if (data.email) msgs.push(Array.isArray(data.email) ? data.email[0] : data.email);
+          if (data.mobile_no) msgs.push(Array.isArray(data.mobile_no) ? data.mobile_no[0] : data.mobile_no);
+          if (data.non_field_errors) msgs.push(Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors);
+          if (msgs.length > 0) alertMsg = msgs.join("\n");
+        }
+
+        alert(alertMsg);
         setMessage("❌ Please check your details");
         return;
       }
