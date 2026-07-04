@@ -97,7 +97,7 @@ export default function Login() {
         if (data.access) localStorage.setItem("access", data.access);
         if (data.refresh) localStorage.setItem("refresh", data.refresh);
 
-        setMessage("✅ Login successful! Redirecting...");
+        setMessage("✅ Login successful! Redirecting.....");
         await fetchUserAndRedirect(data.access);
       }
     } catch {
