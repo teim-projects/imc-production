@@ -161,6 +161,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     const taken = bookings.filter(
       (b) =>
         b.date === formData.date &&
+        b.status === "booked" &&
         (String(b.studio_id || "") === String(formData.studio_id) ||
           (b.studio_name || "").toLowerCase() === (selectedStudio?.name || "").toLowerCase())
     );
