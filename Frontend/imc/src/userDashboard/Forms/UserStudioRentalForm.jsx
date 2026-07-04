@@ -161,7 +161,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     const taken = bookings.filter(
       (b) =>
         b.date === formData.date &&
-        b.status === "booked" &&
         (String(b.studio_id || "") === String(formData.studio_id) ||
           (b.studio_name || "").toLowerCase() === (selectedStudio?.name || "").toLowerCase())
     );
@@ -559,31 +558,10 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
           <p className="slot-hint">
             • Full range is reserved based on selected duration<br />
-            • <span
-                style={{
-                  display: "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  background: "gray",
-                  borderRadius: "50%",
-                  marginRight: "5px"
-                }}
-              ></span>
-              Available
-            <br />
-            • <span
-                style={{
-                  display: "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  background: "red",
-                  borderRadius: "50%",
-                  marginRight: "5px"
-                }}
-              ></span>
-              Booked / Selected for Booking
-            <br />
+            • Gray = Available<br />
+            • Red = Booked / Selected for Booking<br />
             • No cancellation allowed after booking confirmation.
+
           </p>
         </section>
 

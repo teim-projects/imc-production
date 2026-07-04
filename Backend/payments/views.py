@@ -292,7 +292,6 @@ def verify_payment(order_id):
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
-                    obj.status = "booked"
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
@@ -409,7 +408,6 @@ def payment_webhook(request):
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
-                    obj.status = "booked"
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()

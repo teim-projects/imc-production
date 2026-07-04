@@ -1,4 +1,4 @@
-﻿# api/serializers.py
+# api/serializers.py
 from decimal import Decimal, InvalidOperation
 import re
 from datetime import date
@@ -54,7 +54,7 @@ def _validate_phone(value: str):
     if value in (None, ""):
         return value
     if not phone_regex.fullmatch(value.strip()):
-        raise serializers.ValidationError("Enter a valid phone number (7ΓÇô15 digits, optional +).")
+        raise serializers.ValidationError("Enter a valid phone number (7–15 digits, optional +).")
     return value
 
 def _ensure_hms(t: str) -> str:
@@ -377,7 +377,7 @@ class EventSerializer(serializers.ModelSerializer):
         for field in ["ticket_price", "basic_price", "premium_price", "vip_price"]:
             val = current(field)
             if val is not None and val < 0:
-                raise serializers.ValidationError({field: "Must be ΓëÑ 0."})
+                raise serializers.ValidationError({field: "Must be ≥ 0."})
 
         # seats
         total = current("total_seats") or 0
@@ -394,7 +394,7 @@ class EventSerializer(serializers.ModelSerializer):
             ("vip_seats", vip),
         ]:
             if val < 0:
-                raise serializers.ValidationError({field_name: "Must be ΓëÑ 0."})
+                raise serializers.ValidationError({field_name: "Must be ≥ 0."})
 
         if available > total:
             raise serializers.ValidationError(
@@ -475,7 +475,6 @@ class VideographySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"package_price": "Price cannot be negative."})
 
         return data
-
 
 
 # =====================================================================
@@ -633,6 +632,7 @@ class CustomUserDetailsSerializer(UserDetailsSerializer):
 
         instance.save()
         return instance
+
 # ---------------------------------------------------------------------
 # Password Reset (request & confirm)
 # ---------------------------------------------------------------------
@@ -782,7 +782,7 @@ class SingerSerializer(serializers.ModelSerializer):
         model = Singer
         fields = "__all__"
 
-    # Γ£à DO NOT mutate raw multipart data
+    # ✅ DO NOT mutate raw multipart data
     def to_internal_value(self, data):
         ret = super().to_internal_value(data)
 
@@ -795,7 +795,7 @@ class SingerSerializer(serializers.ModelSerializer):
 
     
 
-        # empty string ΓåÆ None (numeric/date fields only)
+        # empty string → None (numeric/date fields only)
         for field in ["experience", "rate", "birth_date"]:
             if field in ret and ret[field] in ["", None]:
                 ret[field] = None
@@ -874,7 +874,7 @@ from .models import Batch, Class
 
 class BatchSerializer(serializers.ModelSerializer):
 
-    # Γ£à IMPORTANT
+    # ✅ IMPORTANT
     class_obj = serializers.PrimaryKeyRelatedField(
         queryset=Class.objects.all()
     )
