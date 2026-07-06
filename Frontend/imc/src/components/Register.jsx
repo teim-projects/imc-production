@@ -109,27 +109,40 @@ export default function Register() {
         body: fd,
       });
 
-      const data = await res.json().catch(() => ({}));
+      // Read raw text first so we can inspect even non-JSON (500 HTML) responses
+      const rawText = await res.text().catch(() => "");
+      let data = {};
+      try { data = JSON.parse(rawText); } catch { data = {}; }
 
       if (!res.ok) {
-        // Map known field errors to friendly messages
-        const emailMsg =
-          data?.email?.[0] ||
-          (data?.email && typeof data.email === "string" ? data.email : null);
-        const mobileMsg =
-          data?.mobile_no?.[0] ||
-          (data?.mobile_no && typeof data.mobile_no === "string" ? data.mobile_no : null);
+        const rawLower = rawText.toLowerCase();
 
-        if (emailMsg) {
+        // Only flag as duplicate if the response SPECIFICALLY names that field
+        // The MySQL 500 error contains: Duplicate entry 'x' for key 'api_customuser.email'
+        // The DRF 400 JSON contains: { "email": ["..."] } or { "mobile_no": ["..."] }
+
+        const emailDuplicate =
+          (data?.email && (Array.isArray(data.email) ? data.email[0] : data.email)) ||
+          (rawLower.includes("duplicate") && rawLower.includes("customuser.email"));
+
+        const mobileDuplicate =
+          (data?.mobile_no && (Array.isArray(data.mobile_no) ? data.mobile_no[0] : data.mobile_no)) ||
+          (rawLower.includes("duplicate") && rawLower.includes("customuser.mobile_no"));
+
+        if (emailDuplicate) {
           setEmailServerErr(
-            "An account with this email address already exists. Please sign in or use a different email address."
+            "This email address is already registered. Please use a different email address or log in with your existing account."
           );
         }
-        if (mobileMsg) {
+        if (mobileDuplicate) {
           setMobileServerErr("An account with this mobile number already exists.");
         }
-        if (!emailMsg && !mobileMsg) {
-          setMessage("❌ Please check your details.");
+        if (!emailDuplicate && !mobileDuplicate) {
+          const fallback =
+            data?.detail ||
+            data?.non_field_errors?.[0] ||
+            "Please check your details and try again.";
+          setMessage("❌ " + fallback);
         }
         return;
       }
