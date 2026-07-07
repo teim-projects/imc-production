@@ -47,6 +47,9 @@ import UserStudioRentalForm from "./userDashboard/Forms/UserStudioRentalForm";
 import UserPhotographyBookingForm from "./userDashboard/Forms/UserPhotographyBookingForm";
 import UserEventBookingForm from "./userDashboard/Forms/UserEvents";
 
+/* ================= MY BOOKINGS ================= */
+import MyBookings from "./userDashboard/pages/MyBookings";
+
 /* ================= FEES ================= */
 import AnnualFeePage from "./userDashboard/pages/AnnualFeePage";
 
@@ -288,6 +291,16 @@ function Layout() {
             element={
               <PrivateRoute>
                 <SoundBooking />
+              </PrivateRoute>
+            }
+          />
+
+          {/* MY BOOKINGS */}
+          <Route
+            path="/my-bookings"
+            element={
+              <PrivateRoute>
+                <MyBookings />
               </PrivateRoute>
             }
           />
