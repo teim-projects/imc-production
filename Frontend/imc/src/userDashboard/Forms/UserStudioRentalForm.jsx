@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000/api";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
 const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
