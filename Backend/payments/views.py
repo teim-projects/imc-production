@@ -3,7 +3,7 @@ import json
 import requests
 from decimal import Decimal
 
-from django.conf import settings          # <-- ADDED
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -23,12 +23,11 @@ from api.models import (
 )
 
 # ============================================================
-# CONFIGURATION FROM SETTINGS (no more hardcoded credentials)
+# CONFIGURATION FROM SETTINGS
 # ============================================================
 BASE_URL = settings.SMARTGATEWAY_BASE_URL
 PAYMENT_PAGE_CLIENT_ID = settings.SMARTGATEWAY_CLIENT_ID
 
-# You may want to move these to settings.py later, but keep as is for now
 CUSTOMER_ID = "imc_user_101"
 CUSTOMER_EMAIL = "user@imc.com"
 CUSTOMER_PHONE = "9999999999"
@@ -55,6 +54,7 @@ def create_payment(request):
 
     service = body.get("service")
     registration_id = body.get("registration_id")
+    booking_data = body.get("booking_data")   # <-- NEW
 
     if not service:
         return JsonResponse({"error": "service required"}, status=400)
@@ -74,16 +74,20 @@ def create_payment(request):
             customer_name = f"{registration.first_name} {registration.last_name}"
 
         # =========================================
-        # STUDIO BOOKING
+        # STUDIO BOOKING – NO REGISTRATION YET
         # =========================================
         elif service == "studio_booking":
 
-            registration = Studio.objects.get(
-                id=registration_id
-            )
+            if not booking_data:
+                return JsonResponse(
+                    {"error": "booking_data required"},
+                    status=400
+                )
 
-            amount = registration.total_amount
-            customer_name = registration.customer
+            amount = Decimal(
+                str(booking_data["total_amount"])
+            )
+            customer_name = booking_data["customer"]
 
         # =========================================
         # EVENT BOOKING
@@ -129,9 +133,9 @@ def create_payment(request):
             registration = Singer.objects.get(
                 id=registration_id
             )
-        
+
             print("Singer Rate =", registration.rate)
-        
+
             amount = Decimal(str(registration.rate))
             customer_name = registration.name
 
@@ -202,8 +206,9 @@ def create_payment(request):
         resp.raise_for_status()
         data = resp.json()
 
-        Payment.objects.create(
-            registration_id=registration_id,
+        # Create Payment record – for studio booking, registration_id is None
+        payment = Payment.objects.create(
+            registration_id=None,  # <-- for studio_booking, we set None initially
             customer_name=customer_name,
             order_id=order_id,
             amount=amount,
@@ -211,6 +216,15 @@ def create_payment(request):
             status=data.get("status", "INITIATED"),
             raw_response=data
         )
+
+        # For studio booking, store booking_data for later use
+        if service == "studio_booking":
+            # We store it inside raw_response (or you could add a JSONField)
+            payment.raw_response = {
+                "gateway_response": data,
+                "booking_data": booking_data
+            }
+            payment.save()
 
         data["order_id"] = order_id
         return JsonResponse(data)
@@ -276,22 +290,88 @@ def verify_payment(order_id):
         payment.payment_method = data.get("payment_method")
         payment.payer_vpa = data.get("payer_vpa")
         payment.raw_response = data
-        payment.save()
+
+        # ===============================
+        # STUDIO BOOKING – handle all statuses
+        # ===============================
+        if payment.service == "studio_booking":
+
+            # If registration_id is None, we need to create the booking on success
+            if payment.registration_id is None and payment.status == "CHARGED":
+                # Retrieve the saved booking_data from raw_response
+                # (We stored it as {"gateway_response": ..., "booking_data": ...})
+                raw = payment.raw_response
+                if isinstance(raw, dict) and "booking_data" in raw:
+                    booking_data = raw["booking_data"]
+                else:
+                    # Fallback: if we didn't store properly, try to extract from raw_response
+                    # This shouldn't happen if create_payment stored it correctly.
+                    booking_data = raw.get("booking_data", {})
+                    if not booking_data:
+                        # If still missing, we cannot create booking; log error.
+                        print("ERROR: No booking_data found in payment.raw_response")
+                        payment.status = "FAILED"
+                        payment.save()
+                        return "FAILED"
+
+                # Create the Studio booking from the data
+                try:
+                    # Ensure time_slot is in correct format (HH:MM:SS) – already handled by frontend
+                    booking = Studio.objects.create(
+                        customer=booking_data.get("customer"),
+                        contact_number=booking_data.get("contact_number"),
+                        email=booking_data.get("email", ""),
+                        address=booking_data.get("address", ""),
+                        studio_name=booking_data.get("studio_name"),
+                        date=booking_data.get("date"),
+                        time_slot=booking_data.get("time_slot"),
+                        duration=booking_data.get("duration"),
+                        price_per_hour=booking_data.get("price_per_hour"),
+                        total_amount=booking_data.get("total_amount"),
+                        payment_status="paid",
+                        status="booked",
+                    )
+                    # Link the payment to the new booking
+                    payment.registration_id = booking.id
+                    payment.save()
+                except Exception as e:
+                    print("Failed to create studio booking from payment data:", e)
+                    payment.status = "FAILED"
+                    payment.save()
+                    return "FAILED"
+
+            else:
+                # Existing registration_id exists (legacy or already created)
+                obj = Studio.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    if payment.status == "CHARGED":
+                        obj.payment_status = "paid"
+                        obj.status = "booked"
+                    elif payment.status == "FAILED":
+                        obj.payment_status = "failed"
+                        obj.delete()
+                    elif payment.status == "CANCELLED":
+                        obj.payment_status = "cancelled"
+                        obj.delete()
+                    else:
+                        obj.payment_status = "pending"
+                        obj.status = "pending"
+
+                    if payment.status not in ["FAILED", "CANCELLED"]:
+                        obj.save()
 
         # ======================================
-        # DYNAMIC PAYMENT STATUS UPDATE
+        # OTHER SERVICES – update registration if CHARGED
         # ======================================
-        if payment.status == "CHARGED":
+        elif payment.status == "CHARGED":
             if payment.service == "singing_classes":
                 obj = SingingClass.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
-                    obj.save()
-            elif payment.service == "studio_booking":
-                obj = Studio.objects.filter(id=payment.registration_id).first()
-                if obj:
-                    obj.payment_status = "paid"
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
@@ -324,6 +404,8 @@ def verify_payment(order_id):
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+
+        payment.save()
 
         return payment.status
 
@@ -397,17 +479,79 @@ def payment_webhook(request):
         payment.raw_response = data
         payment.save()
 
-        if payment.status == "CHARGED":
+        # ===============================
+        # STUDIO BOOKING – handle all statuses
+        # ===============================
+        if payment.service == "studio_booking":
+
+            # If registration_id is None and status is CHARGED, create booking
+            if payment.registration_id is None and payment.status == "CHARGED":
+                raw = payment.raw_response
+                if isinstance(raw, dict) and "booking_data" in raw:
+                    booking_data = raw["booking_data"]
+                else:
+                    booking_data = raw.get("booking_data", {})
+                    if not booking_data:
+                        print("ERROR: No booking_data found in webhook raw_response")
+                        payment.status = "FAILED"
+                        payment.save()
+                        return JsonResponse({"error": "Missing booking_data"}, status=400)
+
+                try:
+                    booking = Studio.objects.create(
+                        customer=booking_data.get("customer"),
+                        contact_number=booking_data.get("contact_number"),
+                        email=booking_data.get("email", ""),
+                        address=booking_data.get("address", ""),
+                        studio_name=booking_data.get("studio_name"),
+                        date=booking_data.get("date"),
+                        time_slot=booking_data.get("time_slot"),
+                        duration=booking_data.get("duration"),
+                        price_per_hour=booking_data.get("price_per_hour"),
+                        total_amount=booking_data.get("total_amount"),
+                        payment_status="paid",
+                        status="booked",
+                    )
+                    payment.registration_id = booking.id
+                    payment.save()
+                except Exception as e:
+                    print("Webhook: failed to create studio booking:", e)
+                    payment.status = "FAILED"
+                    payment.save()
+                    return JsonResponse({"error": "Booking creation failed"}, status=500)
+
+            else:
+                # Existing registration_id
+                obj = Studio.objects.filter(
+                    id=payment.registration_id
+                ).first()
+
+                if obj:
+                    if payment.status == "CHARGED":
+                        obj.payment_status = "paid"
+                        obj.status = "booked"
+                    elif payment.status == "FAILED":
+                        obj.payment_status = "failed"
+                        obj.delete()
+                    elif payment.status == "CANCELLED":
+                        obj.payment_status = "cancelled"
+                        obj.delete()
+                    else:
+                        obj.payment_status = "pending"
+                        obj.status = "pending"
+
+                    if payment.status not in ["FAILED", "CANCELLED"]:
+                        obj.save()
+
+        # ===============================
+        # OTHER SERVICES – only on success
+        # ===============================
+        elif payment.status == "CHARGED":
             if payment.service == "singing_classes":
                 obj = SingingClass.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
-                    obj.save()
-            elif payment.service == "studio_booking":
-                obj = Studio.objects.filter(id=payment.registration_id).first()
-                if obj:
-                    obj.payment_status = "paid"
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()

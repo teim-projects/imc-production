@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000/api";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
 const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
@@ -242,59 +242,11 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     return null;
   };
 
-  // ========== REPLACED createBooking ==========
-  const createBooking = async () => {
-    const totalAmount =
-      Number(pricePerHour || 0) *
-      Number(formData.duration || 1);
-
-    const payload = {
-      customer: formData.full_name,
-      contact_number: formData.mobile,
-      email: formData.email || "",
-      address: "",
-
-      studio_name: selectedStudio?.name || "",
-
-      date: formData.date,
-
-      time_slot:
-        formData.time_slot?.length === 5
-          ? `${formData.time_slot}:00`
-          : formData.time_slot,
-
-      duration: Number(formData.duration),
-
-      price_per_hour: Number(pricePerHour || 0),
-
-      total_amount: totalAmount,
-
-      payment_methods: ["UPI"],
-    };
-
-    console.log("STUDIO BOOKING PAYLOAD:", payload);
-
-    const res = await api.post(BOOKINGS_URL, payload);
-
-    console.log("BOOKING RESPONSE:", res.data);
-
-    const bookingId =
-      res.data?.id ||
-      res.data?.pk ||
-      res.data?.booking_id;
-
-    if (!bookingId) {
-      throw new Error("Booking created but ID not returned");
-    }
-
-    return bookingId;
-  };
-
   // ========== REPLACED initiatePayment ==========
-  const initiatePayment = async (bookingId) => {
+  const initiatePayment = async (bookingData) => {
     const paymentPayload = {
       service: "studio_booking",
-      registration_id: bookingId,
+      booking_data: bookingData,
     };
 
     console.log("PAYMENT PAYLOAD:", paymentPayload);
@@ -333,11 +285,26 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     setSaving(true);
 
     try {
-      const bookingId = await createBooking();
-      await initiatePayment(bookingId);
+      // ========== REPLACED block: send booking data directly to payment ==========
+      await initiatePayment({
+        customer: formData.full_name,
+        contact_number: formData.mobile,
+        email: formData.email,
+        address: "",
+        studio_name: selectedStudio?.name,
+        date: formData.date,
+        time_slot:
+          formData.time_slot.length === 5
+            ? `${formData.time_slot}:00`
+            : formData.time_slot,
+        duration: Number(formData.duration),
+        price_per_hour: Number(pricePerHour),
+        total_amount:
+          Number(pricePerHour) * Number(formData.duration),
+      });
+
       setSuccessMsg("Booking & payment processed!");
     } catch (err) {
-      // ========== REPLACED catch block ==========
       console.error("FULL ERROR:", err);
       console.error("RESPONSE:", err.response?.data);
 
@@ -503,7 +470,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
               Duration (hours) *
               <input
                 type="number"
-                
                 min="1"
                 max="24"
                 name="duration"

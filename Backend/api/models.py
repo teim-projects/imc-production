@@ -1,4 +1,3 @@
-# api/models.py
 from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -109,10 +108,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 # ============================================================
 # ===================== STUDIO MASTER ========================
 # ============================================================
-# api/models.py
-# api/models.py
-from decimal import Decimal
-from django.db import models
 
 def studio_image_path(instance, filename):
     sid = getattr(instance.studio, "id", "tmp")
@@ -186,93 +181,6 @@ class Studio(models.Model):
     email = models.EmailField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)
 
-    # Studio Rental (kept as a plain name to preserve old data)
-    studio_name = models.CharField(max_length=100)
-    date = models.DateField()
-    time_slot = models.TimeField(blank=True, null=True)  # "HH:MM" accepted
-    duration = models.DecimalField(
-        max_digits=4,
-        decimal_places=1,
-        validators=[MinValueValidator(Decimal("0.5"))],
-        help_text="Duration in hours",
-    )
-
-    # Payment Options (CSV; API can expose list)
-    payment_methods = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text="Comma-separated: Card, UPI, NetBanking",
-    )
-    
-    payment_status = models.CharField(
-    max_length=20,
-    default="pending"
-    )
-    
- 
-    STATUS_CHOICES = (
-        ("available", "Available"),
-        ("booked", "Booked"),
-        ("blocked", "Blocked"),
-    )
-    
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="booked"
-    )
-
-    # Meta
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Studio Booking"
-        verbose_name_plural = "Studio Bookings"
-        ordering = ["-date", "-time_slot"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["studio_name", "date", "time_slot"],
-                name="uniq_studio_date_timeslot",
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["date", "time_slot"]),
-            models.Index(fields=["studio_name"]),
-        ]
-
-    def __str__(self):
-        return f"{self.studio_name} | {self.customer} | {self.date}"
-
-    @property
-    def payment_list(self):
-        if not self.payment_methods:
-            return []
-        s = (self.payment_methods or "").strip()
-        if not s:
-            return []
-        if "," not in s:
-            return [s]
-        return [x.strip() for x in s.split(",") if x.strip()]
-
-
-
-
-# ============================================================
-# ===================== STUDIO BOOKING =======================
-# ============================================================
-from django.db import models
-from decimal import Decimal
-from django.core.validators import MinValueValidator
-
-class Studio(models.Model):
-    # Customer Info
-    customer = models.CharField(max_length=100)
-    contact_number = models.CharField(max_length=15, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-
     studio_name = models.CharField(max_length=100)
     date = models.DateField()
     time_slot = models.TimeField(blank=True, null=True)
@@ -291,33 +199,41 @@ class Studio(models.Model):
         help_text="Price per hour in INR for this booking",
     )
 
-        # ✅ TOTAL AMOUNT STORED IN DATABASE
     total_amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         blank=True,
         null=True
     )
-    
-    payment_status = models.CharField(
-    max_length=20,
-    default="pending"
+
+    # Updated payment status with choices
+    PAYMENT_STATUS_CHOICES = (
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Failed"),
+        ("cancelled", "Cancelled"),
     )
-    
 
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default="pending"
+    )
 
+    # Updated status with new choices and default
     STATUS_CHOICES = (
         ("available", "Available"),
+        ("pending", "Pending Payment"),
         ("booked", "Booked"),
         ("blocked", "Blocked"),
+        ("cancelled", "Cancelled"),
     )
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="booked"
+        default="pending"
     )
-
 
     payment_methods = models.CharField(
         max_length=255,
@@ -345,11 +261,10 @@ class Studio(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # ✅ Auto calculate total
+        # Auto calculate total
         if self.price_per_hour and self.duration:
             self.total_amount = self.price_per_hour * self.duration
         super().save(*args, **kwargs)
-
 
     def __str__(self):
         return f"{self.studio_name} | {self.customer} | {self.date}"
@@ -418,9 +333,6 @@ class PrivateBooking(models.Model):
 # ============================================================
 # ===================== PHOTOGRAPHY (OLD NAMES) ==============
 # ============================================================
-from django.db import models
-from django.conf import settings
-
 
 class PhotographyBooking(models.Model):
     client = models.CharField(max_length=200)
@@ -452,8 +364,6 @@ class PhotographyBooking(models.Model):
     equipment_needed = models.TextField(blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
 
-    
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     user = models.ForeignKey(
@@ -468,16 +378,9 @@ class PhotographyBooking(models.Model):
         return f"{self.client} – {self.event_type}"
 
 
-
 # ============================================================
 # ===================== EVENT MODEL ==========================
 # ============================================================
-# api/models.py
-from django.db import models
-from django.conf import settings
-
-CustomUser = settings.AUTH_USER_MODEL
-
 
 class Event(models.Model):
     EVENT_TYPES = [
@@ -606,10 +509,9 @@ class EventBooking(models.Model):
         ("cancelled", "Cancelled"),
     ]
     
-    
     payment_status = models.CharField(
-    max_length=20,
-    default="pending"
+        max_length=20,
+        default="pending"
     )
 
     user = models.ForeignKey(
@@ -669,6 +571,7 @@ class EventBooking(models.Model):
     def __str__(self):
         return f"{self.customer_name} • {self.event_name or self.event.title} ({self.number_of_tickets} tickets)"
 
+
 # ============================================================
 # ===================== PAYMENT MODEL ========================
 # ============================================================
@@ -709,15 +612,7 @@ class Payment(models.Model):
 # ===================== VIDEOGRAPHY MODEL ====================
 # ============================================================
 
-# videography/models.py
-from decimal import Decimal
-from django.db import models
-from django.conf import settings  # remove if you don't want user FK
-
-
 class Videography(models.Model):
-   
-
     PACKAGE_CHOICES = [
         ("Standard", "Standard"),
         ("Premium", "Premium"),
@@ -784,8 +679,6 @@ class Videography(models.Model):
         help_text="Custom event name when event_type is 'Other'",
     )
 
-   
-
     notes = models.TextField(blank=True)
 
     # Optional: who created this booking
@@ -814,13 +707,11 @@ class Videography(models.Model):
         return f"{self.project}{extra} — {self.editor} ({self.shoot_date})"
 
 
-
 # ===============================================
 # ============  SOUND SYSTEM (SERVICE)  =========
 # ===============================================
 
 class Sound(models.Model):
-   
     client_name = models.CharField(max_length=120)
     email = models.EmailField(blank=True, null=True)
     mobile_no = models.CharField(max_length=20, blank=True, null=True)
@@ -848,10 +739,10 @@ class Sound(models.Model):
 SoundSetup = Sound
 
 
-
 # ===============================================
 # ============  Singer (SERVICE)  =========
 # ===============================================
+
 import os
 import uuid
 import re
@@ -898,15 +789,12 @@ class Singer(models.Model):
     city = models.CharField(max_length=100, blank=True, default="")
     state = models.CharField(max_length=100, blank=True, default="")
     
-    
-      # NEW FIELD
+    # NEW FIELD
     rate = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=3000
     )
-
-   
 
     gender = models.CharField(
         max_length=10,
@@ -920,11 +808,9 @@ class Singer(models.Model):
     )
     
     payment_status = models.CharField(
-    max_length=20,
-    default="pending"
-   )
-
-   
+        max_length=20,
+        default="pending"
+    )
 
     active = models.BooleanField(default=True)
 
@@ -943,7 +829,6 @@ class Singer(models.Model):
     updated_at = models.DateField(editable=False)
 
     class Meta:
-        # ✅ THIS FIXES ORDER TO 1,2,3,4
         ordering = ['id']   # Ascending string works because IDs are zero padded (001,002,003)
         verbose_name = "Singer"
         verbose_name_plural = "Singers"
@@ -980,10 +865,6 @@ class Singer(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.name}"
-
-
-from django.db import models
-from django.core.validators import MinValueValidator
 
 
 class SingingClass(models.Model):
@@ -1065,9 +946,6 @@ class SingingClass(models.Model):
         return f"{self.first_name} {self.last_name} - {self.batch}"
 
 
-# api/models.py
-from django.db import models
-
 class Trainer(models.Model):
     trainer_name = models.CharField(max_length=255)
     mobile = models.CharField(max_length=20, blank=True)
@@ -1082,10 +960,6 @@ class Trainer(models.Model):
         return self.trainer_name
 
 
-
-
-
-# app/models.py
 class Teacher(models.Model):
     name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20, blank=True)
@@ -1141,11 +1015,6 @@ class Batch(models.Model):
         return f"{self.class_obj.name} - {self.day} {self.time_slot}"
 
 
-
-
-from django.db import models
-
-
 class AnnualFee(models.Model):
     singer = models.ForeignKey(
         "Singer",
@@ -1173,9 +1042,6 @@ class AnnualFee(models.Model):
         return f"{self.singer_id} - {self.year} - {self.amount}"
 
 
-
-
-
 class Notification(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
@@ -1189,14 +1055,6 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title
-    
-    
-    
-
-# api/models.py
-
-from django.db import models
-from django.conf import settings
 
 
 class StudioSlot(models.Model):

@@ -4,7 +4,8 @@ import axios from "axios";
 import { FaBuilding, FaPlus, FaEye, FaTrash } from "react-icons/fa";
 import "./Forms.css";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "https://www.imcpune.in/api";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://localhost:8000/api";
+
 
 console.log("API BASE URL:", import.meta?.env?.VITE_BASE_API_URL); 
 const API_URL = `${BASE}/auth/studio-master/`;

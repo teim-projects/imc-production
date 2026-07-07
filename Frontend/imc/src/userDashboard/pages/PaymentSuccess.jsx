@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 // Use environment variable (consistent with other components)
-const API_BASE = import.meta.env.VITE_BASE_API_URL || "https://www.imcpune.in";
+const API_BASE = import.meta.env.VITE_BASE_API_URL || "http://localhost:8000/api";
 
 /* NEW: Payment type mapping */
 const SERVICE_MAP = {
