@@ -166,9 +166,20 @@ export default function MyBookings() {
           const location     = booking.location     || "TBD";
           const amount       = booking.amount;
 
-          // Prefer the explicit status; fall back to payment_status
-          const displayStatus = booking.status || booking.payment_status || "pending";
-          const badge = getStatusBadge(displayStatus);
+          // Booking status badge (booked/confirmed = green, available = yellow, cancelled = red)
+          const bookingStatus = booking.status || "pending";
+          const badge = getStatusBadge(
+            bookingStatus === "booked" ? "confirmed" : bookingStatus
+          );
+
+          // Separate payment badge
+          const paymentStatus = (booking.payment_status || "pending").toLowerCase();
+          const paymentBadge =
+            paymentStatus.includes("paid") || paymentStatus.includes("success")
+              ? { text: "Paid", color: "bg-green-100 text-green-700" }
+              : paymentStatus.includes("failed") || paymentStatus.includes("cancel")
+              ? { text: "Failed", color: "bg-red-100 text-red-700" }
+              : { text: "Payment Pending", color: "bg-orange-100 text-orange-700" };
 
           return (
             <motion.div
@@ -230,7 +241,12 @@ export default function MyBookings() {
                     ? new Date(booking.created_at).toLocaleDateString()
                     : "—"}
                 </span>
-                <span className="text-amber-600 font-semibold">#{booking.id}</span>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${paymentBadge.color}`}>
+                    {paymentBadge.text}
+                  </span>
+                  <span className="text-amber-600 font-semibold">#{booking.id}</span>
+                </div>
               </div>
             </motion.div>
           );
