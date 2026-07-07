@@ -16,7 +16,8 @@ const DAYS = [
 
 const TIMES = [
   "10:00 am - 12:00 pm",   // Saturday morning
-  "9:00 am - 01:00 pm",   // Saturday morning
+  "9:00 am - 11:00 am",   // Saturday morning
+  "8:00 am - 10:00 am",   // Saturday morning
   "10:00 am - 01:00 pm",   // Saturday morning
   "5:00 pm - 7:00 pm",     // Saturday evening
   "6:00 pm - 8:00 pm",     // Wednesday & Friday evening

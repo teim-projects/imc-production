@@ -1,8 +1,9 @@
-# api/views.py
+﻿# api/views.py
 from datetime import timedelta
 import os
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError  # <-- ADDED for custom create
 from django.db.models import Sum
 from django.utils.timezone import now
 
@@ -19,8 +20,6 @@ from dj_rest_auth.registration.views import SocialLoginView
 from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests  # type: ignore
 
-
-
 import os
 
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -30,11 +29,10 @@ from .models import (
     StudioMaster, Studio,
     # CRM modules
     PrivateBooking, Event, Payment, Videography,
-   
     # Photography (old schema)
     PhotographyBooking,
     # Sound service
-    Sound,   StudioSlot,   # <-- Add this
+    Sound,   StudioSlot,
 )
 
 from .serializers import (
@@ -44,9 +42,8 @@ from .serializers import (
     PrivateBookingSerializer, EventSerializer, PaymentSerializer, StudioSlotSerializer, VideographySerializer,
     # Auth helpers
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-
     # Photography (old schema)
-    PhotographyBookingSerializer,StudioSlotSerializer,   # <-- Add this
+    PhotographyBookingSerializer, StudioSlotSerializer,
     # Sound service
     SoundSerializer,
 )
@@ -262,7 +259,7 @@ class WhoAmI(APIView):
 
 
 # ====================================================================
-# Studios (bookings)
+# Studios (bookings)  <-- UPDATED with custom create()
 # ====================================================================
 class StudioViewSet(viewsets.ModelViewSet):
     """
@@ -281,10 +278,58 @@ class StudioViewSet(viewsets.ModelViewSet):
         "email",
         "contact_number",
         "address",
-
     ]
     ordering_fields = ["date", "time_slot", "duration", "created_at"]
     ordering = ["-date", "-time_slot"]
+
+    # ============================================================
+    # CUSTOM CREATE – handles pending bookings & unique constraint
+    # ============================================================
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            # Attempt to create with pending status
+            booking = serializer.save(
+                status="pending",
+                payment_status="pending",
+            )
+            return Response(
+                self.get_serializer(booking).data,
+                status=status.HTTP_201_CREATED,
+            )
+
+        except IntegrityError:
+            # Duplicate key – check if it's a pending booking we can replace
+            studio_name = request.data.get("studio_name")
+            date = request.data.get("date")
+            time_slot = request.data.get("time_slot")
+
+            old_booking = Studio.objects.filter(
+                studio_name=studio_name,
+                date=date,
+                time_slot=time_slot,
+                payment_status="pending",
+            ).first()
+
+            if old_booking:
+                # Delete the old pending booking and create a new one
+                old_booking.delete()
+                booking = serializer.save(
+                    status="pending",
+                    payment_status="pending",
+                )
+                return Response(
+                    self.get_serializer(booking).data,
+                    status=status.HTTP_201_CREATED,
+                )
+
+            # If the existing booking is not pending (i.e., paid/confirmed), return error
+            return Response(
+                {"error": "Slot already booked."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     @action(detail=False, methods=["get"])
     def upcoming(self, request):
@@ -324,7 +369,6 @@ class StudioViewSet(viewsets.ModelViewSet):
         qs = self.get_queryset().filter(date=target).order_by("time_slot")
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
-
 
 
 # ====================================================================
@@ -375,6 +419,7 @@ class PrivateBookingViewSet(viewsets.ModelViewSet):
             "total_bookings": total,
             "total_guests": total_guests
         })
+
 
 # ====================================================================
 # Events
@@ -523,7 +568,6 @@ class VideographyViewSet(viewsets.ModelViewSet):
 
     # Anyone can GET; auth required for POST/PUT/PATCH/DELETE
     permission_classes = [permissions.AllowAny]
-    
 
     # JSON + form data
     parser_classes = [parsers.JSONParser, parsers.FormParser]
@@ -538,7 +582,6 @@ class VideographyViewSet(viewsets.ModelViewSet):
         "mobile_no",
         "location",
         "package_type",
-        
         "notes",
     ]
     ordering_fields = [
@@ -566,6 +609,7 @@ class VideographyViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
+
 
 # ====================================================================
 # Sound System (Service)
@@ -598,9 +642,8 @@ class SoundViewSet(viewsets.ModelViewSet):
         if page is not None:
             return self.get_paginated_response(self.get_serializer(page, many=True).data)
         return Response(self.get_serializer(qs, many=True).data)
-    
 
-    
+
 from rest_framework import viewsets, permissions, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
@@ -731,7 +774,6 @@ class SingerViewSet(viewsets.ModelViewSet):
         )
 
 
-
 # api/views.py (replace or add)
 import logging
 from importlib import import_module
@@ -761,7 +803,6 @@ def first_existing_attr(obj, candidates, default=None):
         if hasattr(obj, c):
             return c
     return default
-
 
 
 class DashboardSummary(APIView):
@@ -1147,7 +1188,6 @@ class DashboardSummary(APIView):
             )
 
 
-
 # api/views.py
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status, filters
@@ -1267,9 +1307,6 @@ class SingingClassAdmissionViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(qs, many=True).data)
 
 
-
-
-
 # api/views.py
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
@@ -1281,11 +1318,6 @@ class TrainerViewSet(ModelViewSet):
     queryset = Trainer.objects.all()
     serializer_class = TrainerSerializer
     permission_classes = [IsAuthenticated]
-
-
-
-
-
 
 
 from rest_framework.viewsets import ModelViewSet
@@ -1309,8 +1341,6 @@ class BatchViewSet(ModelViewSet):
     serializer_class = BatchSerializer  # ← ABSOLUTELY REQUIRED
 
 
-
-
 from rest_framework import viewsets, permissions
 from .models import AnnualFee
 from .serializers import AnnualFeeSerializer
@@ -1328,7 +1358,6 @@ class AnnualFeeViewSet(viewsets.ModelViewSet):
         return qs
 
 
-
 from .models import EventBooking
 from .serializers import EventBookingSerializer
 from rest_framework import permissions, viewsets
@@ -1340,11 +1369,8 @@ class EventBookingViewSet(viewsets.ModelViewSet):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     
-    
-    
 
 # views.py
-
 class StudioSlotViewSet(viewsets.ModelViewSet):
     queryset = StudioSlot.objects.all()
     serializer_class = StudioSlotSerializer

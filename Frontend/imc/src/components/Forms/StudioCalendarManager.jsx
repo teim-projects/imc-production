@@ -51,9 +51,7 @@ const format12 = (time24) => {
 
   const hr = h % 12 || 12;
 
-  return `${hr}:${
-    minute
-  } ${ampm}`;
+  return `${hr}:${minute} ${ampm}`;
 };
 
 const StudioCalendarManager = () => {
@@ -89,9 +87,7 @@ const StudioCalendarManager = () => {
     try {
       const res = await api.get(STUDIO_URL);
 
-      setStudios(
-        res.data.results || res.data
-      );
+      setStudios(res.data.results || res.data);
     } catch (err) {
       console.log(err);
     }
@@ -99,13 +95,9 @@ const StudioCalendarManager = () => {
 
   const loadBookings = async () => {
     try {
-      const res = await api.get(
-        BOOKING_URL
-      );
+      const res = await api.get(BOOKING_URL);
 
-      setBookings(
-        res.data.results || res.data
-      );
+      setBookings(res.data.results || res.data);
     } catch (err) {
       console.log(err);
     }
@@ -116,39 +108,52 @@ const StudioCalendarManager = () => {
       (b) =>
         b.studio_name === studio &&
         b.date === date &&
-        b.time_slot?.substring(0, 5) ===
-          slot
+        b.time_slot?.substring(0, 5) === slot
     );
   };
 
+  // ========== UPDATED blockSlot ==========
   const blockSlot = async (slot) => {
-    try {
-      await api.post(BOOKING_URL, {
-        customer: "ADMIN BLOCK",
-        studio_name: studio,
-        date: date,
-        time_slot: slot,
-        duration: 1,
-        payment_methods: [],
-        payment_status: "pending",
-        status: "blocked",
-        price_per_hour: 0,
-      });
+    const booking = getBooking(slot);
 
-      loadBookings();
+    try {
+      if (booking) {
+        // If a record exists, just update its status to "blocked"
+        await api.patch(`${BOOKING_URL}${booking.id}/`, {
+          status: "blocked",
+        });
+      } else {
+        // Otherwise create a new blocked record
+        await api.post(BOOKING_URL, {
+          customer: "ADMIN BLOCK",
+          contact_number: "",
+          email: "",
+          address: "",
+          studio_name: studio,
+          date: date,
+          time_slot: `${slot}:00`,
+          duration: 1,
+          payment_methods: [],
+          payment_status: "pending",
+          price_per_hour: 0,
+          total_amount: 0,
+          status: "blocked",
+        });
+      }
+
+      await loadBookings();
     } catch (err) {
-      console.log(err);
+      console.log("Status:", err.response?.status);
+      console.log("Response:", err.response?.data);
     }
   };
+  // ======================================
 
   const openSlot = async (bookingId) => {
     try {
-      await api.patch(
-        `${BOOKING_URL}${bookingId}/`,
-        {
-          status: "available",
-        }
-      );
+      await api.patch(`${BOOKING_URL}${bookingId}/`, {
+        status: "available",
+      });
 
       loadBookings();
     } catch (err) {
@@ -168,28 +173,16 @@ const StudioCalendarManager = () => {
 
   return (
     <div className="container-fluid p-4">
-
       <div className="card shadow-lg border-0">
-
         <div className="card-header bg-white py-4">
-
           <div className="d-flex justify-content-between align-items-center">
-
             <div>
-              <h2>
-                Studio Calendar Management
-              </h2>
-
-              <small className="text-muted">
-                Manage Studio Slots
-              </small>
+              <h2>Studio Calendar Management</h2>
+              <small className="text-muted">Manage Studio Slots</small>
             </div>
-
             <button
               className="btn btn-outline-secondary"
-              onClick={() =>
-                navigate(-1)
-              }
+              onClick={() => navigate(-1)}
             >
               Close Window
             </button>
@@ -197,97 +190,52 @@ const StudioCalendarManager = () => {
         </div>
 
         <div className="card-body">
-
           <div className="row mb-5">
-
             <div className="col-md-8">
               <select
                 className="form-select form-select-lg"
                 value={studio}
-                onChange={(e) =>
-                  setStudio(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setStudio(e.target.value)}
               >
-                <option value="">
-                  Select Studio
-                </option>
-
-                {studios.map(
-                  (item) => (
-                    <option
-                      key={
-                        item.id
-                      }
-                      value={
-                        item.name
-                      }
-                    >
-                      {
-                        item.name
-                      }
-                    </option>
-                  )
-                )}
+                <option value="">Select Studio</option>
+                {studios.map((item) => (
+                  <option key={item.id} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
               </select>
             </div>
-
             <div className="col-md-4">
               <input
                 type="date"
                 className="form-control form-control-lg"
                 value={date}
-                onChange={(e) =>
-                  setDate(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setDate(e.target.value)}
               />
             </div>
           </div>
 
           <div className="row">
             {slots.map((slot) => {
-              const booking =
-                getBooking(
-                  slot
-                );
-
-              const status =
-                booking
-                  ? booking.status
-                  : "available";
+              const booking = getBooking(slot);
+              const status = booking ? booking.status : "available";
 
               return (
                 <div
                   className="col-lg-2 col-md-3 col-sm-4 col-6 mb-4"
-                  key={
-                    slot
-                  }
+                  key={slot}
                 >
                   <div
                     className="card shadow-sm text-center h-100"
-                    style={{
-                      borderRadius:
-                        "15px",
-                    }}
+                    style={{ borderRadius: "15px" }}
                   >
                     <div className="card-body">
-
-                      <h3>
-                        {format12(
-                          slot
-                        )}
-                      </h3>
-
+                      <h3>{format12(slot)}</h3>
                       <h5
                         className={
-                          status ===
-                          "available"
+                          status === "available"
                             ? "text-success"
-                            : status ===
-                              "blocked"
+                            : status === "blocked"
                             ? "text-danger"
                             : "text-primary"
                         }
@@ -295,52 +243,34 @@ const StudioCalendarManager = () => {
                         {status.toUpperCase()}
                       </h5>
 
-                      {status ===
-                        "available" && (
+                      {status === "available" && (
                         <>
                           <button
                             className="btn btn-success btn-sm w-100 mb-2"
-                            onClick={() =>
-                              bookNow(
-                                slot
-                              )
-                            }
+                            onClick={() => bookNow(slot)}
                           >
                             Book
                           </button>
-
                           <button
                             className="btn btn-danger btn-sm w-100"
-                            onClick={() =>
-                              blockSlot(
-                                slot
-                              )
-                            }
+                            onClick={() => blockSlot(slot)}
                           >
                             Block
                           </button>
                         </>
                       )}
 
-                      {status ===
-                        "blocked" && (
+                      {status === "blocked" && (
                         <button
                           className="btn btn-warning btn-sm w-100"
-                          onClick={() =>
-                            openSlot(
-                              booking.id
-                            )
-                          }
+                          onClick={() => openSlot(booking.id)}
                         >
                           Open Slot
                         </button>
                       )}
 
-                      {status ===
-                        "booked" && (
-                        <button
-                          className="btn btn-primary btn-sm w-100"
-                        >
+                      {status === "booked" && (
+                        <button className="btn btn-primary btn-sm w-100">
                           Booked
                         </button>
                       )}
@@ -350,7 +280,6 @@ const StudioCalendarManager = () => {
               );
             })}
           </div>
-
         </div>
       </div>
     </div>
