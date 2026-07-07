@@ -325,6 +325,10 @@ class StudioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
+
 
 
 # ====================================================================
@@ -353,6 +357,10 @@ class PrivateBookingViewSet(viewsets.ModelViewSet):
     search_fields = ["customer", "event_type", "venue", "email"]
     ordering_fields = ["date", "time_slot", "duration"]
     ordering = ["-date"]
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
 
     @action(detail=False, methods=["get"])
     def by_date(self, request):
@@ -1219,8 +1227,10 @@ class SingingClassAdmissionViewSet(viewsets.ModelViewSet):
         """
         Create admission.
         preferred_batch auto-filled in model save()
+        Link authenticated user if available.
         """
-        serializer.save()
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
 
     # ---------------------------------------------------
     # UPDATE STATUS (admin usage)
@@ -1339,6 +1349,10 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
     
     
     
@@ -1348,3 +1362,185 @@ class EventBookingViewSet(viewsets.ModelViewSet):
 class StudioSlotViewSet(viewsets.ModelViewSet):
     queryset = StudioSlot.objects.all()
     serializer_class = StudioSlotSerializer
+
+
+# ====================================================================
+# My Bookings — authenticated user's bookings across all services
+# ====================================================================
+class MyBookingsView(APIView):
+    """
+    GET /api/my-bookings/
+
+    Returns all bookings belonging to the currently authenticated user,
+    aggregated across every service. Requires a valid JWT token.
+    No other user's data is ever included.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        bookings = []
+
+        # ── Event Bookings ──────────────────────────────────────────
+        try:
+            from .models import EventBooking
+            for b in EventBooking.objects.filter(user=user).select_related("event").order_by("-created_at"):
+                bookings.append({
+                    "id": b.id,
+                    "service": "Event Booking",
+                    "service_type": "event",
+                    "title": b.event_name or (b.event.title if b.event else "Event"),
+                    "date": str(b.event.date) if b.event else None,
+                    "time_slot": str(b.event.time_slot) if b.event else None,
+                    "location": b.event.location if b.event else None,
+                    "status": b.status,
+                    "payment_status": b.payment_status,
+                    "amount": float(b.total_amount) if b.total_amount else None,
+                    "details": {
+                        "ticket_type": b.ticket_type,
+                        "number_of_tickets": b.number_of_tickets,
+                        "payment_method": b.payment_method,
+                        "seat_numbers": b.seat_numbers,
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # ── Studio Bookings ─────────────────────────────────────────
+        try:
+            from .models import Studio
+            for b in Studio.objects.filter(user=user).order_by("-created_at"):
+                bookings.append({
+                    "id": b.id,
+                    "service": "Studio Booking",
+                    "service_type": "studio",
+                    "title": b.studio_name,
+                    "date": str(b.date) if b.date else None,
+                    "time_slot": str(b.time_slot) if b.time_slot else None,
+                    "location": None,
+                    "status": b.status,
+                    "payment_status": b.payment_status,
+                    "amount": float(b.total_amount) if b.total_amount else None,
+                    "details": {
+                        "duration_hours": str(b.duration),
+                        "price_per_hour": float(b.price_per_hour) if b.price_per_hour else None,
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # ── Photography Bookings ────────────────────────────────────
+        try:
+            from .models import PhotographyBooking
+            for b in PhotographyBooking.objects.filter(user=user).order_by("-created_at"):
+                bookings.append({
+                    "id": b.id,
+                    "service": "Photography",
+                    "service_type": "photography",
+                    "title": f"{b.event_type} Photography",
+                    "date": str(b.date) if b.date else None,
+                    "time_slot": str(b.start_time) if b.start_time else None,
+                    "location": b.location,
+                    "status": "pending",
+                    "payment_status": "pending",
+                    "amount": float(b.package_price) if b.package_price else None,
+                    "details": {
+                        "package_type": b.package_type,
+                        "photographers_count": b.photographers_count,
+                        "duration_hours": b.duration_hours,
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # ── Videography Bookings ────────────────────────────────────
+        try:
+            from .models import Videography
+            for b in Videography.objects.filter(user=user).order_by("-created_at"):
+                bookings.append({
+                    "id": b.id,
+                    "service": "Videography",
+                    "service_type": "videography",
+                    "title": b.project,
+                    "date": str(b.shoot_date) if b.shoot_date else None,
+                    "time_slot": str(b.start_time) if b.start_time else None,
+                    "location": b.location or None,
+                    "status": "pending",
+                    "payment_status": "pending",
+                    "amount": float(b.package_price) if b.package_price else None,
+                    "details": {
+                        "package_type": b.package_type,
+                        "event_type": b.event_type,
+                        "duration_hours": str(b.duration_hours),
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # ── Private Bookings ────────────────────────────────────────
+        try:
+            from .models import PrivateBooking
+            for b in PrivateBooking.objects.filter(user=user).order_by("-created_at"):
+                bookings.append({
+                    "id": b.id,
+                    "service": "Private Event",
+                    "service_type": "private",
+                    "title": b.event_type,
+                    "date": str(b.date) if b.date else None,
+                    "time_slot": str(b.time_slot) if b.time_slot else None,
+                    "location": b.venue,
+                    "status": "pending",
+                    "payment_status": "pending",
+                    "amount": None,
+                    "details": {
+                        "venue": b.venue,
+                        "guest_count": b.guest_count,
+                        "duration_hours": str(b.duration),
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # ── Singing Class Admissions ────────────────────────────────
+        try:
+            from .models import SingingClass
+            for b in SingingClass.objects.filter(user=user).select_related(
+                "batch", "batch__class_obj"
+            ).order_by("-created_at"):
+                class_name = b.batch.class_obj.name if b.batch and b.batch.class_obj else "Singing Class"
+                batch_schedule = f"{b.batch.day} {b.batch.time_slot}" if b.batch else None
+                bookings.append({
+                    "id": b.id,
+                    "service": "Singing Class",
+                    "service_type": "singing_class",
+                    "title": class_name,
+                    "date": str(b.start_date) if b.start_date else None,
+                    "time_slot": batch_schedule,
+                    "location": None,
+                    "status": b.status,
+                    "payment_status": b.payment_status,
+                    "amount": float(b.fee) if b.fee else None,
+                    "details": {
+                        "batch_schedule": batch_schedule,
+                        "fee_month": str(b.fee_month_date) if b.fee_month_date else None,
+                    },
+                    "created_at": b.created_at.isoformat() if b.created_at else None,
+                })
+        except Exception:
+            pass
+
+        # Sort all bookings newest first
+        bookings.sort(
+            key=lambda x: x.get("created_at") or "",
+            reverse=True,
+        )
+
+        return Response({
+            "count": len(bookings),
+            "results": bookings,
+        })
