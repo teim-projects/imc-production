@@ -178,90 +178,6 @@ class StudioImage(models.Model):
 # ============================================================
 # ===================== STUDIO BOOKING =======================
 # ============================================================
-
-class Studio(models.Model):
-    # Customer Info
-    customer = models.CharField(max_length=100)
-    contact_number = models.CharField(max_length=15, blank=True, null=True)
-    email = models.EmailField(blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-
-    # Studio Rental (kept as a plain name to preserve old data)
-    studio_name = models.CharField(max_length=100)
-    date = models.DateField()
-    time_slot = models.TimeField(blank=True, null=True)  # "HH:MM" accepted
-    duration = models.DecimalField(
-        max_digits=4,
-        decimal_places=1,
-        validators=[MinValueValidator(Decimal("0.5"))],
-        help_text="Duration in hours",
-    )
-
-    # Payment Options (CSV; API can expose list)
-    payment_methods = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text="Comma-separated: Card, UPI, NetBanking",
-    )
-    
-    payment_status = models.CharField(
-    max_length=20,
-    default="pending"
-    )
-    
- 
-    STATUS_CHOICES = (
-        ("available", "Available"),
-        ("booked", "Booked"),
-        ("blocked", "Blocked"),
-    )
-    
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="booked"
-    )
-
-    # Meta
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = "Studio Booking"
-        verbose_name_plural = "Studio Bookings"
-        ordering = ["-date", "-time_slot"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["studio_name", "date", "time_slot"],
-                name="uniq_studio_date_timeslot",
-            ),
-        ]
-        indexes = [
-            models.Index(fields=["date", "time_slot"]),
-            models.Index(fields=["studio_name"]),
-        ]
-
-    def __str__(self):
-        return f"{self.studio_name} | {self.customer} | {self.date}"
-
-    @property
-    def payment_list(self):
-        if not self.payment_methods:
-            return []
-        s = (self.payment_methods or "").strip()
-        if not s:
-            return []
-        if "," not in s:
-            return [s]
-        return [x.strip() for x in s.split(",") if x.strip()]
-
-
-
-
-# ============================================================
-# ===================== STUDIO BOOKING =======================
-# ============================================================
 from django.db import models
 from decimal import Decimal
 from django.core.validators import MinValueValidator
@@ -324,6 +240,15 @@ class Studio(models.Model):
         blank=True,
         null=True,
         help_text="Comma-separated: Card, UPI, NetBanking",
+    )
+
+    # Link to authenticated user (nullable for backwards-compat with old bookings)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="studio_bookings",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -398,6 +323,15 @@ class PrivateBooking(models.Model):
 
     # Store checkbox array as JSON (works perfectly with React list)
     payment_methods = models.JSONField(default=list, blank=True)
+
+    # Link to authenticated user (nullable for backwards-compat with old bookings)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="private_bookings",
+    )
 
     # Meta
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1051,6 +985,15 @@ class SingingClass(models.Model):
     payment_status = models.CharField(
         max_length=20,
         default="pending"
+    )
+
+    # Link to authenticated user (nullable for backwards-compat)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="singing_class_admissions",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
