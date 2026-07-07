@@ -3,14 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// You can keep this import if you want to separate CSS file
-// import "../../components/Forms/Forms.css";
-
-// ─────────────────────────────────────────────────────────────
-// If you prefer inline / single-file style for development/testing,
-// paste the entire CSS below into a <style> tag or dedicated file
-// ─────────────────────────────────────────────────────────────
-
 const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
@@ -250,64 +242,81 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     return null;
   };
 
+  // ========== REPLACED createBooking ==========
   const createBooking = async () => {
-    const priceToSend = pricePerHour != null ? Number(pricePerHour) : 0;
+    const totalAmount =
+      Number(pricePerHour || 0) *
+      Number(formData.duration || 1);
 
     const payload = {
       customer: formData.full_name,
       contact_number: formData.mobile,
-      email: formData.email,
+      email: formData.email || "",
       address: "",
-      studio_id: formData.studio_id,
-      studio_name: formData.studio_name,
+
+      studio_name: selectedStudio?.name || "",
+
       date: formData.date,
-      time_slot: formData.time_slot,
+
+      time_slot:
+        formData.time_slot?.length === 5
+          ? `${formData.time_slot}:00`
+          : formData.time_slot,
+
       duration: Number(formData.duration),
-      payment_methods: [],
-      price_per_hour: priceToSend,
-      price: priceToSend,
-      notes: formData.notes || "",
+
+      price_per_hour: Number(pricePerHour || 0),
+
+      total_amount: totalAmount,
+
+      payment_methods: ["UPI"],
     };
+
+    console.log("STUDIO BOOKING PAYLOAD:", payload);
 
     const res = await api.post(BOOKINGS_URL, payload);
-    if (res.status === 201 || res.status === 200) {
-      return res.data.id || res.data.pk || res.data._id || res.data.booking_id;
+
+    console.log("BOOKING RESPONSE:", res.data);
+
+    const bookingId =
+      res.data?.id ||
+      res.data?.pk ||
+      res.data?.booking_id;
+
+    if (!bookingId) {
+      throw new Error("Booking created but ID not returned");
     }
-    throw new Error("Booking creation failed");
+
+    return bookingId;
   };
 
+  // ========== REPLACED initiatePayment ==========
   const initiatePayment = async (bookingId) => {
-    const totalAmount = (pricePerHour || 0) * Number(formData.duration || 1);
-    if (totalAmount <= 0) throw new Error("Invalid amount");
-
-    const payload = {
-      amount: totalAmount ,           // many gateways expect paise / smallest unit
-      service: "studio_booking",   // ⭐ VERY IMPORTANT
-      customer_id: `STUDIO_${formData.mobile.replace(/\D/g, '') || 'guest'}`,
-      email: formData.email.trim() || "booking@studio.com",
-      phone: formData.mobile.trim(),
-      description: `Studio Booking - ${selectedStudio?.name || "Selected Studio"} on ${formData.date} ${formData.time_slot}`,
-      return_url: `${window.location.origin}/payment-callback?type=studio-booking&mobile=${formData.mobile.trim()}&booking_id=${bookingId}`,
+    const paymentPayload = {
+      service: "studio_booking",
+      registration_id: bookingId,
     };
 
-    const paymentRes = await api.post(PAYMENT_CREATE_API, payload);
-    const pData = paymentRes.data;
+    console.log("PAYMENT PAYLOAD:", paymentPayload);
 
-    const paymentUrl = pData?.payment_url || pData?.payment_links?.web || pData?.redirect_url;
+    const paymentRes = await api.post(
+      PAYMENT_CREATE_API,
+      paymentPayload
+    );
 
-    if (paymentUrl) {
-      window.location.href = paymentUrl;
-      return;
+    console.log("PAYMENT RESPONSE:", paymentRes.data);
+
+    const paymentUrl =
+      paymentRes.data?.payment_links?.web ||
+      paymentRes.data?.payment_url ||
+      paymentRes.data?.redirect_url ||
+      paymentRes.data?.link;
+
+    if (!paymentUrl) {
+      throw new Error("Payment URL not received");
     }
 
-    // Fallback - if no redirect (some gateways show popup or success immediately)
-    if (pData?.success === true || String(pData?.status || "").toUpperCase().includes("SUCCESS")) {
-      setSuccessMsg("Payment initiated successfully! Redirecting shortly...");
-      setTimeout(() => navigate("/booking-success"), 2500);
-      return;
-    }
-
-    throw new Error("Payment initiation failed - no redirect URL received");
+    window.location.href = paymentUrl;
   };
 
   const handleSubmit = async (e) => {
@@ -326,14 +335,16 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
     try {
       const bookingId = await createBooking();
       await initiatePayment(bookingId);
-      // If we reach here without redirect, show success (but usually redirect happens)
       setSuccessMsg("Booking & payment processed!");
     } catch (err) {
-      console.error("Booking/Payment error:", err);
+      // ========== REPLACED catch block ==========
+      console.error("FULL ERROR:", err);
+      console.error("RESPONSE:", err.response?.data);
+
       setError(
-        err.response?.data?.detail ||
-        err.message ||
-        "Something went wrong. Please try again."
+        err.response?.data
+          ? JSON.stringify(err.response.data)
+          : err.message
       );
     } finally {
       setSaving(false);
@@ -492,8 +503,9 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
               Duration (hours) *
               <input
                 type="number"
-                step="0.5"
-                min="0.5"
+                
+                min="1"
+                max="24"
                 name="duration"
                 value={formData.duration}
                 onChange={(e) => {
@@ -546,7 +558,31 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
 
           <p className="slot-hint">
             • Full range is reserved based on selected duration<br />
-            • Gray = booked • Red = selected
+            • <span
+                style={{
+                  display: "inline-block",
+                  width: "12px",
+                  height: "12px",
+                  background: "gray",
+                  borderRadius: "50%",
+                  marginRight: "5px"
+                }}
+              ></span>
+              Available
+            <br />
+            • <span
+                style={{
+                  display: "inline-block",
+                  width: "12px",
+                  height: "12px",
+                  background: "red",
+                  borderRadius: "50%",
+                  marginRight: "5px"
+                }}
+              ></span>
+              Booked / Selected for Booking
+            <br />
+            • No cancellation allowed after booking confirmation.
           </p>
         </section>
 
@@ -570,9 +606,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
         </div>
       </form>
 
-      {/* ──────────────────────────────────────────────── */}
-      {/*               CSS (recommended in Forms.css)      */}
-      {/* ──────────────────────────────────────────────── */}
       <style>{`
         .pf-wrap {
           padding: 1rem;
@@ -614,7 +647,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           gap: 1.25rem;
         }
 
-        /* Studio cards */
         .studio-grid {
           display: grid;
           grid-template-columns: 1fr;
@@ -706,7 +738,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           color: #b91c1c;
         }
 
-        /* Form fields */
         label {
           display: block;
         }
@@ -737,7 +768,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           box-shadow: 0 0 0 3px rgba(249,115,22,0.12);
         }
 
-        /* Time slots */
         .start-time-label {
           display: block;
           margin-top: 1.25rem;
@@ -803,7 +833,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           font-weight: 600;
         }
 
-        /* Actions */
         .form-actions {
           display: flex;
           flex-wrap: wrap;
@@ -845,7 +874,6 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
           cursor: not-allowed;
         }
 
-        /* Messages */
         .pf-banner {
           padding: 1rem;
           border-radius: 8px;
