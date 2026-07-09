@@ -306,23 +306,24 @@ class StudioViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
-
     @action(detail=False, methods=["get"])
     def by_date(self, request):
-        """
-        GET /auth/studios/by_date/?date=YYYY-MM-DD
-
-        Returns all bookings for a given date.
-        """
         target = request.query_params.get("date")
-        if not target:
-            return Response(
-                {"error": "Missing 'date' parameter."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        qs = self.get_queryset().filter(date=target).order_by("time_slot")
-        serializer = self.get_serializer(qs, many=True)
+        studio = request.query_params.get("studio")
+    
+        qs = self.get_queryset()
+    
+        if target:
+            qs = qs.filter(date=target)
+    
+        if studio:
+            qs = qs.filter(studio_name=studio)
+    
+        serializer = self.get_serializer(
+            qs.order_by("time_slot"),
+            many=True,
+        )
+    
         return Response(serializer.data)
 
     def perform_create(self, serializer):

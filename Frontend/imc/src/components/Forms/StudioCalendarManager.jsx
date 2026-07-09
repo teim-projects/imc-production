@@ -93,15 +93,23 @@ const StudioCalendarManager = () => {
     }
   };
 
+  // ========== UPDATED loadBookings ==========
   const loadBookings = async () => {
-    try {
-      const res = await api.get(BOOKING_URL);
+    if (!studio || !date) return;
 
-      setBookings(res.data.results || res.data);
+    try {
+      const res = await api.get(
+        `${BOOKING_URL}by_date/?date=${date}&studio=${encodeURIComponent(studio)}`
+      );
+
+      const data = res.data.results || res.data;
+
+      setBookings(Array.isArray(data) ? data : []);
     } catch (err) {
       console.log(err);
     }
   };
+  // =========================================
 
   const getBooking = (slot) => {
     return bookings.find(
