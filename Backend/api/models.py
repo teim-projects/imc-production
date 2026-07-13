@@ -223,15 +223,17 @@ class Studio(models.Model):
 
 
     STATUS_CHOICES = (
-        ("available", "Available"),
-        ("booked", "Booked"),
-        ("blocked", "Blocked"),
+        ("pending_payment", "Pending Payment"),  # user booked, payment not yet done
+        ("booked", "Booked"),                    # payment confirmed
+        ("blocked", "Blocked"),                  # admin manually blocked
+        ("available", "Available"),              # explicitly freed by admin
+        ("cancelled", "Cancelled"),              # payment failed / user cancelled
     )
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="booked"
+        default="pending_payment"
     )
 
 

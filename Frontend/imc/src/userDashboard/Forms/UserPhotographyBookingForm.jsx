@@ -59,6 +59,7 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(initialForm);
@@ -107,28 +108,31 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
       ...s,
       [name]: type === "checkbox" ? !!checked : value,
     }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   // Single payment method selection
   const toggleMethod = (m) => {
-    setForm((s) => ({
-      ...s,
-      payment_method: s.payment_method === m ? "" : m,
-    }));
+    setForm((s) => ({ ...s, payment_method: s.payment_method === m ? "" : m }));
+    if (fieldErrors.payment_method) setFieldErrors((prev) => ({ ...prev, payment_method: "" }));
   };
 
   const validate = () => {
-    if (!form.client?.trim()) return "Client name is required.";
-    if (!form.contact_number?.trim()) return "Mobile number is required.";
-    if (!form.date) return "Event date is required.";
-    if (!form.start_time) return "Start time is required.";
-    if (!form.location?.trim()) return "Location is required.";
-    if (!form.payment_method) return "Select a payment method.";
-
-    if (form.event_type === "Other" && !form.event_type_other.trim()) {
-      return 'Please specify "Other" event type.';
+    const errs = {};
+    if (!form.client?.trim()) errs.client = "Client name is required.";
+    if (!form.contact_number?.trim()) {
+      errs.contact_number = "Mobile number is required.";
+    } else if (!/^[0-9]{10}$/.test(form.contact_number.trim())) {
+      errs.contact_number = "Mobile number must be 10 digits.";
     }
-    return null;
+    if (!form.date) errs.date = "Event date is required.";
+    if (!form.start_time) errs.start_time = "Start time is required.";
+    if (!form.location?.trim()) errs.location = "Location is required.";
+    if (!form.payment_method) errs.payment_method = "Select a payment method.";
+    if (form.event_type === "Other" && !form.event_type_other.trim()) {
+      errs.event_type_other = 'Please specify the "Other" event type.';
+    }
+    return errs;
   };
 
   // Build payload matching PhotographyBooking model
@@ -172,13 +176,21 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
   const resetForm = () => {
     setForm(initialForm);
     setEditingId(null);
+    setFieldErrors({});
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    const v = validate();
-    if (v) return setError(v);
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      const firstField = Object.keys(errs)[0];
+      const el = document.querySelector(`[name="${firstField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setFieldErrors({});
 
     setSaving(true);
     try {
@@ -321,7 +333,9 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                   onChange={onChange}
                   placeholder="Full name"
                   required
+                  style={fieldErrors.client ? { borderColor: "#ef4444" } : {}}
                 />
+                {fieldErrors.client && <span className="pf-field-error">{fieldErrors.client}</span>}
               </label>
               <label>
                 Mobile*
@@ -331,7 +345,9 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                   onChange={onChange}
                   placeholder="98765 43210"
                   required
+                  style={fieldErrors.contact_number ? { borderColor: "#ef4444" } : {}}
                 />
+                {fieldErrors.contact_number && <span className="pf-field-error">{fieldErrors.contact_number}</span>}
               </label>
               <label>
                 Email
@@ -367,33 +383,22 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                     value={form.event_type_other}
                     onChange={onChange}
                     placeholder="Describe event"
+                    style={fieldErrors.event_type_other ? { borderColor: "#ef4444" } : {}}
                   />
+                  {fieldErrors.event_type_other && <span className="pf-field-error">{fieldErrors.event_type_other}</span>}
                 </label>
               )}
 
               <label>
                 Package
-                <select
-                  name="package_type"
-                  value={form.package_type}
-                  onChange={onChange}
-                >
-                  {packages.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
+                <select name="package_type" value={form.package_type} onChange={onChange}>
+                  {packages.map((p) => (<option key={p} value={p}>{p}</option>))}
                 </select>
               </label>
 
               <label>
                 Budget Range (₹)
-                <input
-                  name="budget_range"
-                  value={form.budget_range}
-                  onChange={onChange}
-                  placeholder="e.g. ₹20,000 – ₹40,000"
-                />
+                <input name="budget_range" value={form.budget_range} onChange={onChange} placeholder="e.g. ₹20,000 – ₹40,000" />
               </label>
             </div>
           </section>
@@ -409,7 +414,9 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                   value={form.date}
                   onChange={onChange}
                   required
+                  style={fieldErrors.date ? { borderColor: "#ef4444" } : {}}
                 />
+                {fieldErrors.date && <span className="pf-field-error">{fieldErrors.date}</span>}
               </label>
               <label>
                 Start Time*
@@ -419,18 +426,13 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                   value={form.start_time}
                   onChange={onChange}
                   required
+                  style={fieldErrors.start_time ? { borderColor: "#ef4444" } : {}}
                 />
+                {fieldErrors.start_time && <span className="pf-field-error">{fieldErrors.start_time}</span>}
               </label>
               <label>
                 Duration (hours)
-                <input
-                  type="number"
-                  min="1"
-                  step="0.5"
-                  name="duration_hours"
-                  value={form.duration_hours}
-                  onChange={onChange}
-                />
+                <input type="number" min="1" step="0.5" name="duration_hours" value={form.duration_hours} onChange={onChange} />
               </label>
               <label>
                 Location (Venue)*
@@ -440,26 +442,17 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
                   onChange={onChange}
                   placeholder="Venue / Address"
                   required
+                  style={fieldErrors.location ? { borderColor: "#ef4444" } : {}}
                 />
+                {fieldErrors.location && <span className="pf-field-error">{fieldErrors.location}</span>}
               </label>
               <label>
                 City
-                <input
-                  name="city"
-                  value={form.city}
-                  onChange={onChange}
-                  placeholder="e.g. Jaipur"
-                />
+                <input name="city" value={form.city} onChange={onChange} placeholder="e.g. Jaipur" />
               </label>
               <label>
                 Number of photographers
-                <input
-                  type="number"
-                  min="1"
-                  name="num_photographers"
-                  value={form.num_photographers}
-                  onChange={onChange}
-                />
+                <input type="number" min="1" name="num_photographers" value={form.num_photographers} onChange={onChange} />
               </label>
             </div>
           </section>
@@ -468,67 +461,31 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
             <h3>Requirements & Add-ons</h3>
             <div className="pf-grid">
               <label className="pf-checkbox">
-                <input
-                  type="checkbox"
-                  name="need_videography"
-                  checked={form.need_videography}
-                  onChange={onChange}
-                />
+                <input type="checkbox" name="need_videography" checked={form.need_videography} onChange={onChange} />
                 <span>Also need videography</span>
               </label>
               <label className="pf-checkbox">
-                <input
-                  type="checkbox"
-                  name="need_album"
-                  checked={form.need_album}
-                  onChange={onChange}
-                />
+                <input type="checkbox" name="need_album" checked={form.need_album} onChange={onChange} />
                 <span>Printed album</span>
               </label>
               <label className="pf-checkbox">
-                <input
-                  type="checkbox"
-                  name="need_drone"
-                  checked={form.need_drone}
-                  onChange={onChange}
-                />
+                <input type="checkbox" name="need_drone" checked={form.need_drone} onChange={onChange} />
                 <span>Drone coverage</span>
               </label>
             </div>
-
             <div className="pf-grid">
               <label>
                 Add-on Name (optional)
-                <input
-                  name="addon_name"
-                  value={form.addon_name}
-                  onChange={onChange}
-                  placeholder="e.g. Extra album, reels, drone..."
-                />
+                <input name="addon_name" value={form.addon_name} onChange={onChange} placeholder="e.g. Extra album, reels, drone..." />
               </label>
               <label>
                 Add-on Price (₹)
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  name="addon_price"
-                  value={form.addon_price}
-                  onChange={onChange}
-                  placeholder="e.g. 3000"
-                />
+                <input type="number" min="0" step="0.01" name="addon_price" value={form.addon_price} onChange={onChange} placeholder="e.g. 3000" />
               </label>
             </div>
-
             <label>
               Extra details / notes
-              <textarea
-                name="notes"
-                rows={3}
-                value={form.notes}
-                onChange={onChange}
-                placeholder="Important moments to cover, specific shots, references, etc."
-              />
+              <textarea name="notes" rows={3} value={form.notes} onChange={onChange} placeholder="Important moments to cover, specific shots, references, etc." />
             </label>
           </section>
 
@@ -538,18 +495,12 @@ const UserPhotographyBookingForm = ({ onClose, viewOnly = false }) => {
             <div className="pf-methods">
               <div className="pf-tags">
                 {methodOptions.map((m) => (
-                  <button
-                    type="button"
-                    key={m}
-                    className={
-                      form.payment_method === m ? "tag active" : "tag"
-                    }
-                    onClick={() => toggleMethod(m)}
-                  >
+                  <button type="button" key={m} className={form.payment_method === m ? "tag active" : "tag"} onClick={() => toggleMethod(m)}>
                     {m}
                   </button>
                 ))}
               </div>
+              {fieldErrors.payment_method && <span className="pf-field-error">{fieldErrors.payment_method}</span>}
             </div>
           </section>
 

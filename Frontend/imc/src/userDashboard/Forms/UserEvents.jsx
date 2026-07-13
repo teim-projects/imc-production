@@ -50,6 +50,7 @@ function BookingModal({ event, onClose, onSuccess }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [orderId, setOrderId] = useState(null);
   const [bookingId, setBookingId] = useState(null);
 
@@ -65,6 +66,7 @@ function BookingModal({ event, onClose, onSuccess }) {
       [name]: name === "number_of_tickets" ? Number(value) : value,
     }));
     setError("");
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   // Poll payment status
@@ -122,18 +124,24 @@ function BookingModal({ event, onClose, onSuccess }) {
     setError("");
 
     // Validation
+    const newFieldErrors = {};
     if (!form.customer_name.trim()) {
-      setError("Please enter your full name");
-      return;
+      newFieldErrors.customer_name = "Please enter your full name";
     }
-    if (!form.contact_number.trim() || form.contact_number.length < 10) {
-      setError("Please enter a valid 10-digit phone number");
-      return;
+    if (!form.contact_number.trim() || !/^[0-9]{10}$/.test(form.contact_number.trim())) {
+      newFieldErrors.contact_number = "Please enter a valid 10-digit phone number";
     }
     if (form.number_of_tickets < 1) {
-      setError("Please select at least 1 ticket");
+      newFieldErrors.number_of_tickets = "Please select at least 1 ticket";
+    }
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      const firstErrorField = Object.keys(newFieldErrors)[0];
+      const el = document.querySelector(`[name="${firstErrorField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setFieldErrors({});
 
     setLoading(true);
 
@@ -333,10 +341,11 @@ function BookingModal({ event, onClose, onSuccess }) {
                   value={form.customer_name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base"
+                  className={`w-full px-4 py-3 border rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base ${fieldErrors.customer_name ? "border-red-500" : "border-gray-300"}`}
                   required
                   disabled={loading}
                 />
+                {fieldErrors.customer_name && <p className="text-red-500 text-sm mt-1">{fieldErrors.customer_name}</p>}
               </div>
 
               <div>
@@ -349,10 +358,11 @@ function BookingModal({ event, onClose, onSuccess }) {
                   onChange={handleChange}
                   placeholder="9876543210"
                   maxLength={10}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base"
+                  className={`w-full px-4 py-3 border rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none text-base ${fieldErrors.contact_number ? "border-red-500" : "border-gray-300"}`}
                   required
                   disabled={loading}
                 />
+                {fieldErrors.contact_number && <p className="text-red-500 text-sm mt-1">{fieldErrors.contact_number}</p>}
               </div>
 
               <div>
@@ -378,7 +388,7 @@ function BookingModal({ event, onClose, onSuccess }) {
                   name="number_of_tickets"
                   value={form.number_of_tickets}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none bg-white text-base"
+                  className={`w-full px-4 py-3 border rounded-xl focus:border-[#FF7A3C] focus:ring-2 focus:ring-orange-100 outline-none bg-white text-base ${fieldErrors.number_of_tickets ? "border-red-500" : "border-gray-300"}`}
                   disabled={loading}
                 >
                   {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
@@ -387,6 +397,7 @@ function BookingModal({ event, onClose, onSuccess }) {
                     </option>
                   ))}
                 </select>
+                {fieldErrors.number_of_tickets && <p className="text-red-500 text-sm mt-1">{fieldErrors.number_of_tickets}</p>}
               </div>
 
               <div>

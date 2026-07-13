@@ -48,6 +48,7 @@ export default function SoundBooking() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     client_name: "",           // changed key name to match backend expectation
@@ -72,26 +73,39 @@ export default function SoundBooking() {
       [name]: type === "checkbox" ? checked : value,
     }));
     setErrorMsg(""); // clear error when user types
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
-    if (!form.client_name.trim()) return "Customer name is required";
-    if (!form.contact_number.trim()) return "Contact number is required";
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email))
-      return "Valid email is required";
-    if (!form.system_type) return "Please select system type";
-    if (!form.event_date) return "Event date is required";
-    if (!form.agreed_terms) return "You must agree to terms & conditions";
-    return null;
+    const newErrors = {};
+    if (!form.client_name.trim()) newErrors.client_name = "Customer name is required";
+    if (!form.contact_number.trim()) {
+      newErrors.contact_number = "Contact number is required";
+    } else if (!/^[0-9]{10}$/.test(form.contact_number.trim())) {
+      newErrors.contact_number = "Contact number must be 10 digits";
+    }
+    if (!form.email.trim()) {
+      newErrors.email = "Valid email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!form.system_type) newErrors.system_type = "Please select system type";
+    if (!form.event_date) newErrors.event_date = "Event date is required";
+    if (!form.agreed_terms) newErrors.agreed_terms = "You must agree to terms & conditions";
+    return newErrors;
   };
 
   const submitBooking = async () => {
-    const validationError = validateForm();
-    if (validationError) {
-      setErrorMsg(validationError);
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      const firstField = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
+    setErrors({});
     setErrorMsg("");
     setLoading(true);
 
@@ -258,8 +272,9 @@ export default function SoundBooking() {
                         onChange={handleChange}
                         placeholder="e.g., Virat Sharma"
                         disabled={loading}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60 ${errors.client_name ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.client_name && <p className="text-red-500 text-sm mt-1">{errors.client_name}</p>}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-medium mb-3">
@@ -272,8 +287,9 @@ export default function SoundBooking() {
                         onChange={handleChange}
                         placeholder="+91 98765 43210"
                         disabled={loading}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60 ${errors.contact_number ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.contact_number && <p className="text-red-500 text-sm mt-1">{errors.contact_number}</p>}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-medium mb-3">
@@ -286,8 +302,9 @@ export default function SoundBooking() {
                         onChange={handleChange}
                         placeholder="yourname@example.com"
                         disabled={loading}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60 ${errors.email ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                     </div>
                   </div>
 
@@ -322,7 +339,7 @@ export default function SoundBooking() {
                         value={form.system_type}
                         onChange={handleChange}
                         disabled={loading}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition disabled:opacity-60"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 appearance-none transition disabled:opacity-60 ${errors.system_type ? "border-red-500" : "border-gray-300"}`}
                       >
                         <option value="">— Select System —</option>
                         {SYSTEM_TYPES.map((type) => (
@@ -332,6 +349,7 @@ export default function SoundBooking() {
                         ))}
                       </select>
                       <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" />
+                      {errors.system_type && <p className="text-red-500 text-sm mt-1">{errors.system_type}</p>}
                     </div>
 
                     <div>
@@ -345,8 +363,9 @@ export default function SoundBooking() {
                         onChange={handleChange}
                         min={new Date().toISOString().split("T")[0]}
                         disabled={loading}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition disabled:opacity-60 ${errors.event_date ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.event_date && <p className="text-red-500 text-sm mt-1">{errors.event_date}</p>}
                     </div>
                   </div>
 
@@ -480,11 +499,14 @@ export default function SoundBooking() {
                     disabled={loading}
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1 disabled:opacity-60"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed cursor-pointer">
-                    I agree to the <span className="font-bold text-amber-700">Terms & Conditions</span> and{" "}
-                    <span className="font-bold text-amber-700">Privacy Policy</span>{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
+                  <div>
+                    <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed cursor-pointer">
+                      I agree to the <span className="font-bold text-amber-700">Terms & Conditions</span> and{" "}
+                      <span className="font-bold text-amber-700">Privacy Policy</span>{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    {errors.agreed_terms && <p className="text-red-500 text-sm mt-1">{errors.agreed_terms}</p>}
+                  </div>
                 </div>
 
                 {/* Submit Button */}

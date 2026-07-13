@@ -38,6 +38,7 @@ export default function VideographyForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     client_name: "",
@@ -63,32 +64,45 @@ export default function VideographyForm() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
-    if (!form.client_name.trim()) return "Client name is required";
-    if (!form.mobile_no.trim()) return "Mobile number is required";
-    if (!form.email.trim()) return "Email is required";
-    if (!form.project.trim()) return "Project / Event Name is required";
-    if (!form.editor.trim()) return "Editor is required";
-    if (!form.shoot_date) return "Shoot date is required";
-    if (!form.duration_hours || Number(form.duration_hours) < 1)
-      return "Duration must be at least 1 hour";
-    if (!form.location.trim()) return "Location is required";
-    if (!form.package_type) return "Package type is required";
-    if (form.event_type === "Other" && !form.other_event_name.trim()) {
-      return "Please specify the other event name";
+    const newErrors = {};
+    if (!form.client_name.trim()) newErrors.client_name = "Client name is required";
+    if (!form.mobile_no.trim()) {
+      newErrors.mobile_no = "Mobile number is required";
+    } else if (!/^[0-9]{10}$/.test(form.mobile_no.trim())) {
+      newErrors.mobile_no = "Mobile number must be 10 digits";
     }
-    if (!form.agreed_terms) return "You must agree to terms and conditions";
-    return null;
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!form.project.trim()) newErrors.project = "Project / Event Name is required";
+    if (!form.editor.trim()) newErrors.editor = "Editor is required";
+    if (!form.shoot_date) newErrors.shoot_date = "Shoot date is required";
+    if (!form.duration_hours || Number(form.duration_hours) < 1) newErrors.duration_hours = "Duration must be at least 1 hour";
+    if (!form.location.trim()) newErrors.location = "Location is required";
+    if (!form.package_type) newErrors.package_type = "Package type is required";
+    if (form.event_type === "Other" && !form.other_event_name.trim()) {
+      newErrors.other_event_name = "Please specify the other event name";
+    }
+    if (!form.agreed_terms) newErrors.agreed_terms = "You must agree to terms and conditions";
+    return newErrors;
   };
 
   const submit = async () => {
-    const error = validateForm();
-    if (error) {
-      setErrorMsg(error);
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      const firstField = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setErrors({});
 
     const payload = {
       client_name: form.client_name.trim() || "",

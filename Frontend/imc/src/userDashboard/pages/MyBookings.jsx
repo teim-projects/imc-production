@@ -166,10 +166,13 @@ export default function MyBookings() {
           const location     = booking.location     || "TBD";
           const amount       = booking.amount;
 
-          // Booking status badge (booked/confirmed = green, available = yellow, cancelled = red)
-          const bookingStatus = booking.status || "pending";
+          // Booking status badge — map model values to human labels
+          const bookingStatus = booking.status || "pending_payment";
           const badge = getStatusBadge(
-            bookingStatus === "booked" ? "confirmed" : bookingStatus
+            bookingStatus === "booked"           ? "confirmed"  :
+            bookingStatus === "pending_payment"  ? "pending"    :
+            bookingStatus === "cancelled"        ? "cancelled"  :
+            bookingStatus
           );
 
           // Separate payment badge
@@ -179,6 +182,8 @@ export default function MyBookings() {
               ? { text: "Paid", color: "bg-green-100 text-green-700" }
               : paymentStatus.includes("failed") || paymentStatus.includes("cancel")
               ? { text: "Failed", color: "bg-red-100 text-red-700" }
+              : booking.status === "pending_payment"
+              ? { text: "Awaiting Payment", color: "bg-orange-100 text-orange-700" }
               : { text: "Payment Pending", color: "bg-orange-100 text-orange-700" };
 
           return (
