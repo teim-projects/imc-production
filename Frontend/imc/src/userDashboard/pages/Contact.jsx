@@ -48,15 +48,56 @@ export default function Contact() {
     phone: "",
     message: "",
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const GOOGLE_MAPS_KEY = "AIzaSyDHENL1zGd1L54VvhO0c6q6p8FJkBdg3AU";
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (formData.phone && !/^[0-9]{10}$/.test(formData.phone)) {
+      newErrors.phone = "Phone number must be exactly 10 digits";
+    }
+
+    if (!formData.message.trim()) {
+      newErrors.message = "Message is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: "" });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.message) {
-      toast.error("Name, Email & Message are required!");
+    if (!validateForm()) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      if (firstErrorField) {
+        document.getElementsByName(firstErrorField)[0]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
       return;
     }
 
@@ -64,6 +105,7 @@ export default function Contact() {
     await new Promise((resolve) => setTimeout(resolve, 1400));
     toast.success("Message Sent Successfully 🎵");
     setFormData({ name: "", email: "", phone: "", message: "" });
+    setErrors({});
     setLoading(false);
   };
 
@@ -143,6 +185,24 @@ export default function Contact() {
         onSubmit={handleSubmit}
         className="p-7 space-y-6"
       >
+        {/* Error Summary Banner */}
+        {Object.keys(errors).length > 0 && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-800 font-medium">
+                  Please fill in all required fields correctly.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Name + Email Row */}
         <div className="grid sm:grid-cols-2 gap-5">
           <div className="space-y-1">
@@ -150,13 +210,16 @@ export default function Contact() {
               Full Name *
             </label>
             <input
-              required
+              name="name"
               value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+              onChange={(e) => handleChange("name", e.target.value)}
+              className={`w-full h-12 px-4 rounded-xl border ${
+                errors.name ? "border-red-500" : "border-gray-300"
+              } focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50`}
             />
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -164,14 +227,17 @@ export default function Contact() {
               Email *
             </label>
             <input
+              name="email"
               type="email"
-              required
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+              onChange={(e) => handleChange("email", e.target.value)}
+              className={`w-full h-12 px-4 rounded-xl border ${
+                errors.email ? "border-red-500" : "border-gray-300"
+              } focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50`}
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
         </div>
 
@@ -181,13 +247,17 @@ export default function Contact() {
             Phone (Optional)
           </label>
           <input
+            name="phone"
             type="tel"
             value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="w-full h-12 px-4 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50"
+            onChange={(e) => handleChange("phone", e.target.value)}
+            className={`w-full h-12 px-4 rounded-xl border ${
+              errors.phone ? "border-red-500" : "border-gray-300"
+            } focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition bg-gray-50`}
           />
+          {errors.phone && (
+            <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+          )}
         </div>
 
         {/* Message */}
@@ -196,14 +266,17 @@ export default function Contact() {
             Your Message *
           </label>
           <textarea
+            name="message"
             rows={4}
-            required
             value={formData.message}
-            onChange={(e) =>
-              setFormData({ ...formData, message: e.target.value })
-            }
-            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition resize-none bg-gray-50"
+            onChange={(e) => handleChange("message", e.target.value)}
+            className={`w-full px-4 py-3 rounded-xl border ${
+              errors.message ? "border-red-500" : "border-gray-300"
+            } focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition resize-none bg-gray-50`}
           />
+          {errors.message && (
+            <p className="text-red-500 text-sm mt-1">{errors.message}</p>
+          )}
         </div>
 
         {/* Submit Button */}
