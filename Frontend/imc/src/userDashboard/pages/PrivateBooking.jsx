@@ -222,6 +222,7 @@ export default function PrivateEventBooking() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPoliciesModal, setShowPoliciesModal] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
     customer: "",
@@ -244,26 +245,40 @@ export default function PrivateEventBooking() {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
-    if (!form.customer.trim()) return "Customer name is required";
-    if (!form.contact_number.trim()) return "Contact number is required";
-    if (!form.email.trim()) return "Email is required";
-    if (!form.event_type.trim()) return "Event type is required";
-    if (!form.venue.trim()) return "Venue is required";
-    if (!form.date) return "Date is required";
-    if (!form.duration.trim()) return "Duration is required";
-    if (!form.agreed_terms) return "You must agree to terms";
-    return null;
+    const newErrors = {};
+    if (!form.customer.trim()) newErrors.customer = "Customer name is required";
+    if (!form.contact_number.trim()) {
+      newErrors.contact_number = "Contact number is required";
+    } else if (!/^[0-9]{10}$/.test(form.contact_number.trim())) {
+      newErrors.contact_number = "Contact number must be 10 digits";
+    }
+    if (!form.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(form.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    if (!form.event_type.trim()) newErrors.event_type = "Event type is required";
+    if (!form.venue.trim()) newErrors.venue = "Venue is required";
+    if (!form.date) newErrors.date = "Date is required";
+    if (!form.duration.trim()) newErrors.duration = "Duration is required";
+    if (!form.agreed_terms) newErrors.agreed_terms = "You must agree to terms";
+    return newErrors;
   };
 
   const submitBooking = async () => {
-    const error = validateForm();
-    if (error) {
-      alert(error);
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      const firstField = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setErrors({});
 
     const data = new FormData();
     data.append("customer", form.customer.trim());
@@ -287,13 +302,13 @@ export default function PrivateEventBooking() {
     } catch (err) {
       console.error("Booking failed:", err.response?.data || err);
       alert("Booking submission failed. Please try again.");
-    } finally {
-      setLoading(false);
+    } finally {      setLoading(false);
     }
   };
 
   const resetForm = () => {
     setSuccess(false);
+    setErrors({});
     setForm({
       customer: "",
       contact_number: "",
@@ -399,6 +414,12 @@ export default function PrivateEventBooking() {
               
                 </div>
 
+                {Object.keys(errors).length > 0 && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-300 text-red-700 rounded-xl font-medium">
+                    Please fill in all required fields correctly.
+                  </div>
+                )}
+
                 {/* Customer Details */}
                 <div className="mb-12">
                   <h3 className="text-2xl font-bold text-red-600 mb-6">Customer Details</h3>
@@ -413,8 +434,9 @@ export default function PrivateEventBooking() {
                         value={form.customer}
                         onChange={handleChange}
                         placeholder="e.g., Rahul Verma"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.customer ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.customer && <p className="text-red-500 text-sm mt-1">{errors.customer}</p>}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
@@ -426,8 +448,9 @@ export default function PrivateEventBooking() {
                         value={form.contact_number}
                         onChange={handleChange}
                         placeholder="+91XXXXXXXXXX"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.contact_number ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.contact_number && <p className="text-red-500 text-sm mt-1">{errors.contact_number}</p>}
                     </div>
 
                     <div>
@@ -440,8 +463,9 @@ export default function PrivateEventBooking() {
                         value={form.email}
                         onChange={handleChange}
                         placeholder="customer@email.com"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.email ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">Address</label>
@@ -471,8 +495,9 @@ export default function PrivateEventBooking() {
                         value={form.event_type}
                         onChange={handleChange}
                         placeholder="Birthday / Wedding / Corporate / Private Party"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.event_type ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.event_type && <p className="text-red-500 text-sm mt-1">{errors.event_type}</p>}
                     </div>
                     <div>
                       <label className="block text-gray-700 font-medium mb-2">
@@ -484,8 +509,9 @@ export default function PrivateEventBooking() {
                         value={form.venue}
                         onChange={handleChange}
                         placeholder="IMC Banquet Hall / Client Venue"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.venue ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.venue && <p className="text-red-500 text-sm mt-1">{errors.venue}</p>}
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-gray-700 font-medium mb-2">Guest Count</label>
@@ -514,8 +540,9 @@ export default function PrivateEventBooking() {
                         name="date"
                         value={form.date}
                         onChange={handleChange}
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.date ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
                       <p className="text-xs text-gray-500 mt-1">dd-mm-yyyy</p>
                     </div>
                     <div>
@@ -538,8 +565,9 @@ export default function PrivateEventBooking() {
                         value={form.duration}
                         onChange={handleChange}
                         placeholder="e.g, 3"
-                        className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+                        className={`w-full h-12 px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition ${errors.duration ? "border-red-500" : "border-gray-300"}`}
                       />
+                      {errors.duration && <p className="text-red-500 text-sm mt-1">{errors.duration}</p>}
                     </div>
                   </div>
                 </div>
@@ -562,29 +590,36 @@ export default function PrivateEventBooking() {
                   <input
                     type="checkbox"
                     id="terms"
+                    name="agreed_terms"
                     checked={form.agreed_terms}
-                    onChange={(e) => setForm({ ...form, agreed_terms: e.target.checked })}
+                    onChange={(e) => {
+                      setForm({ ...form, agreed_terms: e.target.checked });
+                      if (errors.agreed_terms) setErrors((prev) => ({ ...prev, agreed_terms: "" }));
+                    }}
                     className="w-6 h-6 text-amber-600 rounded focus:ring-amber-500 mt-1"
                   />
-                  <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed select-none">
-                    I agree to the{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
-                    >
-                      Terms & Conditions
-                    </button>{" "}
-                    and{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowPoliciesModal(true)}
-                      className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
-                    >
-                      Privacy Policy
-                    </button>{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
+                  <div>
+                    <label htmlFor="terms" className="text-gray-700 text-lg leading-relaxed select-none">
+                      I agree to the{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowPoliciesModal(true)}
+                        className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      >
+                        Terms & Conditions
+                      </button>{" "}
+                      and{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowPoliciesModal(true)}
+                        className="font-bold text-amber-600 hover:text-amber-500 transition-colors"
+                      >
+                        Privacy Policy
+                      </button>{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    {errors.agreed_terms && <p className="text-red-500 text-sm mt-1">{errors.agreed_terms}</p>}
+                  </div>
                 </div>
 
                 {/* Submit Button */}

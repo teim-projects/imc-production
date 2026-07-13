@@ -268,11 +268,26 @@ class StudioViewSet(viewsets.ModelViewSet):
     """
     CRUD API for Studio bookings.
     Frontend is calling:  BASE + "/auth/studios/"
+
+    LIST / by_date only returns booked+blocked slots so the slot picker
+    never sees pending_payment or cancelled slots as occupied.
+    CREATE / RETRIEVE / UPDATE / DELETE operate on all records.
     """
 
-    queryset = Studio.objects.all()
     serializer_class = StudioSerializer
     pagination_class = DefaultPagination
+
+    def get_queryset(self):
+        """
+        - list / by_date actions: only return slots that physically hold the time
+          (booked = paid, blocked = admin block).
+          pending_payment and cancelled do NOT hold the slot.
+        - All other actions (retrieve, update, destroy): full queryset so we can
+          always find the record regardless of its status.
+        """
+        if self.action in ("list", "by_date", "upcoming"):
+            return Studio.objects.filter(status__in=["booked", "blocked"])
+        return Studio.objects.all()
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [

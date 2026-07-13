@@ -20,12 +20,14 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   /* ================= SAME BACKEND LOGIC ================= */
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
+    if (fieldErrors[name]) setFieldErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const fetchUserAndRedirect = async (accessToken) => {
@@ -71,6 +73,22 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const newErrors = {};
+    if (!form.email_or_mobile.trim()) {
+      newErrors.email_or_mobile = "Email or mobile is required.";
+    } else if (form.email_or_mobile.trim().length < 10) {
+      newErrors.email_or_mobile = "Please enter at least 10 characters.";
+    }
+    if (!form.password) {
+      newErrors.password = "Password is required.";
+    } else if (form.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters.";
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      return;
+    }
+    setFieldErrors({});
     setLoading(true);
     setMessage("Logging in...");
 
@@ -152,6 +170,7 @@ export default function Login() {
             onChange={handleChange}
             required
           />
+          {fieldErrors.email_or_mobile && <p className="field-error">{fieldErrors.email_or_mobile}</p>}
 
           <div className="password-box">
             <input
@@ -164,6 +183,7 @@ export default function Login() {
             />
             <span onClick={() => setShowPassword(!showPassword)}>👁</span>
           </div>
+          {fieldErrors.password && <p className="field-error">{fieldErrors.password}</p>}
 
           <div className="options">
             <label>
@@ -332,6 +352,13 @@ export default function Login() {
         .signup {
           text-align: center;
           margin-top: 1.5rem;
+        }
+
+        .field-error {
+          color: #dc2626;
+          font-size: 0.85rem;
+          margin-top: -0.8rem;
+          margin-bottom: 0.5rem;
         }
 
         @media (max-width: 900px) {

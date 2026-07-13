@@ -116,7 +116,9 @@ const StudioCalendarManager = () => {
       (b) =>
         b.studio_name === studio &&
         b.date === date &&
-        b.time_slot?.substring(0, 5) === slot
+        b.time_slot?.substring(0, 5) === slot &&
+        // Only treat as occupied if booked or blocked (pending_payment is NOT blocking)
+        (b.status === "booked" || b.status === "blocked")
     );
   };
 
@@ -159,13 +161,11 @@ const StudioCalendarManager = () => {
 
   const openSlot = async (bookingId) => {
     try {
-      await api.patch(`${BOOKING_URL}${bookingId}/`, {
-        status: "available",
-      });
-
+      // Delete the block record entirely — an absent record means available
+      await api.delete(`${BOOKING_URL}${bookingId}/`);
       loadBookings();
     } catch (err) {
-      console.log(err);
+      console.log("openSlot error:", err.response?.status, err.response?.data);
     }
   };
 

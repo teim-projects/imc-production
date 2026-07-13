@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta?.env?.VITE_BASE_API_URL || "http://127.0.0.1:8000/";
 const BOOKINGS_URL = `${BASE}/auth/studios/`;
 const MASTERS_URL = `${BASE}/auth/studio-master/`;
 const PAYMENT_CREATE_API = `${BASE}/payments/create-payment/`;
@@ -234,6 +234,7 @@ const UserStudioRentalForm = ({ initialStudio = null, onClose }) => {
   const validate = () => {
     if (!formData.full_name.trim()) return "Full name is required.";
     if (!formData.mobile.trim()) return "Mobile number is required.";
+    if (!/^[0-9]{10}$/.test(formData.mobile.replace(/\s+/g, ""))) return "Mobile number must be 10 digits.";
     if (!formData.studio_id) return "Please select a studio.";
     if (!formData.date) return "Date is required.";
     if (!formData.time_slot) return "Please select a time slot.";

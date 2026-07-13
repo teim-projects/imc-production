@@ -273,20 +273,27 @@ export default function SingingClassRegistration() {
     }
   }, [selectedBatch]);
 
+  const [errors, setErrors] = useState({});
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
-    if (!form.first_name.trim()) return "First name is required";
-    if (!form.last_name.trim()) return "Last name is required";
-    if (!form.phone.trim()) return "Phone number is required";
-    if (!form.batch) return "Please select a batch";
+    const newErrors = {};
+    if (!form.first_name.trim()) newErrors.first_name = "First name is required";
+    if (!form.last_name.trim()) newErrors.last_name = "Last name is required";
+    if (!form.phone.trim()) {
+      newErrors.phone = "Phone number is required";
+    } else if (!/^[0-9]{10}$/.test(form.phone.trim())) {
+      newErrors.phone = "Phone number must be 10 digits";
+    }
+    if (!form.batch) newErrors.batch = "Please select a batch";
     if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0)
-      return "Valid fee amount is required";
-
-    return null;
+      newErrors.fee = "Valid fee amount is required";
+    return newErrors;
   };
 
   const createStudent = async () => {
@@ -359,11 +366,15 @@ export default function SingingClassRegistration() {
   };
 
   const handleEnrollClick = () => {
-    const error = validateForm();
-    if (error) {
-      alert(error);
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      const firstField = Object.keys(newErrors)[0];
+      const el = document.querySelector(`[name="${firstField}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    setErrors({});
     setShowPoliciesModal(true);
   };
 
@@ -390,6 +401,7 @@ export default function SingingClassRegistration() {
   const resetForm = () => {
     setSuccess(false);
     setShowPaymentPage(false);
+    setErrors({});
     setForm({
       first_name: "",
       last_name: "",
@@ -497,6 +509,12 @@ export default function SingingClassRegistration() {
                   Enroll Now
                 </h2>
 
+                {Object.keys(errors).length > 0 && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-300 text-red-700 rounded-xl font-medium">
+                    Please fill in all required fields correctly.
+                  </div>
+                )}
+
                 {/* Student Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                   <div>
@@ -508,9 +526,10 @@ export default function SingingClassRegistration() {
                       name="first_name"
                       value={form.first_name}
                       onChange={handleChange}
-                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                      className={`w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base ${errors.first_name ? "border-red-500" : "border-gray-300"}`}
                       placeholder="Enter first name"
                     />
+                    {errors.first_name && <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>}
                   </div>
                   <div>
                     <label className="block text-gray-700 font-medium mb-2 md:mb-3">
@@ -521,9 +540,10 @@ export default function SingingClassRegistration() {
                       name="last_name"
                       value={form.last_name}
                       onChange={handleChange}
-                      className="w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                      className={`w-full h-12 sm:h-13 px-4 sm:px-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base ${errors.last_name ? "border-red-500" : "border-gray-300"}`}
                       placeholder="Enter last name"
                     />
+                    {errors.last_name && <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>}
                   </div>
                   <div>
                     <label className="block text-gray-700 font-medium mb-2 md:mb-3">
@@ -535,11 +555,12 @@ export default function SingingClassRegistration() {
                         name="phone"
                         value={form.phone}
                         onChange={handleChange}
-                        className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                        className={`w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-4 sm:pr-5 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base ${errors.phone ? "border-red-500" : "border-gray-300"}`}
                         placeholder="Enter 10-digit number"
                       />
                       <Phone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
                     </div>
+                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
                   </div>
                   <div>
                     <label className="block text-gray-700 font-medium mb-2 md:mb-3">Email (optional)</label>

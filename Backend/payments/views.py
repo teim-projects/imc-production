@@ -292,6 +292,7 @@ def verify_payment(order_id):
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
+                    obj.status = "booked"   # ← only booked after payment confirmed
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
@@ -323,6 +324,15 @@ def verify_payment(order_id):
                 obj = Videography.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
+                    obj.save()
+
+        # If payment failed/cancelled, release the studio slot back to available
+        elif payment.status in ("FAILED", "CANCELLED", "EXPIRED"):
+            if payment.service == "studio_booking":
+                obj = Studio.objects.filter(id=payment.registration_id).first()
+                if obj and obj.status == "pending_payment":
+                    obj.status = "cancelled"
+                    obj.payment_status = "failed"
                     obj.save()
 
         return payment.status
@@ -408,6 +418,7 @@ def payment_webhook(request):
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
+                    obj.status = "booked"   # ← only booked after payment confirmed
                     obj.save()
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
@@ -439,6 +450,15 @@ def payment_webhook(request):
                 obj = Videography.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
+                    obj.save()
+
+        # If payment failed/cancelled, release the studio slot
+        elif payment.status in ("FAILED", "CANCELLED", "EXPIRED"):
+            if payment.service == "studio_booking":
+                obj = Studio.objects.filter(id=payment.registration_id).first()
+                if obj and obj.status == "pending_payment":
+                    obj.status = "cancelled"
+                    obj.payment_status = "failed"
                     obj.save()
 
     return JsonResponse({"message": "Webhook processed"})

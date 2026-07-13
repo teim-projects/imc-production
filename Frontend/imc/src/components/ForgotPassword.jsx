@@ -9,9 +9,19 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setEmailError("");
+    if (!email.trim()) {
+      setEmailError("Email is required.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email)) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
     setLoading(true);
     setMessage("Sending reset link...");
 
@@ -65,9 +75,10 @@ const ForgotPassword = () => {
             type="email"
             placeholder="Enter your email address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); if (emailError) setEmailError(""); }}
             required
           />
+          {emailError && <p className="field-error">{emailError}</p>}
 
           <button disabled={loading}>
             {loading ? "Sending..." : "Send Reset Link"}
@@ -190,6 +201,13 @@ const ForgotPassword = () => {
 
         .back-login a:hover {
           text-decoration: underline;
+        }
+
+        .field-error {
+          color: #dc2626;
+          font-size: 0.85rem;
+          margin-top: -0.8rem;
+          margin-bottom: 0.5rem;
         }
 
         @media (max-width: 900px) {
