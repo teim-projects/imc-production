@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Admin email - can be configured in settings or hardcoded
-ADMIN_EMAIL = "connectteim@gmail.com"  # Changed from IMCPCMC@gmail.com
+ADMIN_EMAIL = "imcpcmc@gmail.com"  # Admin notification email
 
 
 def get_service_display_name(service_code):
@@ -226,7 +226,7 @@ def create_user_email_html(payment, booking_details):
                 <div class="contact-info">
                     <h3 style="margin-top: 0;">Contact Us</h3>
                     <p><strong>📞 Phone:</strong> +91 8767055580 / 9834944461</p>
-                    <p><strong>✉️ Email:</strong> <a href="mailto:connectteim@gmail.com">connectteim@gmail.com</a></p>
+                    <p><strong>✉️ Email:</strong> <a href="mailto:imcpcmc@gmail.com">imcpcmc@gmail.com</a></p>
                     <p><strong>📍 Address:</strong> S-19, Ground floor, Greens Center, Opposite Pudumjee Paper Mill, Thergaon, Chinchwad 411033</p>
                 </div>
                 
