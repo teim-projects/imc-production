@@ -822,6 +822,7 @@ class Singer(models.Model):
     name = models.CharField(max_length=255)
     birth_date = models.DateField(null=True, blank=True)
     mobile = models.CharField(max_length=20, blank=True, default="")
+    email = models.EmailField(blank=True, null=True)
     profession = models.CharField(max_length=200, blank=True, default="")
     education = models.CharField(max_length=300, blank=True, default="")
     achievement = models.TextField(blank=True, default="")

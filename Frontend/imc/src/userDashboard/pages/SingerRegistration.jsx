@@ -342,6 +342,7 @@ function useSingerForm() {
     name: "",
     birth_date: "",
     mobile: "",
+    email: "",
     profession: "",
     education: "",
     achievement: "",
@@ -379,6 +380,7 @@ function useSingerForm() {
       name: "",
       birth_date: "",
       mobile: "",
+      email: "",
       profession: "",
       education: "",
       achievement: "",
@@ -753,6 +755,18 @@ function RegistrationForm({
                 type="tel"
                 value={form.mobile}
                 onChange={(e) => onFormChange("mobile", e.target.value)}
+                className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-3">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => onFormChange("email", e.target.value)}
+                placeholder="your@email.com"
                 className="w-full h-12 px-5 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition"
               />
             </div>

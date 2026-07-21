@@ -44,16 +44,16 @@ def get_booking_details(payment, booking_obj):
     try:
         if payment.service == "singing_classes":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "mobile", None)
+            details["customer_phone"] = getattr(booking_obj, "phone", None)
             details["booking_date"] = getattr(booking_obj, "created_at", None)
             details["additional_info"] = {
-                "Course": getattr(booking_obj, "course", "N/A"),
-                "Age": getattr(booking_obj, "age", "N/A"),
+                "Batch": getattr(booking_obj.batch, "name", "N/A") if hasattr(booking_obj, 'batch') and booking_obj.batch else "N/A",
+                "Start Date": getattr(booking_obj, "start_date", "N/A"),
             }
             
         elif payment.service == "studio_booking":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "mobile", None)
+            details["customer_phone"] = getattr(booking_obj, "contact_number", None)
             details["booking_date"] = getattr(booking_obj, "date", None)
             details["booking_time"] = getattr(booking_obj, "time_slot", None)
             details["additional_info"] = {
@@ -63,20 +63,24 @@ def get_booking_details(payment, booking_obj):
             
         elif payment.service == "auditorium_music_shows":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "mobile", None)
-            details["booking_date"] = getattr(booking_obj, "event_date", None)
+            details["customer_phone"] = getattr(booking_obj, "contact_number", None)
+            details["booking_date"] = getattr(booking_obj, "created_at", None)
+            event = getattr(booking_obj, "event", None)
             details["additional_info"] = {
-                "Event": getattr(booking_obj, "event_name", "N/A"),
-                "Seats": getattr(booking_obj, "number_of_seats", "N/A"),
+                "Event": getattr(event, "title", "N/A") if event else "N/A",
+                "Tickets": getattr(booking_obj, "number_of_tickets", "N/A"),
+                "Ticket Type": getattr(booking_obj, "ticket_type", "N/A").title(),
             }
             
         elif payment.service == "private_music_events":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "phone", None)
-            details["booking_date"] = getattr(booking_obj, "event_date", None)
+            details["customer_phone"] = getattr(booking_obj, "contact_number", None)
+            details["booking_date"] = getattr(booking_obj, "date", None)
+            details["booking_time"] = getattr(booking_obj, "time_slot", None)
             details["additional_info"] = {
                 "Event Type": getattr(booking_obj, "event_type", "N/A"),
                 "Venue": getattr(booking_obj, "venue", "N/A"),
+                "Guest Count": getattr(booking_obj, "guest_count", "N/A"),
             }
             
         elif payment.service == "photography_service":
@@ -89,7 +93,7 @@ def get_booking_details(payment, booking_obj):
             }
             
         elif payment.service == "singer_registration":
-            details["customer_email"] = None  # Singer model might not have email
+            details["customer_email"] = getattr(booking_obj, "email", None)
             details["customer_phone"] = getattr(booking_obj, "mobile", None)
             details["booking_date"] = getattr(booking_obj, "created_at", None)
             details["additional_info"] = {
@@ -99,20 +103,23 @@ def get_booking_details(payment, booking_obj):
             
         elif payment.service == "sound_service":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "contact_number", None)
+            details["customer_phone"] = getattr(booking_obj, "mobile_no", None)
             details["booking_date"] = getattr(booking_obj, "event_date", None)
             details["additional_info"] = {
-                "Event Type": getattr(booking_obj, "event_type", "N/A"),
-                "Venue": getattr(booking_obj, "venue", "N/A"),
+                "System Type": getattr(booking_obj, "system_type", "N/A"),
+                "Location": getattr(booking_obj, "location", "N/A"),
+                "Speakers": getattr(booking_obj, "speakers_count", "N/A"),
             }
             
         elif payment.service == "videography_service":
             details["customer_email"] = getattr(booking_obj, "email", None)
-            details["customer_phone"] = getattr(booking_obj, "contact_number", None)
-            details["booking_date"] = getattr(booking_obj, "event_date", None)
+            details["customer_phone"] = getattr(booking_obj, "mobile_no", None)
+            details["booking_date"] = getattr(booking_obj, "shoot_date", None)
+            details["booking_time"] = getattr(booking_obj, "start_time", None)
             details["additional_info"] = {
                 "Event Type": getattr(booking_obj, "event_type", "N/A"),
-                "Package": getattr(booking_obj, "package_name", "N/A"),
+                "Project": getattr(booking_obj, "project", "N/A"),
+                "Package": getattr(booking_obj, "package_type", "N/A"),
             }
             
     except Exception as e:
