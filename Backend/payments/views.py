@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST, require_GET
 
 from .utils import get_headers
 from .models import Payment
+from .email_utils import send_payment_success_emails
 from api.models import (
     SingingClass,
     Studio,
@@ -282,49 +283,67 @@ def verify_payment(order_id):
         # DYNAMIC PAYMENT STATUS UPDATE
         # ======================================
         if payment.status == "CHARGED":
+            booking_obj = None  # Store booking object for email
+            
             if payment.service == "singing_classes":
                 obj = SingingClass.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "studio_booking":
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "booked"   # ← only booked after payment confirmed
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "private_music_events":
                 obj = PrivateBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "photography_service":
                 obj = PhotographyBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "singer_registration":
                 obj = Singer.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "sound_service":
                 obj = Sound.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "videography_service":
                 obj = Videography.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
+            
+            # Send email notifications to user and admin
+            if booking_obj:
+                try:
+                    send_payment_success_emails(payment, booking_obj)
+                    print(f"✓ Payment success emails sent for order {payment.order_id}")
+                except Exception as e:
+                    print(f"✗ Email sending failed: {e}")
 
         # If payment failed/cancelled, release the studio slot back to available
         elif payment.status in ("FAILED", "CANCELLED", "EXPIRED"):
@@ -408,49 +427,67 @@ def payment_webhook(request):
         payment.save()
 
         if payment.status == "CHARGED":
+            booking_obj = None  # Store booking object for email
+            
             if payment.service == "singing_classes":
                 obj = SingingClass.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "studio_booking":
                 obj = Studio.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "booked"   # ← only booked after payment confirmed
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "auditorium_music_shows":
                 obj = EventBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.status = "confirmed"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "private_music_events":
                 obj = PrivateBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "photography_service":
                 obj = PhotographyBooking.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "singer_registration":
                 obj = Singer.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "sound_service":
                 obj = Sound.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
             elif payment.service == "videography_service":
                 obj = Videography.objects.filter(id=payment.registration_id).first()
                 if obj:
                     obj.payment_status = "paid"
                     obj.save()
+                    booking_obj = obj
+            
+            # Send email notifications to user and admin
+            if booking_obj:
+                try:
+                    send_payment_success_emails(payment, booking_obj)
+                    print(f"✓ Payment success emails sent for order {payment.order_id}")
+                except Exception as e:
+                    print(f"✗ Email sending failed: {e}")
 
         # If payment failed/cancelled, release the studio slot
         elif payment.status in ("FAILED", "CANCELLED", "EXPIRED"):
