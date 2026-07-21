@@ -56,7 +56,7 @@ export default function Register() {
     form.full_name.trim().length >= 2 &&
     EMAIL_RE.test(form.email) &&
     PHONE_RE.test(form.mobile_no) &&
-    form.password1.length >= 8 &&
+    form.password1.trim() &&
     !passwordMatchErr &&
     agreeTerms;
 
