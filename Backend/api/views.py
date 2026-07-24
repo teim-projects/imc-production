@@ -269,14 +269,15 @@ class StudioViewSet(viewsets.ModelViewSet):
     CRUD API for Studio bookings.
     Frontend is calling:  BASE + "/auth/studios/"
 
-    ✅ LIST action: Returns ALL studio bookings (for admin view)
+    ✅ LIST action: Returns ALL studio bookings (for admin view) - NO PAGINATION
     ✅ by_date action: Only returns booked+blocked slots (for slot picker)
     ✅ upcoming action: Returns all non-cancelled bookings
     ✅ CREATE / RETRIEVE / UPDATE / DELETE: Full queryset access
     """
 
     serializer_class = StudioSerializer
-    pagination_class = DefaultPagination
+    # Disable pagination for admin view - return ALL records
+    pagination_class = None
 
     def get_queryset(self):
         """
