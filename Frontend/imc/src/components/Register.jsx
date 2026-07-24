@@ -230,6 +230,11 @@ export default function Register() {
             />
             <span onClick={() => setShowPassword(!showPassword)}>👁</span>
           </div>
+          <div className="password-note">
+            <small>
+              <strong>Note:</strong> Password must be at least 6 characters
+            </small>
+          </div>
 
           <input
             type="password"
@@ -261,13 +266,14 @@ export default function Register() {
           </div>
           {photoError && <div className="msg error">{photoError}</div>}
 
-          <label className="terms">
+          <label className="terms-checkbox">
             <input
               type="checkbox"
               checked={agreeTerms}
               onChange={(e) => setAgreeTerms(e.target.checked)}
             />
-            I agree to the Terms
+            <span className="checkmark"></span>
+            <span className="terms-text">I agree to the Terms & Conditions</span>
           </label>
 
           <button disabled={!isFormValid || loading}>
@@ -356,6 +362,26 @@ export default function Register() {
           cursor:pointer;
         }
 
+        .password-note {
+          margin-top:-0.5rem;
+          margin-bottom:0.75rem;
+          padding:8px 12px;
+          background:#fef2f2;
+          border-left:3px solid #ef4444;
+          border-radius:4px;
+        }
+
+        .password-note small {
+          color:#dc2626;
+          font-size:0.875rem;
+          font-weight:500;
+        }
+
+        .password-note strong {
+          color:#b91c1c;
+          font-weight:700;
+        }
+
         .photo-upload {
           padding:14px;
           border:1px dashed #aaa;
@@ -368,6 +394,66 @@ export default function Register() {
         .photo-upload img {
           width:100%;
           border-radius:8px;
+        }
+
+        .terms-checkbox {
+          display:flex;
+          align-items:center;
+          gap:12px;
+          padding:12px;
+          margin-bottom:1.5rem;
+          cursor:pointer;
+          position:relative;
+          background:#f0f9ff;
+          border:2px solid #3b82f6;
+          border-radius:8px;
+          transition:all 0.3s ease;
+        }
+
+        .terms-checkbox:hover {
+          background:#dbeafe;
+          border-color:#2563eb;
+        }
+
+        .terms-checkbox input[type="checkbox"] {
+          position:absolute;
+          opacity:0;
+          cursor:pointer;
+          width:0;
+          height:0;
+        }
+
+        .checkmark {
+          width:22px;
+          height:22px;
+          background:#fff;
+          border:2px solid #3b82f6;
+          border-radius:4px;
+          flex-shrink:0;
+          position:relative;
+          transition:all 0.3s ease;
+        }
+
+        .terms-checkbox input:checked ~ .checkmark {
+          background:#3b82f6;
+          border-color:#3b82f6;
+        }
+
+        .terms-checkbox input:checked ~ .checkmark:after {
+          content:"✓";
+          position:absolute;
+          top:50%;
+          left:50%;
+          transform:translate(-50%, -50%);
+          color:white;
+          font-size:16px;
+          font-weight:bold;
+        }
+
+        .terms-text {
+          color:#1e40af;
+          font-weight:600;
+          font-size:0.95rem;
         }
 
         button {

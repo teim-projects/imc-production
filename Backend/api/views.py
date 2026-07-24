@@ -279,14 +279,20 @@ class StudioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        - list / by_date actions: only return slots that physically hold the time
-          (booked = paid, blocked = admin block).
-          pending_payment and cancelled do NOT hold the slot.
-        - All other actions (retrieve, update, destroy): full queryset so we can
-          always find the record regardless of its status.
+        - list action: return ALL bookings for admin view
+        - by_date action: only return booked+blocked slots for slot picker
+          (pending_payment and cancelled do NOT hold the slot in picker)
+        - All other actions (retrieve, update, destroy): full queryset
         """
-        if self.action in ("list", "by_date", "upcoming"):
+        # For slot picker, only show actually occupied slots
+        if self.action == "by_date":
             return Studio.objects.filter(status__in=["booked", "blocked"])
+        
+        # For upcoming, show all non-cancelled
+        if self.action == "upcoming":
+            return Studio.objects.exclude(status="cancelled")
+        
+        # For list and all other actions, show ALL records
         return Studio.objects.all()
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
