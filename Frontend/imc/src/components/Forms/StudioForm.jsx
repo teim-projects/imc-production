@@ -140,7 +140,12 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
     setLoading(true);
     clearStatus();
     try {
-      const [b, m] = await Promise.all([api.get(BOOKINGS_URL), api.get(MASTERS_URL)]);
+      // Backend returns ALL records (pagination disabled)
+      const [b, m] = await Promise.all([
+        api.get(BOOKINGS_URL),
+        api.get(MASTERS_URL)
+      ]);
+      // Handle both array response and paginated response format
       const bRows = Array.isArray(b.data) ? b.data : b.data?.results ?? b.data ?? [];
       const mRows = Array.isArray(m.data) ? m.data : m.data?.results ?? m.data ?? [];
       setBookings(Array.isArray(bRows) ? bRows : []);
