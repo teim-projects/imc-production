@@ -823,6 +823,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                   <th>Duration</th>
                   <th>Price (₹/hr)</th>
                   <th>Total Amount (₹)</th>
+                  <th>Status</th>
                   <th>Payment</th>
                   <th className="c">Actions</th>
                 </tr>
@@ -831,6 +832,16 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                 {paged.map((s) => {
                   const price = s.price_per_hour ?? s.price ?? 0;
                   const totalAmount = (Number(s.duration) || 0) * Number(price);
+
+                  // Status badge styling
+                  const statusStyle = {
+                    pending_payment: { bg: '#fef3c7', color: '#92400e', label: 'Pending Payment' },
+                    booked: { bg: '#d1fae5', color: '#065f46', label: 'Booked' },
+                    blocked: { bg: '#fee2e2', color: '#991b1b', label: 'Admin Blocked' },
+                    cancelled: { bg: '#f3f4f6', color: '#4b5563', label: 'Cancelled' },
+                    available: { bg: '#dbeafe', color: '#1e40af', label: 'Available' },
+                  };
+                  const statusInfo = statusStyle[s.status] || { bg: '#f3f4f6', color: '#6b7280', label: s.status || 'Unknown' };
 
                   return (
                     <tr key={s.id}>
@@ -848,6 +859,21 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                         ) : (
                           "-"
                         )}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            backgroundColor: statusInfo.bg,
+                            color: statusInfo.color,
+                          }}
+                        >
+                          {statusInfo.label}
+                        </span>
                       </td>
                       <td>
                         {Array.isArray(s.payment_methods) && s.payment_methods.length
@@ -875,7 +901,7 @@ const StudioForm = ({ onClose, viewOnly = false }) => {
                 })}
                 {!paged.length && (
                   <tr>
-                    <td colSpan="9" className="c muted">
+                    <td colSpan="10" className="c muted">
                       {loading ? "Loading bookings…" : "No bookings found."}
                     </td>
                   </tr>
