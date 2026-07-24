@@ -1,5 +1,6 @@
 # api/models.py
 from decimal import Decimal
+from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.exceptions import ValidationError
@@ -864,6 +865,15 @@ class Singer(models.Model):
    
 
     active = models.BooleanField(default=True)
+    
+    # Soft delete fields - records never actually deleted
+    deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Video expiry fields - video expires but record remains
+    video_uploaded_at = models.DateTimeField(null=True, blank=True)
+    video_expiry_date = models.DateTimeField(null=True, blank=True)
+    video_expired = models.BooleanField(default=False)
 
     video = models.FileField(
         upload_to=singer_video_upload_to,

@@ -290,6 +290,7 @@ export default function SingingClassRegistration() {
     } else if (!/^[0-9]{10}$/.test(form.phone.trim())) {
       newErrors.phone = "Phone number must be 10 digits";
     }
+    if (!form.address1.trim()) newErrors.address1 = "Address is required";
     if (!form.batch) newErrors.batch = "Please select a batch";
     if (!form.fee || isNaN(form.fee) || Number(form.fee) <= 0)
       newErrors.fee = "Valid fee amount is required";
@@ -607,7 +608,7 @@ export default function SingingClassRegistration() {
                 <div className="mt-10 md:mt-12">
                   <label className="block text-gray-700 font-medium mb-2 md:mb-3">
                     <MapPin className="inline w-5 h-5 mr-2" />
-                    Address
+                    Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -615,8 +616,9 @@ export default function SingingClassRegistration() {
                     placeholder="Street Address / Locality"
                     value={form.address1}
                     onChange={handleChange}
-                    className="w-full h-12 sm:h-13 px-4 sm:px-5 mb-3 sm:mb-4 bg-gray-100 rounded-xl border border-gray-300 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base"
+                    className={`w-full h-12 sm:h-13 px-4 sm:px-5 mb-3 sm:mb-4 bg-gray-100 rounded-xl border focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-100 transition text-base ${errors.address1 ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {errors.address1 && <p className="text-red-500 text-sm mt-1 mb-3">{errors.address1}</p>}
                   <input
                     type="text"
                     name="address2"
