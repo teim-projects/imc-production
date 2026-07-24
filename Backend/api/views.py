@@ -269,9 +269,10 @@ class StudioViewSet(viewsets.ModelViewSet):
     CRUD API for Studio bookings.
     Frontend is calling:  BASE + "/auth/studios/"
 
-    LIST / by_date only returns booked+blocked slots so the slot picker
-    never sees pending_payment or cancelled slots as occupied.
-    CREATE / RETRIEVE / UPDATE / DELETE operate on all records.
+    ✅ LIST action: Returns ALL studio bookings (for admin view)
+    ✅ by_date action: Only returns booked+blocked slots (for slot picker)
+    ✅ upcoming action: Returns all non-cancelled bookings
+    ✅ CREATE / RETRIEVE / UPDATE / DELETE: Full queryset access
     """
 
     serializer_class = StudioSerializer
@@ -279,20 +280,23 @@ class StudioViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        - list action: return ALL bookings for admin view
-        - by_date action: only return booked+blocked slots for slot picker
-          (pending_payment and cancelled do NOT hold the slot in picker)
-        - All other actions (retrieve, update, destroy): full queryset
+        Dynamic queryset based on action:
+        
+        - LIST (default): ALL records for complete admin view
+        - by_date: Only booked+blocked (prevents double booking in slot picker)
+        - upcoming: All except cancelled
+        - Other actions (retrieve, update, delete): Full queryset
         """
-        # For slot picker, only show actually occupied slots
+        
+        # Slot picker - only show occupied slots (pending/cancelled don't block slots)
         if self.action == "by_date":
             return Studio.objects.filter(status__in=["booked", "blocked"])
         
-        # For upcoming, show all non-cancelled
+        # Upcoming bookings - exclude cancelled
         if self.action == "upcoming":
             return Studio.objects.exclude(status="cancelled")
         
-        # For list and all other actions, show ALL records
+        # ✅ DEFAULT (list, retrieve, update, delete) - ALL RECORDS
         return Studio.objects.all()
 
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
