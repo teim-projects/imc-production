@@ -96,6 +96,7 @@ export default function Login() {
       } else {
         if (data.access) localStorage.setItem("access", data.access);
         if (data.refresh) localStorage.setItem("refresh", data.refresh);
+        localStorage.removeItem("imc_birthday_popup_dismissed"); // Reset popup dismiss so birthday alert pops up upon login
 
         setMessage("✅ Login successful! Redirecting.....");
         await fetchUserAndRedirect(data.access);

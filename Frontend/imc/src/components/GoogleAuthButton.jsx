@@ -26,6 +26,7 @@ const GoogleAuthButton = ({ endpoint, onSuccessNavigate }) => {
       // Save JWT tokens
       if (data.access) localStorage.setItem("access", data.access);
       if (data.refresh) localStorage.setItem("refresh", data.refresh);
+      localStorage.removeItem("imc_birthday_popup_dismissed");
 
       window.dispatchEvent(new Event("authChange"));
       

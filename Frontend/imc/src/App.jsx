@@ -61,6 +61,9 @@ import PaymentSuccess from "./userDashboard/pages/PaymentSuccess";
 /* ================= STUDIO CALENDAR ================= */
 import StudioCalendarManager from "./components/Forms/StudioCalendarManager";
 
+/* ================= 🎂 BIRTHDAY AUTOMATION ================= */
+import BirthdayManager from "./components/Birthday/BirthdayManager";
+
 /* ================= STYLES ================= */
 import "./App.css";
 
@@ -193,6 +196,16 @@ function Layout() {
             element={
               <AdminRoute>
                 <StudioCalendarManager />
+              </AdminRoute>
+            }
+          />
+
+          {/* ========== 🎂 BIRTHDAY AUTOMATION ROUTE ========== */}
+          <Route
+            path="/admin/birthdays"
+            element={
+              <AdminRoute>
+                <BirthdayManager />
               </AdminRoute>
             }
           />

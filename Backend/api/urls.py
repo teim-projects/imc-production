@@ -23,6 +23,7 @@ from .views import (
 
 
     StudioMasterViewSet, StudioImageUploadView, SingerViewSet, SingingClassAdmissionViewSet,
+    BirthdayListView, BirthdayTodayPopupView, BirthdaySendWishView,
 )
 from .views import TrainerViewSet
 from .views import BatchViewSet
@@ -126,8 +127,13 @@ urlpatterns = [
     path("dashboard/", DashboardSummary.as_view(), name="dashboard_summary"),
     path("my-bookings/", MyBookingsView.as_view(), name="my_bookings"),
     
-    
-    
+    # 🎂 Birthday Automation APIs
+    path("birthdays/", BirthdayListView.as_view(), name="birthdays-list"),
+    path("auth/birthdays/", BirthdayListView.as_view(), name="auth-birthdays-list"),
+    path("birthdays/today/", BirthdayTodayPopupView.as_view(), name="birthdays-today"),
+    path("auth/birthdays/today/", BirthdayTodayPopupView.as_view(), name="auth-birthdays-today"),
+    path("birthdays/send-wish/", BirthdaySendWishView.as_view(), name="birthdays-send-wish"),
+    path("auth/birthdays/send-wish/", BirthdaySendWishView.as_view(), name="auth-birthdays-send-wish"),
 ]
 
 # Serve media files in development

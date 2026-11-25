@@ -21,6 +21,7 @@ import {
   FaBars,
   FaTimes,
   FaBuilding,
+  FaBirthdayCake,
 } from "react-icons/fa";
 
 function Sidebar({ openModal, openSubModal, currentKey = null }) {
@@ -130,6 +131,15 @@ function Sidebar({ openModal, openSubModal, currentKey = null }) {
         icon: <FaCalendarAlt />,   // you can change to FaRegCalendar or FaCalendarCheck if desired
         modal: null,
         subActionKey: "studioCalendar",   // parent should handle this to show StudioCalendarManager
+      },
+
+      // ========== 🎂 BIRTHDAY AUTOMATION ==========
+      {
+        name: "Birthday Automation",
+        key: "birthday",
+        icon: <FaBirthdayCake />,
+        modal: null,
+        subActionKey: "birthday",
       },
     ],
     []
