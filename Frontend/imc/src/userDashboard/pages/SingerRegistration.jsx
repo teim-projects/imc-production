@@ -21,6 +21,7 @@ import {
   Star,
   Award,
   AlertCircle,
+  Camera,
 } from "lucide-react";
 
 // ----------------------------------------------------------------------
@@ -356,6 +357,7 @@ function useSingerForm() {
     rate: "3000",
     gender: "",
     active: true,
+    photo: null,
     video: null,
     agreed_terms: false,
   });
@@ -394,6 +396,7 @@ function useSingerForm() {
       rate: "3000",
       gender: "",
       active: true,
+      photo: null,
       video: null,
       agreed_terms: false,
     });
@@ -419,6 +422,8 @@ function useSingerPayment() {
       if (value === "" || value === null) return;
       if (key === "video" && value) {
         data.append("video", value);
+      } else if (key === "photo" && value) {
+        data.append("photo", value);
       } else {
         data.append(key, value);
       }
@@ -921,8 +926,80 @@ function RegistrationForm({
             </div>
           </div>
 
-          {/* Video Upload & Achievements */}
+          {/* Photo & Video Upload */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+            {/* Profile Photo Upload */}
+            <div className="flex flex-col">
+              <label className="block text-lg font-bold text-gray-800 mb-3">
+                Upload Profile Photo
+              </label>
+              <label
+                className={`border-2 border-dashed rounded-2xl p-6 md:p-8 text-center bg-gray-50 flex flex-col items-center justify-center cursor-pointer transition min-h-[180px] ${
+                  form.photo
+                    ? "border-amber-400 bg-amber-50/40"
+                    : "border-gray-300 hover:border-amber-400"
+                }`}
+              >
+                {form.photo ? (
+                  <div className="space-y-3 w-full flex flex-col items-center">
+                    <img
+                      src={URL.createObjectURL(form.photo)}
+                      alt="Uploaded avatar"
+                      className="w-24 h-24 rounded-full object-cover border-4 border-amber-400 shadow-md"
+                    />
+                    <p className="font-medium text-amber-900 break-words max-w-full text-sm">
+                      {form.photo.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(form.photo.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onFormChange("photo", null);
+                      }}
+                      className="text-sm text-red-600 hover:text-red-800 underline mt-1"
+                    >
+                      Remove photo
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 shadow-sm">
+                      <Camera className="w-7 h-7" />
+                    </div>
+                    <p className="text-gray-700 font-medium mb-1">
+                      <span className="text-amber-600">Click to upload photo</span> or drag & drop
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      JPG, PNG, WEBP • Max 5MB (Used on Birthday Posters & Profile)
+                    </p>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (!file.type.startsWith("image/")) {
+                      alert("Please select an image file (JPG, PNG, WEBP).");
+                      return;
+                    }
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert("Image file exceeds 5MB limit.");
+                      return;
+                    }
+                    onFormChange("photo", file);
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* Video Upload */}
             <div className="flex flex-col">
               <label className="block text-lg font-bold text-gray-800 mb-3">
                 Upload Video Song <span className="text-red-500">*</span>

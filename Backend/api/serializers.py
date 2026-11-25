@@ -939,3 +939,16 @@ class StudioSlotSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudioSlot
         fields = "__all__"
+
+
+from .models import BirthdayWishLog
+
+class BirthdayWishLogSerializer(serializers.ModelSerializer):
+    sent_by_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BirthdayWishLog
+        fields = "__all__"
+
+    def get_sent_by_email(self, obj):
+        return obj.sent_by.email if obj.sent_by else None

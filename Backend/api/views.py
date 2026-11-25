@@ -712,6 +712,8 @@ class SingerViewSet(viewsets.ModelViewSet):
 
         if "video" in request.FILES and instance.video:
             instance.video.delete(save=False)
+        if "photo" in request.FILES and instance.photo:
+            instance.photo.delete(save=False)
 
         serializer.save()
 
@@ -738,6 +740,8 @@ class SingerViewSet(viewsets.ModelViewSet):
 
         if "video" in request.FILES and instance.video:
             instance.video.delete(save=False)
+        if "photo" in request.FILES and instance.photo:
+            instance.photo.delete(save=False)
 
         serializer.save()
 
@@ -1571,3 +1575,512 @@ class MyBookingsView(APIView):
             "count": len(bookings),
             "results": bookings,
         })
+
+
+# ============================================================
+# BIRTHDAY AUTOMATION MODULE VIEWS
+# ============================================================
+import base64
+import logging
+from datetime import date, datetime, timedelta
+from django.core.mail import EmailMultiAlternatives
+from email.mime.image import MIMEImage
+
+logger = logging.getLogger(__name__)
+
+
+def _calc_birthday_meta(bdate, today=None):
+    if not bdate:
+        return None
+    if today is None:
+        today = date.today()
+    try:
+        try:
+            bday_this_year = bdate.replace(year=today.year)
+        except ValueError:
+            # Leap day fallback
+            bday_this_year = date(today.year, 2, 28)
+
+        if bday_this_year < today:
+            try:
+                next_bday = bdate.replace(year=today.year + 1)
+            except ValueError:
+                next_bday = date(today.year + 1, 2, 28)
+        else:
+            next_bday = bday_this_year
+
+        days_until = (next_bday - today).days
+        is_today = (bdate.month == today.month and bdate.day == today.day)
+        is_this_week = 0 <= days_until <= 7
+        is_this_month = bdate.month == today.month
+        turning_age = (today.year - bdate.year) if (bdate.year and bdate.year > 1900) else None
+
+        return {
+            "days_until": days_until,
+            "is_today": is_today,
+            "is_this_week": is_this_week,
+            "is_this_month": is_this_month,
+            "next_birthday": next_bday.isoformat(),
+            "formatted_birth_date": bdate.strftime("%d %b %Y"),
+            "display_dob": bdate.strftime("%d %B"),
+            "turning_age": turning_age,
+        }
+    except Exception as e:
+        logger.warning("Error calculating birthday meta for %s: %s", bdate, e)
+        return None
+
+
+class BirthdayListView(APIView):
+    """
+    Returns aggregated birthday records for Singers and SingingClass students.
+    Supports filtering by 'filter' (today, upcoming_7, upcoming_30, this_month, all),
+    'role' (all, singer, student), 'search', and 'month'.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        filter_type = request.query_params.get("filter", "all")
+        role_filter = request.query_params.get("role", "all").lower()
+        search_query = request.query_params.get("search", "").strip().lower()
+        month_query = request.query_params.get("month", None)
+
+        try:
+            from .models import Singer, SingingClass, BirthdayWishLog
+        except ImportError:
+            return Response({"error": "Models not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Retrieve wish logs for current year
+        wished_map = {}
+        try:
+            logs = BirthdayWishLog.objects.filter(wish_year=today.year, status="sent")
+            for log in logs:
+                key = f"{log.person_type}_{log.person_id}" if log.person_id else log.email
+                if key:
+                    wished_map[key] = {
+                        "sent_at": log.created_at.isoformat(),
+                        "sent_by": log.sent_by.email if log.sent_by else None,
+                        "status": "sent"
+                    }
+        except Exception as e:
+            logger.warning("Could not query BirthdayWishLog: %s", e)
+
+        records = []
+
+        # 1. Singers
+        if role_filter in ["all", "singer"]:
+            try:
+                singers = Singer.objects.filter(birth_date__isnull=False)
+                for s in singers:
+                    meta = _calc_birthday_meta(s.birth_date, today)
+                    if not meta:
+                        continue
+
+                    # Search filter
+                    if search_query:
+                        match = (
+                            search_query in (s.name or "").lower() or
+                            search_query in (s.email or "").lower() or
+                            search_query in (s.mobile or "").lower()
+                        )
+                        if not match:
+                            continue
+
+                    # Month filter
+                    if month_query and str(s.birth_date.month) != str(month_query):
+                        continue
+
+                    record_id = f"singer_{s.id}"
+                    wish_info = wished_map.get(record_id) or wished_map.get(s.email) or {"status": "pending"}
+
+                    user_photo = None
+                    try:
+                        if getattr(s, "photo", None) and s.photo:
+                            user_photo = request.build_absolute_uri(s.photo.url)
+                        else:
+                            from django.contrib.auth import get_user_model
+                            UserModel = get_user_model()
+                            u = None
+                            if s.email:
+                                u = UserModel.objects.filter(email__iexact=s.email).first()
+                            if not u and s.mobile:
+                                u = UserModel.objects.filter(mobile_no=s.mobile).first()
+                            if u and u.profile_photo:
+                                user_photo = request.build_absolute_uri(u.profile_photo.url)
+                    except Exception:
+                        pass
+
+                    records.append({
+                        "unique_id": record_id,
+                        "source_id": s.id,
+                        "role": "Singer",
+                        "role_type": "singer",
+                        "name": s.name,
+                        "birth_date": s.birth_date.isoformat(),
+                        "email": s.email or "",
+                        "phone": s.mobile or "",
+                        "photo": user_photo,
+                        "genre": s.genre or "",
+                        "city": s.city or "",
+                        "wish_status": wish_info.get("status", "pending"),
+                        "last_wished_at": wish_info.get("sent_at", None),
+                        "sent_by": wish_info.get("sent_by", None),
+                        **meta
+                    })
+            except Exception as e:
+                logger.exception("Failed to load singers for birthday list: %s", e)
+
+        # 2. Singing Class Students
+        if role_filter in ["all", "student"]:
+            try:
+                students = SingingClass.objects.filter(birth_date__isnull=False).select_related("user", "batch")
+                for st in students:
+                    meta = _calc_birthday_meta(st.birth_date, today)
+                    if not meta:
+                        continue
+
+                    full_name = f"{st.first_name} {st.last_name}".strip()
+                    if search_query:
+                        match = (
+                            search_query in full_name.lower() or
+                            search_query in (st.email or "").lower() or
+                            search_query in (st.phone or "").lower()
+                        )
+                        if not match:
+                            continue
+
+                    if month_query and str(st.birth_date.month) != str(month_query):
+                        continue
+
+                    record_id = f"student_{st.id}"
+                    wish_info = wished_map.get(record_id) or wished_map.get(st.email) or {"status": "pending"}
+
+                    user_photo = None
+                    try:
+                        if getattr(st, "photo", None) and st.photo:
+                            user_photo = request.build_absolute_uri(st.photo.url)
+                        elif st.user and st.user.profile_photo:
+                            user_photo = request.build_absolute_uri(st.user.profile_photo.url)
+                    except Exception:
+                        pass
+
+                    batch_name = str(st.batch) if st.batch else "Singing Class"
+
+                    records.append({
+                        "unique_id": record_id,
+                        "source_id": st.id,
+                        "role": "Student",
+                        "role_type": "student",
+                        "name": full_name,
+                        "birth_date": st.birth_date.isoformat(),
+                        "email": st.email or "",
+                        "phone": st.phone or "",
+                        "photo": user_photo,
+                        "genre": batch_name,
+                        "city": st.city or "",
+                        "wish_status": wish_info.get("status", "pending"),
+                        "last_wished_at": wish_info.get("sent_at", None),
+                        "sent_by": wish_info.get("sent_by", None),
+                        **meta
+                    })
+            except Exception as e:
+                logger.exception("Failed to load students for birthday list: %s", e)
+
+        # Sort: today first (days_until == 0), then ascending by days_until
+        records.sort(key=lambda r: (r["days_until"], r["name"]))
+
+        today_birthdays = [r for r in records if r["is_today"]]
+        upcoming_week = [r for r in records if not r["is_today"] and r["is_this_week"]]
+        upcoming_month = [r for r in records if not r["is_today"] and r["days_until"] <= 30]
+
+        # Apply specific filter to results
+        filtered_records = records
+        if filter_type == "today":
+            filtered_records = today_birthdays
+        elif filter_type == "upcoming_7":
+            filtered_records = [r for r in records if r["is_this_week"]]
+        elif filter_type == "upcoming_30":
+            filtered_records = [r for r in records if r["days_until"] <= 30]
+        elif filter_type == "this_month":
+            filtered_records = [r for r in records if r["is_this_month"]]
+
+        return Response({
+            "today_count": len(today_birthdays),
+            "upcoming_week_count": len(upcoming_week),
+            "upcoming_month_count": len(upcoming_month),
+            "total_with_birthdays": len(records),
+            "today_birthdays": today_birthdays,
+            "upcoming_birthdays": upcoming_week,
+            "results": filtered_records,
+        })
+
+
+class BirthdayTodayPopupView(APIView):
+    """
+    Lightweight endpoint for admin dashboard to trigger birthday alerts/popups.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        from .models import Singer, SingingClass, BirthdayWishLog
+
+        wished_map = {}
+        try:
+            logs = BirthdayWishLog.objects.filter(wish_year=today.year, status="sent")
+            for log in logs:
+                key = f"{log.person_type}_{log.person_id}" if log.person_id else log.email
+                if key:
+                    wished_map[key] = True
+        except Exception:
+            pass
+
+        today_list = []
+        upcoming_week_count = 0
+
+        # Check Singers
+        try:
+            for s in Singer.objects.filter(birth_date__isnull=False):
+                meta = _calc_birthday_meta(s.birth_date, today)
+                if not meta:
+                    continue
+                if meta["is_today"]:
+                    rec_id = f"singer_{s.id}"
+                    user_photo = None
+                    try:
+                        if getattr(s, "photo", None) and s.photo:
+                            user_photo = request.build_absolute_uri(s.photo.url)
+                        else:
+                            from django.contrib.auth import get_user_model
+                            UserModel = get_user_model()
+                            u = None
+                            if s.email:
+                                u = UserModel.objects.filter(email__iexact=s.email).first()
+                            if not u and s.mobile:
+                                u = UserModel.objects.filter(mobile_no=s.mobile).first()
+                            if u and u.profile_photo:
+                                user_photo = request.build_absolute_uri(u.profile_photo.url)
+                    except Exception:
+                        pass
+
+                    today_list.append({
+                        "unique_id": rec_id,
+                        "source_id": s.id,
+                        "role": "Singer",
+                        "role_type": "singer",
+                        "name": s.name,
+                        "birth_date": s.birth_date.isoformat(),
+                        "email": s.email or "",
+                        "phone": s.mobile or "",
+                        "photo": user_photo,
+                        "already_wished": wished_map.get(rec_id, False) or wished_map.get(s.email, False),
+                        **meta
+                    })
+                elif meta["is_this_week"]:
+                    upcoming_week_count += 1
+        except Exception as e:
+            logger.warning("Popup view singer error: %s", e)
+
+        # Check Students
+        try:
+            for st in SingingClass.objects.filter(birth_date__isnull=False).select_related("user"):
+                meta = _calc_birthday_meta(st.birth_date, today)
+                if not meta:
+                    continue
+                if meta["is_today"]:
+                    rec_id = f"student_{st.id}"
+                    full_name = f"{st.first_name} {st.last_name}".strip()
+                    user_photo = None
+                    try:
+                        if getattr(st, "photo", None) and st.photo:
+                            user_photo = request.build_absolute_uri(st.photo.url)
+                        elif st.user and st.user.profile_photo:
+                            user_photo = request.build_absolute_uri(st.user.profile_photo.url)
+                    except Exception:
+                        pass
+                    today_list.append({
+                        "unique_id": rec_id,
+                        "source_id": st.id,
+                        "role": "Student",
+                        "role_type": "student",
+                        "name": full_name,
+                        "birth_date": st.birth_date.isoformat(),
+                        "email": st.email or "",
+                        "phone": st.phone or "",
+                        "photo": user_photo,
+                        "already_wished": wished_map.get(rec_id, False) or wished_map.get(st.email, False),
+                        **meta
+                    })
+                elif meta["is_this_week"]:
+                    upcoming_week_count += 1
+        except Exception as e:
+            logger.warning("Popup view student error: %s", e)
+
+        return Response({
+            "has_birthdays_today": len(today_list) > 0,
+            "today_count": len(today_list),
+            "upcoming_week_count": upcoming_week_count,
+            "today_birthdays": today_list,
+        })
+
+
+class BirthdaySendWishView(APIView):
+    """
+    Sends personalized birthday wish email to singer/student with high-res poster attached.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        recipient_email = data.get("email") or data.get("recipient_email")
+        recipient_name = data.get("name") or data.get("recipient_name") or "Valued Member"
+        role = data.get("role") or "Valued Star"
+        custom_message = data.get("message") or (
+            f"Wishing you a very Happy Birthday! May your special day and the year ahead be filled with "
+            f"magnificent melodies, joyful harmonies, good health, and tremendous success. "
+            f"Thank you for being an inspiring part of the IMC Music Hub family!"
+        )
+        subject = data.get("subject") or f"🎉 Happy Birthday {recipient_name}! - Wishes from IMC Music Hub 🎂🎶"
+        poster_base64 = data.get("poster_base64")
+        person_id = str(data.get("person_id") or "")
+        person_type = data.get("person_type") or ("singer" if "singer" in role.lower() else "student")
+
+        if not recipient_email:
+            return Response({"error": "Recipient email address is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Decode poster image
+        image_bytes = None
+        if poster_base64:
+            try:
+                if "," in poster_base64:
+                    _, b64data = poster_base64.split(",", 1)
+                else:
+                    b64data = poster_base64
+                image_bytes = base64.b64decode(b64data)
+            except Exception as e:
+                logger.error("Failed to decode poster image: %s", e)
+                return Response({"error": f"Invalid poster image data: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Build clean filename
+        safe_name = "".join(c for c in recipient_name if c.isalnum() or c in (" ", "_", "-")).strip().replace(" ", "_")
+        filename = f"IMC_Birthday_Poster_{safe_name}.png"
+
+        # Email Body HTML
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Happy Birthday from IMC Music Hub</title>
+</head>
+<body style="margin: 0; padding: 20px; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #f8fafc;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #0f172a 100%); border-radius: 16px; border: 1px solid rgba(251, 191, 36, 0.3); overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
+    <!-- Header -->
+    <tr>
+      <td style="padding: 36px 24px 20px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); background: radial-gradient(circle at center top, rgba(245, 158, 11, 0.18), transparent 70%);">
+        <div style="font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #fbbf24; text-transform: uppercase; margin-bottom: 8px;">
+          ✦ IMC MUSIC HUB PUNE ✦
+        </div>
+        <h1 style="font-size: 32px; font-weight: 900; color: #ffffff; margin: 0 0 10px; line-height: 1.2;">
+          Happy Birthday, {recipient_name}! 🎂🎶
+        </h1>
+        <p style="font-size: 15px; color: #cbd5e1; margin: 0; font-weight: 500;">
+          Celebrating our amazing {role} on your special day!
+        </p>
+      </td>
+    </tr>
+
+    <!-- Main Content -->
+    <tr>
+      <td style="padding: 28px 24px;">
+        <div style="background: rgba(255, 255, 255, 0.04); border-left: 4px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 24px; color: #e2e8f0; font-size: 15px; line-height: 1.7;">
+          <p style="margin: 0 0 12px; font-weight: 600; color: #fbbf24;">Dearest {recipient_name},</p>
+          <p style="margin: 0;">{custom_message}</p>
+        </div>
+
+        {"<!-- Poster Section -->" if image_bytes else ""}
+        {"<div style='text-align: center; margin: 24px 0;'><p style='font-size: 13px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;'>✨ Your Special Birthday Poster ✨</p><div style='border-radius: 12px; overflow: hidden; border: 2px solid rgba(251, 191, 36, 0.4); box-shadow: 0 15px 30px rgba(0,0,0,0.5); display: inline-block; max-width: 100%;'><img src='cid:birthday_poster' alt='IMC Birthday Poster' style='width: 100%; max-width: 500px; height: auto; display: block;' /></div><p style='font-size: 12px; color: #64748b; margin-top: 10px;'>📎 High-resolution poster is also attached below for you to save and share!</p></div>" if image_bytes else ""}
+
+        <div style="text-align: center; margin-top: 28px; padding: 18px; background: rgba(245, 158, 11, 0.08); border-radius: 12px; border: 1px dashed rgba(245, 158, 11, 0.3);">
+          <p style="margin: 0; font-size: 14px; color: #fbbf24; font-weight: 600;">
+            🎵 "Where words fail, music speaks. May your song keep playing loud and bright!" 🎵
+          </p>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding: 24px; text-align: center; background-color: #080c14; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 12px; color: #94a3b8; line-height: 1.6;">
+        <p style="margin: 0 0 6px; font-weight: 600; color: #cbd5e1;">IMC Music Hub — Studio, Academy & Events</p>
+        <p style="margin: 0 0 10px;">Pune, Maharashtra • <a href="https://imcpune.in" style="color: #fbbf24; text-decoration: none;">www.imcpune.in</a></p>
+        <p style="margin: 0; font-size: 11px; color: #64748b;">This heartfelt birthday message was sent with love by the IMC Music Hub Admin Team.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+        text_body = f"""
+Happy Birthday, {recipient_name}!
+
+{custom_message}
+
+Where words fail, music speaks. Wishing you a year full of rhythm, melodies, and boundless happiness!
+
+Warm wishes,
+IMC Music Hub Pune
+https://imcpune.in
+"""
+
+        # Send Email
+        try:
+            from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or os.getenv("EMAIL_HOST_USER", "connectteim@gmail.com")
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=text_body,
+                from_email=from_email,
+                to=[recipient_email],
+            )
+            msg.attach_alternative(html_body, "text/html")
+
+            # Attach inline image if provided
+            if image_bytes:
+                img_mime = MIMEImage(image_bytes)
+                img_mime.add_header("Content-ID", "<birthday_poster>")
+                img_mime.add_header("Content-Disposition", "inline", filename=filename)
+                msg.attach(img_mime)
+
+                # Also attach as downloadable file
+                msg.attach(filename, image_bytes, "image/png")
+
+            msg.send(fail_silently=False)
+            logger.info("Birthday wish email sent successfully to %s", recipient_email)
+
+            # Record in BirthdayWishLog
+            try:
+                from .models import BirthdayWishLog
+                BirthdayWishLog.objects.create(
+                    person_type=person_type,
+                    person_id=person_id,
+                    name=recipient_name,
+                    email=recipient_email,
+                    wish_year=date.today().year,
+                    sent_by=request.user if request.user.is_authenticated else None,
+                    message=custom_message,
+                    status="sent"
+                )
+            except Exception as log_err:
+                logger.warning("Could not create BirthdayWishLog: %s", log_err)
+
+            return Response({
+                "success": True,
+                "message": f"Birthday wish email sent successfully to {recipient_email}!"
+            }, status=status.HTTP_200_OK)
+
+        except Exception as email_err:
+            logger.exception("Failed to send birthday wish email: %s", email_err)
+            return Response({
+                "error": f"Failed to send email: {str(email_err)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -96,6 +96,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
     name: "",
     birth_date: "",
     mobile: "",
+    email: "",
     profession: "",
     education: "",
     achievement: "",
@@ -110,10 +111,12 @@ export default function SingerFormPage({ initialMode = "list" }) {
     gender: "",
     payment_method: "Cash",
     active: true,
+    photo: null,
     video: null,
   };
 
   const [form, setForm] = useState(emptyInitial);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [preview, setPreview] = useState(null);
   const [mode, setMode] = useState(initialMode === "form" ? "form" : "list");
   const [editingId, setEditingId] = useState(null);
@@ -265,6 +268,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         name: d.name || "",
         birth_date: formattedBirth,
         mobile: d.mobile || "",
+        email: d.email || "",
         profession: d.profession || "",
         education: d.education || "",
         achievement: d.achievement || "",
@@ -279,9 +283,11 @@ export default function SingerFormPage({ initialMode = "list" }) {
         gender: d.gender || "",
         payment_method: d.payment_method || "Cash",
         active: typeof d.active === "boolean" ? d.active : true,
+        photo: null,
         video: null,
       });
 
+      setPhotoPreview(d.photo ? safeImageUrl(d.photo) : null);
       setPreview(d.video ? safeImageUrl(d.video) : null);
       setEditingId(id);
       setMode("form");
@@ -295,7 +301,9 @@ export default function SingerFormPage({ initialMode = "list" }) {
   const startAdd = () => {
     setForm(emptyInitial);
     if (preview && preview.startsWith("blob:")) URL.revokeObjectURL(preview);
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
     setPreview(null);
+    setPhotoPreview(null);
     setEditingId(null);
     setMode("form");
     setError(null);
@@ -309,6 +317,19 @@ export default function SingerFormPage({ initialMode = "list" }) {
     } else {
       if (name === "rate") return;
       setForm((f) => ({ ...f, [name]: value }));
+    }
+  };
+
+  const handlePhotoFile = (e) => {
+    const file = e.target.files?.[0] || null;
+    setForm((f) => ({ ...f, photo: file }));
+
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+
+    if (file) {
+      setPhotoPreview(URL.createObjectURL(file));
+    } else {
+      setPhotoPreview(editingId && form.photo === null ? safeImageUrl(singers.find(s => s.id === editingId)?.photo) : null);
     }
   };
 
@@ -350,10 +371,12 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
       if (editingId) {
         const encodedId = encodeURIComponent(editingId);
+        const hasFile = (form.video instanceof File) || (form.photo instanceof File);
 
-        if (form.video instanceof File) {
+        if (hasFile) {
           const formData = new FormData();
           formData.append("name", form.name);
+          formData.append("email", form.email || "");
           formData.append("city", form.city || "");
           formData.append("state", form.state || "");
           formData.append("area", form.area || "");
@@ -375,7 +398,12 @@ export default function SingerFormPage({ initialMode = "list" }) {
           }
 
           formData.append("rate", "3000");
-          formData.append("video", form.video);
+          if (form.video instanceof File) {
+            formData.append("video", form.video);
+          }
+          if (form.photo instanceof File) {
+            formData.append("photo", form.photo);
+          }
 
           response = await api.patch(`${encodedId}/`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
@@ -383,6 +411,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         } else {
           const payload = {
             name: form.name,
+            email: form.email || "",
             city: form.city || "",
             state: form.state || "",
             area: form.area || "",
@@ -412,6 +441,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
         const formData = new FormData();
 
         formData.append("name", form.name);
+        formData.append("email", form.email || "");
         formData.append("rate", "3000");
         formData.append("active", form.active);
         formData.append("payment_method", form.payment_method || "Cash");
@@ -442,6 +472,9 @@ export default function SingerFormPage({ initialMode = "list" }) {
 
         if (form.video instanceof File) {
           formData.append("video", form.video);
+        }
+        if (form.photo instanceof File) {
+          formData.append("photo", form.photo);
         }
 
         response = await api.post("", formData, {
@@ -668,6 +701,17 @@ export default function SingerFormPage({ initialMode = "list" }) {
                 />
               </label>
               <label>
+                Email Address
+                <input
+                  className="input"
+                  name="email"
+                  type="email"
+                  value={form.email || ""}
+                  onChange={handleChange}
+                  placeholder="e.g. singer@imcpune.in"
+                />
+              </label>
+              <label>
                 Gender
                 <select className="input" name="gender" value={form.gender} onChange={handleChange}>
                   <option value="">Select gender</option>
@@ -827,32 +871,93 @@ export default function SingerFormPage({ initialMode = "list" }) {
             </div>
           </section>
 
-          {/* Video */}
+          {/* Profile Photo & Media */}
           <section className="pf-card">
-            <h3>Profile Video</h3>
-            <div className="pf-grid">
-              <label>
-                Singer Video
+            <h3>Profile Photo & Media</h3>
+            <div className="pf-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+              {/* Photo Upload */}
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <label style={{ fontWeight: 600, display: "block", marginBottom: 10, color: "#0f172a" }}>
+                  📷 Singer Profile Photo (Poster & Avatar)
+                </label>
+                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Singer preview"
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: "50%",
+                        objectFit: "cover",
+                        border: "3px solid #f59e0b",
+                        boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                        flexShrink: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: "50%",
+                        background: "#e2e8f0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#64748b",
+                        fontSize: "24px",
+                        flexShrink: 0,
+                        border: "2px dashed #94a3b8",
+                      }}
+                    >
+                      👤
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoFile}
+                      style={{ marginBottom: 6, fontSize: "0.85rem" }}
+                    />
+                    <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                      {form.photo instanceof File
+                        ? form.photo.name
+                        : editingId && photoPreview
+                        ? "Existing photo loaded — upload new to replace"
+                        : "Upload JPG, PNG or WEBP (Max 5MB)"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Video Upload */}
+              <div style={{ background: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                <label style={{ fontWeight: 600, display: "block", marginBottom: 10, color: "#0f172a" }}>
+                  🎥 Performance / Audition Video
+                </label>
                 <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="file"
                     accept="video/*"
                     onChange={handleFile}
+                    style={{ marginBottom: 6, fontSize: "0.85rem" }}
                   />
-                  <span style={{ fontSize: "0.9rem", color: "#6b7280" }}>
+                  <div style={{ fontSize: "0.82rem", color: "#64748b", width: "100%" }}>
                     {form.video instanceof File
                       ? form.video.name
                       : editingId && preview
                       ? "Existing video loaded – upload new to replace"
                       : "No video selected"}
-                  </span>
+                  </div>
                   {preview && (
                     <video
                       src={preview}
                       controls
                       style={{
-                        width: 180,
-                        height: 120,
+                        width: 140,
+                        height: 90,
                         objectFit: "cover",
                         borderRadius: 8,
                         border: "1px solid #e5e7eb",
@@ -861,7 +966,7 @@ export default function SingerFormPage({ initialMode = "list" }) {
                     />
                   )}
                 </div>
-              </label>
+              </div>
             </div>
           </section>
 
@@ -996,8 +1101,46 @@ export default function SingerFormPage({ initialMode = "list" }) {
                     <tr key={s.id}>
                       <td className="font-mono text-orange-700">{s.id || "—"}</td>
                       <td>
-                        <div className="font-medium">{s.name || "—"}</div>
-                        {s.area && <div className="text-xs text-gray-500">{s.area}</div>}
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          {s.photo ? (
+                            <img
+                              src={safeImageUrl(s.photo)}
+                              alt={s.name}
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                objectFit: "cover",
+                                flexShrink: 0,
+                                border: "2px solid #f59e0b",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                background: "#f1f5f9",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#64748b",
+                                flexShrink: 0,
+                                fontSize: "14px",
+                                fontWeight: "bold",
+                                border: "1px solid #e2e8f0",
+                              }}
+                            >
+                              {(s.name || "S").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium">{s.name || "—"}</div>
+                            {s.email && <div className="text-xs text-gray-500">{s.email}</div>}
+                            {s.area && <div className="text-xs text-gray-400">{s.area}</div>}
+                          </div>
+                        </div>
                       </td>
                       <td>
                         {s.video ? (

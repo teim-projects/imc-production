@@ -18,6 +18,8 @@ import UserForm from "./Forms/UserForm";
 import PrivateBookingForm from "./Forms/PrivateBookingForm";
 import PaymentForm from "./Forms/PaymentForm";
 import StudioCalendarManager from "./Forms/StudioCalendarManager";  // <-- NEW IMPORT
+import BirthdayManager from "./Birthday/BirthdayManager";
+import BirthdayPopup from "./Birthday/BirthdayPopup";
 
 import { motion } from "framer-motion";
 import {
@@ -47,6 +49,7 @@ import "./Dashboard.css";
 /* ---------------- Allowed keys (keep in sync with Sidebar) ---------------- */
 const ALLOWED_KEYS = new Set([
   null,
+  "birthday",
   "studioCalendar",       // <-- NEW
   "studio", "studioMaster", "equipment", "events", "photography", "videography", "sound",
   "singer", "payment", "private",
@@ -68,6 +71,7 @@ const ALLOWED_KEYS = new Set([
 const prettyTitle = (k) => {
   if (!k) return "Overview";
   const map = {
+    birthday: "Birthday Automation & Wishes Studio",
     studioCalendar: "Studio Calendar",   // <-- NEW
     studio: "Studio", studioMaster: "Studio Master", equipment: "Equipment",
     events: "Events", photography: "Photography", videography: "Videography",
@@ -189,6 +193,7 @@ export default function Dashboard() {
 
   const renderForm = () => {
     switch (activeForm) {
+      case "birthday":        return <BirthdayManager onClose={closeForm} />;
       case "studioCalendar":   return <StudioCalendarManager />;  // <-- NEW CASE
       case "studio":          return <StudioForm onClose={closeForm} />;
       case "studioMaster":    return <StudioMasterForm defaultTab="ADD" />;
@@ -247,6 +252,9 @@ export default function Dashboard() {
         openSubModal={(key) => safeSetActiveForm(key)}
       />
 
+      {/* 🎂 Birthday Celebration Popup Modal (Triggers on birthdays today) */}
+      <BirthdayPopup onOpenFullList={() => safeSetActiveForm("birthday")} />
+
       <main className="pl-0 lg:pl-64 min-h-screen transition-all duration-300">
         <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
 
@@ -267,11 +275,19 @@ export default function Dashboard() {
                     {formattedDate} • Real-time System Performance
                   </p>
                 </div>
-                <button className="relative group overflow-hidden px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl shadow-md shadow-purple-500/10 hover:shadow-purple-500/20 transform hover:-translate-y-0.5 transition-all duration-200">
-                  <span className="relative z-10 flex items-center gap-2">
-                    <FaBell className="animate-bounce" /> Notifications (3)
-                  </span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => safeSetActiveForm("birthday")}
+                    className="relative group overflow-hidden px-5 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-extrabold rounded-2xl shadow-md shadow-amber-500/20 hover:shadow-amber-500/40 transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+                  >
+                    <span>🎂</span> Birthday Studio
+                  </button>
+                  <button className="relative group overflow-hidden px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-2xl shadow-md shadow-purple-500/10 hover:shadow-purple-500/20 transform hover:-translate-y-0.5 transition-all duration-200">
+                    <span className="relative z-10 flex items-center gap-2">
+                      <FaBell className="animate-bounce" /> Notifications (3)
+                    </span>
+                  </button>
+                </div>
               </motion.div>
 
               {/* STATS HERO GRID - SYMMETRIC & COMPACT EDITION */}
@@ -571,16 +587,20 @@ export default function Dashboard() {
               animate={{ opacity: 1, scale: 1 }}
               className="bg-white rounded-3xl shadow-lg border border-slate-200/80 overflow-hidden"
             >
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-200/80 flex items-center justify-between">
+              <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-200/80 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">{prettyTitle(activeForm)} Management Portal</h2>
-                  <p className="text-xs text-slate-500 mt-0.5">Processing verification matrix inputs</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {activeForm === "birthday"
+                      ? "Automated birthday tracking, official HD poster generator & direct wish dispatch"
+                      : "Real-time operations, records management & automated workflows"}
+                  </p>
                 </div>
                 <button 
                   onClick={closeForm}
-                  className="px-3 py-1.5 bg-white hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-lg text-xs font-bold transition-all border border-slate-200 shadow-sm"
+                  className="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-600 rounded-xl text-xs font-bold transition-all border border-slate-200 shadow-sm flex items-center gap-1.5"
                 >
-                  Close Window
+                  <span>✕</span> Close Window
                 </button>
               </div>
               <div className="p-4 sm:p-6 md:p-8 lg:p-10 text-slate-800 bg-white">

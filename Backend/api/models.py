@@ -799,8 +799,13 @@ from django.core.validators import FileExtensionValidator
 
 
 # --------------------------------------------------
-# VIDEO UPLOAD HELPERS
+# PHOTO / VIDEO UPLOAD HELPERS
 # --------------------------------------------------
+def singer_photo_upload_to(instance, filename):
+    ext = filename.split('.')[-1] if '.' in filename else 'jpg'
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    return os.path.join("singer", "photos", filename)
+
 def singer_video_upload_to(instance, filename):
     ext = filename.split('.')[-1] if '.' in filename else 'mp4'
     filename = f"{uuid.uuid4().hex}.{ext}"
@@ -865,6 +870,12 @@ class Singer(models.Model):
    
 
     active = models.BooleanField(default=True)
+
+    photo = models.ImageField(
+        upload_to=singer_photo_upload_to,
+        null=True,
+        blank=True
+    )
 
     video = models.FileField(
         upload_to=singer_video_upload_to,
@@ -943,6 +954,12 @@ class SingingClass(models.Model):
 
     # NEW FIELD
     birth_date = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    photo = models.ImageField(
+        upload_to="student/photos/",
         null=True,
         blank=True
     )
@@ -1248,3 +1265,32 @@ class StudioSlot(models.Model):
     @property
     def is_blocked(self):
         return self.status == "blocked"
+
+
+# ============================================================
+# BIRTHDAY WISH LOG
+# ============================================================
+class BirthdayWishLog(models.Model):
+    person_type = models.CharField(max_length=50, default="singer") # 'singer' | 'student' | 'custom'
+    person_id = models.CharField(max_length=100, blank=True, default="")
+    name = models.CharField(max_length=255)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=50, blank=True, default="")
+    birth_date = models.DateField(null=True, blank=True)
+    wish_year = models.IntegerField(default=2026)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_birthday_wishes",
+    )
+    message = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=20, default="sent") # 'sent', 'failed'
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Birthday Wish: {self.name} ({self.person_type}) - {self.wish_year}"
